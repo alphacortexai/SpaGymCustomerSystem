@@ -1,36 +1,101 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# SPA Client Management System
+
+A modern, full-featured client management system for spa businesses built with Next.js, Firebase, and Google Authentication.
+
+## Features
+
+- 🔐 **Google Authentication** - Secure login with Google OAuth
+- 👥 **Client Management** - Add, search, and manage clients
+- 📅 **Birthday Tracking** - Automatically highlights clients with birthdays today
+- 📱 **Duplicate Detection** - Warns when adding clients with existing phone numbers
+- 📊 **Excel Import** - Bulk import clients from Excel files
+- 🔍 **Advanced Search** - Search by name, phone number, or date of birth
+- 📱 **Responsive Design** - Works on desktop, tablet, and mobile devices
+
+## Tech Stack
+
+- **Framework**: Next.js 16.1.1 (App Router)
+- **Database**: Firebase Firestore
+- **Authentication**: Firebase Authentication with Google Provider
+- **Styling**: Tailwind CSS v4
+- **Excel Processing**: xlsx library
 
 ## Getting Started
 
-First, run the development server:
+See [SETUP.md](./SETUP.md) for detailed setup instructions.
 
+### Quick Start
+
+1. Install dependencies:
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. Set up environment variables (see SETUP.md)
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+3. Run the development server:
+```bash
+npm run dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+4. Open [http://localhost:3000](http://localhost:3000) in your browser
 
-## Learn More
+## Project Structure
 
-To learn more about Next.js, take a look at the following resources:
+```
+├── app/
+│   ├── api/
+│   │   ├── auth/[...nextauth]/  # NextAuth configuration
+│   │   └── clients/              # Client API routes
+│   ├── auth/
+│   │   └── signin/               # Sign-in page
+│   ├── layout.js                 # Root layout
+│   └── page.js                   # Main dashboard
+├── components/
+│   ├── ClientForm.js             # Add client form
+│   ├── ClientList.js             # Client list table
+│   ├── ExcelUpload.js            # Excel import component
+│   ├── ProtectedRoute.js        # Route protection
+│   └── SessionProvider.js        # Auth session provider
+├── lib/
+│   ├── firebase.js               # Firebase configuration
+│   ├── clients.js                # Client database operations
+│   └── auth.js                   # Auth utilities
+└── SETUP.md                      # Detailed setup guide
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Usage
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Adding a Client
 
-## Deploy on Vercel
+1. Click on the "Add Client" tab
+2. Fill in the form with:
+   - Client Name
+   - Phone Number (will warn if duplicate exists)
+   - Date of Birth
+3. Click "Add Client"
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Searching Clients
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. Use the search bar on the dashboard
+2. Search by name, phone number, or date of birth
+3. Results appear instantly
+
+### Bulk Import
+
+1. Click on the "Upload Excel" tab
+2. Prepare an Excel file with columns: Name, Phone Number, Date of Birth
+3. Upload the file
+4. Preview and confirm import
+
+## Environment Variables
+
+Required environment variables (see SETUP.md for details):
+
+- Firebase configuration (6 variables)
+- NextAuth configuration (2 variables)
+- Google OAuth (2 variables)
+
+## License
+
+Private project
