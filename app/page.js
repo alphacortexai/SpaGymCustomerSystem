@@ -24,6 +24,11 @@ export default function Home() {
   const [selectedBranch, setSelectedBranch] = useState('');
   const [branches, setBranches] = useState([]);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [selectedMonth, setSelectedMonth] = useState('');
+  const [selectedDay, setSelectedDay] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const clientsPerPage = 20;
+  const [showAdminSection, setShowAdminSection] = useState(false);
 
   const loadData = async () => {
     const branch = selectedBranch || null;
@@ -43,11 +48,21 @@ export default function Home() {
     }
   }, [user, selectedBranch]);
 
+  // Reset admin section when navigating back to home
+  useEffect(() => {
+    if (activeTab === 'home') {
+      // Keep admin section state when on home, but reset when switching from other tabs
+    } else {
+      setShowAdminSection(false);
+    }
+  }, [activeTab]);
+
   const handleSearch = async (e) => {
     e.preventDefault();
     if (!searchTerm.trim()) {
       setSearchResults([]);
       setIsSearching(false);
+      setCurrentPage(1);
       return;
     }
 
@@ -56,6 +71,54 @@ export default function Home() {
     const results = await searchClients(searchTerm, branch);
     setSearchResults(results);
     setIsSearching(false);
+    setCurrentPage(1);
+  };
+
+  // Clear search when search term is cleared
+  useEffect(() => {
+    if (!searchTerm.trim()) {
+      setSearchResults([]);
+      setCurrentPage(1);
+    }
+  }, [searchTerm]);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedMonth, selectedDay]);
+
+  // Filter clients by month and day
+  const filterClientsByBirthday = (clients) => {
+    if (!selectedMonth && !selectedDay) {
+      return clients;
+    }
+    
+    return clients.filter((client) => {
+      const monthMatch = !selectedMonth || (client.birthMonth && parseInt(client.birthMonth) === parseInt(selectedMonth));
+      const dayMatch = !selectedDay || (client.birthDay && parseInt(client.birthDay) === parseInt(selectedDay));
+      return monthMatch && dayMatch;
+    });
+  };
+
+  // Reset filters
+  const handleResetFilters = () => {
+    setSelectedMonth('');
+    setSelectedDay('');
+    setSearchTerm('');
+    setSearchResults([]);
+    setCurrentPage(1);
+  };
+
+  // Get paginated clients
+  const getPaginatedClients = (clients) => {
+    const startIndex = (currentPage - 1) * clientsPerPage;
+    const endIndex = startIndex + clientsPerPage;
+    return clients.slice(startIndex, endIndex);
+  };
+
+  // Calculate total pages
+  const getTotalPages = (clients) => {
+    return Math.ceil(clients.length / clientsPerPage);
   };
 
   const handleClientAdded = () => {
@@ -144,64 +207,99 @@ export default function Home() {
           {/* Home Page: Navigation Cards (Mobile & Desktop) */}
           {activeTab === 'home' && (
             <div className="mb-6">
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-4">
-                <button
-                  onClick={() => setActiveTab('dashboard')}
-                  className="p-6 rounded-lg shadow-md text-left transition-all bg-white text-gray-800 hover:bg-blue-50 hover:shadow-lg border-2 border-transparent hover:border-blue-200"
-                >
-                  <div className="text-3xl mb-2">📊</div>
-                  <div className="font-semibold text-base sm:text-lg">Dashboard</div>
-                  <div className="text-xs sm:text-sm text-gray-500 mt-1">View and search clients</div>
-                </button>
-                <button
-                  onClick={() => setActiveTab('add')}
-                  className="p-6 rounded-lg shadow-md text-left transition-all bg-white text-gray-800 hover:bg-blue-50 hover:shadow-lg border-2 border-transparent hover:border-blue-200"
-                >
-                  <div className="text-3xl mb-2">➕</div>
-                  <div className="font-semibold text-base sm:text-lg">Add Client</div>
-                  <div className="text-xs sm:text-sm text-gray-500 mt-1">Add new client manually</div>
-                </button>
-                <button
-                  onClick={() => setActiveTab('upload')}
-                  className="p-6 rounded-lg shadow-md text-left transition-all bg-white text-gray-800 hover:bg-blue-50 hover:shadow-lg border-2 border-transparent hover:border-blue-200"
-                >
-                  <div className="text-3xl mb-2">📤</div>
-                  <div className="font-semibold text-base sm:text-lg">Upload Excel</div>
-                  <div className="text-xs sm:text-sm text-gray-500 mt-1">Bulk import clients</div>
-                </button>
-                <button
-                  onClick={() => setActiveTab('branches')}
-                  className="p-6 rounded-lg shadow-md text-left transition-all bg-white text-gray-800 hover:bg-blue-50 hover:shadow-lg border-2 border-transparent hover:border-blue-200"
-                >
-                  <div className="text-3xl mb-2">🏢</div>
-                  <div className="font-semibold text-base sm:text-lg">Manage Branches</div>
-                  <div className="text-xs sm:text-sm text-gray-500 mt-1">Create and manage branches</div>
-                </button>
-                <button
-                  onClick={() => setActiveTab('birthdays')}
-                  className="p-6 rounded-lg shadow-md text-left transition-all bg-white text-gray-800 hover:bg-blue-50 hover:shadow-lg border-2 border-transparent hover:border-blue-200"
-                >
-                  <div className="text-3xl mb-2">🎂</div>
-                  <div className="font-semibold text-base sm:text-lg">Today's Birthdays</div>
-                  <div className="text-xs sm:text-sm text-gray-500 mt-1">View today's birthdays</div>
-                </button>
-                <button
-                  onClick={() => setActiveTab('unrecognized')}
-                  className="p-6 rounded-lg shadow-md text-left transition-all bg-white text-gray-800 hover:bg-blue-50 hover:shadow-lg border-2 border-transparent hover:border-blue-200"
-                >
-                  <div className="text-3xl mb-2">⚠️</div>
-                  <div className="font-semibold text-base sm:text-lg">Unrecognised Data</div>
-                  <div className="text-xs sm:text-sm text-gray-500 mt-1">Review unrecognized clients</div>
-                </button>
-                <button
-                  onClick={() => setActiveTab('history')}
-                  className="p-6 rounded-lg shadow-md text-left transition-all bg-white text-gray-800 hover:bg-blue-50 hover:shadow-lg border-2 border-transparent hover:border-blue-200"
-                >
-                  <div className="text-3xl mb-2">📜</div>
-                  <div className="font-semibold text-base sm:text-lg">Upload History</div>
-                  <div className="text-xs sm:text-sm text-gray-500 mt-1">View recent uploads</div>
-                </button>
-              </div>
+              {!showAdminSection ? (
+                /* Main Cards */
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-4">
+                  <button
+                    onClick={() => setActiveTab('dashboard')}
+                    className="p-6 rounded-lg shadow-md text-left transition-all bg-white text-gray-800 hover:bg-blue-50 hover:shadow-lg border-2 border-transparent hover:border-blue-200"
+                  >
+                    <div className="text-3xl mb-2">📊</div>
+                    <div className="font-semibold text-base sm:text-lg">Dashboard</div>
+                    <div className="text-xs sm:text-sm text-gray-500 mt-1">View and search clients</div>
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('upload')}
+                    className="p-6 rounded-lg shadow-md text-left transition-all bg-white text-gray-800 hover:bg-blue-50 hover:shadow-lg border-2 border-transparent hover:border-blue-200"
+                  >
+                    <div className="text-3xl mb-2">📤</div>
+                    <div className="font-semibold text-base sm:text-lg">Upload Excel</div>
+                    <div className="text-xs sm:text-sm text-gray-500 mt-1">Bulk import clients</div>
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('birthdays')}
+                    className="p-6 rounded-lg shadow-md text-left transition-all bg-white text-gray-800 hover:bg-blue-50 hover:shadow-lg border-2 border-transparent hover:border-blue-200"
+                  >
+                    <div className="text-3xl mb-2">🎂</div>
+                    <div className="font-semibold text-base sm:text-lg">Today's Birthdays</div>
+                    <div className="text-xs sm:text-sm text-gray-500 mt-1">View today's birthdays</div>
+                  </button>
+                  <button
+                    onClick={() => setShowAdminSection(true)}
+                    className="p-6 rounded-lg shadow-md text-left transition-all bg-white text-gray-800 hover:bg-blue-50 hover:shadow-lg border-2 border-transparent hover:border-blue-200"
+                  >
+                    <div className="text-3xl mb-2">⚙️</div>
+                    <div className="font-semibold text-base sm:text-lg">Admin</div>
+                    <div className="text-xs sm:text-sm text-gray-500 mt-1">Administrative functions</div>
+                  </button>
+                </div>
+              ) : (
+                /* Admin Sub-section */
+                <div className="space-y-4">
+                  {/* Back Button */}
+                  <button
+                    onClick={() => setShowAdminSection(false)}
+                    className="flex items-center gap-2 text-gray-600 hover:text-gray-800 transition-colors mb-2"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                    </svg>
+                    <span className="font-medium">Back to Main</span>
+                  </button>
+
+                  {/* Admin Section Title */}
+                  <div className="mb-4">
+                    <h2 className="text-xl sm:text-2xl font-bold text-gray-800">Admin</h2>
+                    <p className="text-sm text-gray-600 mt-1">Administrative functions and settings</p>
+                  </div>
+
+                  {/* Admin Cards */}
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    <button
+                      onClick={() => setActiveTab('add')}
+                      className="p-6 rounded-lg shadow-md text-left transition-all bg-white text-gray-800 hover:bg-blue-50 hover:shadow-lg border-2 border-transparent hover:border-blue-200"
+                    >
+                      <div className="text-3xl mb-2">➕</div>
+                      <div className="font-semibold text-base sm:text-lg">Add Client</div>
+                      <div className="text-xs sm:text-sm text-gray-500 mt-1">Add new client manually</div>
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('unrecognized')}
+                      className="p-6 rounded-lg shadow-md text-left transition-all bg-white text-gray-800 hover:bg-blue-50 hover:shadow-lg border-2 border-transparent hover:border-blue-200"
+                    >
+                      <div className="text-3xl mb-2">⚠️</div>
+                      <div className="font-semibold text-base sm:text-lg">Unrecognised Data</div>
+                      <div className="text-xs sm:text-sm text-gray-500 mt-1">Review unrecognized clients</div>
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('history')}
+                      className="p-6 rounded-lg shadow-md text-left transition-all bg-white text-gray-800 hover:bg-blue-50 hover:shadow-lg border-2 border-transparent hover:border-blue-200"
+                    >
+                      <div className="text-3xl mb-2">📜</div>
+                      <div className="font-semibold text-base sm:text-lg">Upload History</div>
+                      <div className="text-xs sm:text-sm text-gray-500 mt-1">View recent uploads</div>
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('branches')}
+                      className="p-6 rounded-lg shadow-md text-left transition-all bg-white text-gray-800 hover:bg-blue-50 hover:shadow-lg border-2 border-transparent hover:border-blue-200"
+                    >
+                      <div className="text-3xl mb-2">🏢</div>
+                      <div className="font-semibold text-base sm:text-lg">Manage Branches</div>
+                      <div className="text-xs sm:text-sm text-gray-500 mt-1">Create and manage branches</div>
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -209,13 +307,29 @@ export default function Home() {
           {activeTab !== 'home' && (
             <div className="mb-6">
               <button
-                onClick={() => setActiveTab('home')}
+                onClick={() => {
+                  // Check if current tab is an admin tab
+                  const adminTabs = ['add', 'unrecognized', 'history', 'branches'];
+                  if (adminTabs.includes(activeTab)) {
+                    // Navigate back to Admin section
+                    setActiveTab('home');
+                    setShowAdminSection(true);
+                  } else {
+                    // Navigate back to Home (main view)
+                    setActiveTab('home');
+                    setShowAdminSection(false);
+                  }
+                }}
                 className="flex items-center gap-2 text-gray-600 hover:text-gray-800 transition-colors"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                 </svg>
-                <span className="font-medium">Back to Home</span>
+                <span className="font-medium">
+                  {['add', 'unrecognized', 'history', 'branches'].includes(activeTab) 
+                    ? 'Back to Admin' 
+                    : 'Back to Home'}
+                </span>
               </button>
             </div>
           )}
@@ -235,57 +349,221 @@ export default function Home() {
           {/* Dashboard Tab */}
           {activeTab === 'dashboard' && (
             <div className="space-y-6">
-              {/* Branch Selector */}
+              {/* Branch Selector, Search, and Filters Combined */}
               <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md">
-                <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-4">Select Branch</h2>
-                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 sm:items-center">
-                  <select
-                    value={selectedBranch}
-                    onChange={(e) => setSelectedBranch(e.target.value)}
-                    className="w-full sm:w-auto px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 sm:min-w-[200px]"
-                  >
-                    <option value="">All Branches</option>
-                    {branches.map((branch) => (
-                      <option key={branch.id || branch} value={branch.name || branch}>
-                        {branch.name || branch}
-                      </option>
-                    ))}
-                  </select>
-                  {selectedBranch && (
-                    <span className="text-sm text-gray-600">
-                      Showing clients from: <strong>{selectedBranch}</strong>
-                    </span>
-                  )}
+                <div className="space-y-4">
+                  {/* Branch Selector */}
+                  <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 sm:items-center">
+                    <label className="text-sm font-medium text-gray-700 sm:w-24 flex-shrink-0">Branch:</label>
+                    <select
+                      value={selectedBranch}
+                      onChange={(e) => {
+                        setSelectedBranch(e.target.value);
+                        setSearchTerm('');
+                        setSearchResults([]);
+                        setCurrentPage(1);
+                      }}
+                      className="flex-1 sm:flex-initial w-full sm:w-auto px-3 sm:px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 sm:min-w-[200px] text-sm sm:text-base"
+                    >
+                      <option value="">All Branches</option>
+                      {branches.map((branch) => (
+                        <option key={branch.id || branch} value={branch.name || branch}>
+                          {branch.name || branch}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Search */}
+                  <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-2 sm:gap-4 sm:items-center">
+                    <label className="text-sm font-medium text-gray-700 sm:w-24 flex-shrink-0">Search:</label>
+                    <input
+                      type="text"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      placeholder="Name or phone number..."
+                      className="flex-1 w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
+                    />
+                    <button
+                      type="submit"
+                      className="w-full sm:w-auto px-4 sm:px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 whitespace-nowrap text-sm sm:text-base font-medium"
+                    >
+                      {isSearching ? 'Searching...' : 'Search'}
+                    </button>
+                  </form>
+
+                  {/* Birthday Filters */}
+                  <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 sm:items-center">
+                    <label className="text-sm font-medium text-gray-700 sm:w-24 flex-shrink-0">Birthday:</label>
+                    <div className="flex flex-col sm:flex-row gap-2 flex-1 w-full">
+                      <select
+                        value={selectedMonth}
+                        onChange={(e) => {
+                          setSelectedMonth(e.target.value);
+                          setCurrentPage(1);
+                        }}
+                        className="flex-1 w-full sm:w-auto px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
+                      >
+                        <option value="">All Months</option>
+                        <option value="1">January</option>
+                        <option value="2">February</option>
+                        <option value="3">March</option>
+                        <option value="4">April</option>
+                        <option value="5">May</option>
+                        <option value="6">June</option>
+                        <option value="7">July</option>
+                        <option value="8">August</option>
+                        <option value="9">September</option>
+                        <option value="10">October</option>
+                        <option value="11">November</option>
+                        <option value="12">December</option>
+                      </select>
+                      <select
+                        value={selectedDay}
+                        onChange={(e) => {
+                          setSelectedDay(e.target.value);
+                          setCurrentPage(1);
+                        }}
+                        className="flex-1 w-full sm:w-auto px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
+                      >
+                        <option value="">All Days</option>
+                        {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
+                          <option key={day} value={day}>
+                            {day}
+                          </option>
+                        ))}
+                      </select>
+                      {(selectedMonth || selectedDay) && (
+                        <button
+                          onClick={handleResetFilters}
+                          className="w-full sm:w-auto px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 whitespace-nowrap text-sm sm:text-base"
+                        >
+                          Clear Filters
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              {/* Search */}
-              <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md">
-                <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-4">Search Clients</h2>
-                <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-                  <input
-                    type="text"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    placeholder="Search by name, phone number, or date of birth..."
-                    className="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                  <button
-                    type="submit"
-                    className="w-full sm:w-auto px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 whitespace-nowrap"
-                  >
-                    {isSearching ? 'Searching...' : 'Search'}
-                  </button>
-                </form>
-              </div>
-
-              {/* Search Results */}
-              {searchResults.length > 0 && (
-                <ClientList clients={searchResults} title="Search Results" onClientUpdated={handleClientAdded} />
-              )}
-
-              {/* All Clients */}
-              <ClientList clients={allClients} title="All Clients" onClientUpdated={handleClientAdded} />
+              {/* Search Results or All Clients with Filters and Pagination */}
+              {isSearching ? (
+                <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md">
+                  <div className="flex items-center gap-3">
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+                    <p className="text-gray-600">Searching...</p>
+                  </div>
+                </div>
+              ) : (() => {
+                // Get base clients (search results or all clients)
+                const baseClients = searchTerm.trim() ? searchResults : allClients;
+                
+                // Apply birthday filters
+                const filteredClients = filterClientsByBirthday(baseClients);
+                
+                // Get paginated clients
+                const paginatedClients = getPaginatedClients(filteredClients);
+                const totalPages = getTotalPages(filteredClients);
+                
+                if (filteredClients.length === 0) {
+                  return (
+                    <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md">
+                      <p className="text-gray-500">
+                        {searchTerm.trim() 
+                          ? `No clients found matching "${searchTerm}"`
+                          : 'No clients found'}
+                        {(selectedMonth || selectedDay) && ' with selected birthday filter'}
+                      </p>
+                    </div>
+                  );
+                }
+                
+                return (
+                  <div>
+                    {/* Results Info */}
+                    <div className="mb-3 text-xs sm:text-sm text-gray-600 bg-blue-50 px-3 py-2 rounded-md">
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+                        <span>
+                          Showing <strong>{paginatedClients.length}</strong> of <strong>{filteredClients.length}</strong> client{filteredClients.length !== 1 ? 's' : ''}
+                        </span>
+                        {searchTerm.trim() && (
+                          <span className="text-xs">matching "<strong>{searchTerm}</strong>"</span>
+                        )}
+                        {(selectedMonth || selectedDay) && (
+                          <span className="text-xs">
+                            {' '}• Birthday:{' '}
+                            {selectedMonth && (
+                              <span>
+                                {new Date(2000, parseInt(selectedMonth) - 1).toLocaleString('default', { month: 'short' })}
+                              </span>
+                            )}
+                            {selectedMonth && selectedDay && ' '}
+                            {selectedDay && <span>{selectedDay}</span>}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {/* Client List */}
+                    <ClientList clients={paginatedClients} title="" onClientUpdated={handleClientAdded} />
+                    
+                    {/* Pagination */}
+                    {totalPages > 1 && (
+                      <div className="mt-4 bg-white p-3 sm:p-4 rounded-lg shadow-md">
+                        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4">
+                          <div className="text-xs sm:text-sm text-gray-600">
+                            Page <strong>{currentPage}</strong> of <strong>{totalPages}</strong>
+                          </div>
+                          <div className="flex items-center gap-2 w-full sm:w-auto justify-center">
+                            <button
+                              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                              disabled={currentPage === 1}
+                              className="px-3 sm:px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-medium"
+                            >
+                              ← Prev
+                            </button>
+                            <div className="flex gap-1 overflow-x-auto max-w-[200px] sm:max-w-none">
+                              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                                let pageNum;
+                                if (totalPages <= 5) {
+                                  pageNum = i + 1;
+                                } else if (currentPage <= 3) {
+                                  pageNum = i + 1;
+                                } else if (currentPage >= totalPages - 2) {
+                                  pageNum = totalPages - 4 + i;
+                                } else {
+                                  pageNum = currentPage - 2 + i;
+                                }
+                                
+                                return (
+                                  <button
+                                    key={pageNum}
+                                    onClick={() => setCurrentPage(pageNum)}
+                                    className={`min-w-[36px] px-2 sm:px-3 py-2 rounded-md text-xs sm:text-sm font-medium ${
+                                      currentPage === pageNum
+                                        ? 'bg-blue-600 text-white'
+                                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                    } focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                                  >
+                                    {pageNum}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                            <button
+                              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                              disabled={currentPage === totalPages}
+                              className="px-3 sm:px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-medium"
+                            >
+                              Next →
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
           )}
 

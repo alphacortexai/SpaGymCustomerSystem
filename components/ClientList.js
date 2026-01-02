@@ -15,7 +15,7 @@ export default function ClientList({ clients, title = 'Clients', onClientUpdated
   if (!clients || clients.length === 0) {
     return (
       <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md">
-        <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-4">{title}</h2>
+        {title && <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-4">{title}</h2>}
         <p className="text-gray-500">No clients found</p>
       </div>
     );
@@ -24,7 +24,11 @@ export default function ClientList({ clients, title = 'Clients', onClientUpdated
   return (
     <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md">
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl sm:text-2xl font-bold text-gray-800">{title} ({clients.length})</h2>
+        {title ? (
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-800">{title} ({clients.length})</h2>
+        ) : (
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-800">Clients ({clients.length})</h2>
+        )}
         {/* View Toggle */}
         <div className="flex gap-2 border border-gray-300 rounded-md p-1">
           <button
