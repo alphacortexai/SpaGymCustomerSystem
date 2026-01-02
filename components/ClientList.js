@@ -4,8 +4,33 @@ import { useState } from 'react';
 import { format } from 'date-fns';
 import EditClientModal from './EditClientModal';
 import { deleteClient } from '@/lib/clients';
+import { normalizePhoneNumber } from '@/lib/phoneUtils';
 
 export default function ClientList({ clients, title = 'Clients', onClientUpdated }) {
+  // Helper function to generate WhatsApp link
+  const generateWhatsAppLink = (phoneNumber) => {
+    if (!phoneNumber) return null;
+
+    const normalized = normalizePhoneNumber(phoneNumber);
+    if (!normalized) return null;
+
+    // Remove leading 0 and add country code for Kenya (254)
+    // Example: 0782830524 -> 254782830524
+    let whatsappNumber = normalized.replace(/^0/, '');
+    whatsappNumber = `254${whatsappNumber}`;
+
+    return `https://wa.me/${whatsappNumber}`;
+  };
+
+  // Helper function to generate call link
+  const generateCallLink = (phoneNumber) => {
+    if (!phoneNumber) return null;
+
+    const normalized = normalizePhoneNumber(phoneNumber);
+    if (!normalized) return null;
+
+    return `tel:${normalized}`;
+  };
   const [editingClient, setEditingClient] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [deletingClientId, setDeletingClientId] = useState(null);
@@ -86,7 +111,27 @@ export default function ClientList({ clients, title = 'Clients', onClientUpdated
                 <span>📅 {dobDisplay}</span>
                 <span>🏢 {client.branch || 'N/A'}</span>
               </div>
-              <div className="flex gap-3 pt-2 border-t border-gray-100">
+              <div className="flex gap-2 pt-2 border-t border-gray-100">
+                {client.phoneNumber && (
+                  <>
+                    <a
+                      href={generateCallLink(client.phoneNumber)}
+                      className="flex-1 px-3 py-2 text-sm bg-green-600 text-white rounded-md hover:bg-green-700 text-center"
+                      title="Call client"
+                    >
+                      📞 Call
+                    </a>
+                    <a
+                      href={generateWhatsAppLink(client.phoneNumber)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 px-3 py-2 text-sm bg-green-500 text-white rounded-md hover:bg-green-600 text-center"
+                      title="WhatsApp client"
+                    >
+                      💬 WhatsApp
+                    </a>
+                  </>
+                )}
                 <button
                   onClick={() => {
                     setEditingClient(client);
@@ -169,13 +214,33 @@ export default function ClientList({ clients, title = 'Clients', onClientUpdated
                     {client.branch || 'N/A'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    <div className="flex gap-3">
+                    <div className="flex gap-2">
+                      {client.phoneNumber && (
+                        <>
+                          <a
+                            href={generateCallLink(client.phoneNumber)}
+                            className="text-green-600 hover:text-green-800 font-medium px-2 py-1 rounded hover:bg-green-50"
+                            title="Call client"
+                          >
+                            📞
+                          </a>
+                          <a
+                            href={generateWhatsAppLink(client.phoneNumber)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-green-500 hover:text-green-600 font-medium px-2 py-1 rounded hover:bg-green-50"
+                            title="WhatsApp client"
+                          >
+                            💬
+                          </a>
+                        </>
+                      )}
                       <button
                         onClick={() => {
                           setEditingClient(client);
                           setIsModalOpen(true);
                         }}
-                        className="text-blue-600 hover:text-blue-800 font-medium"
+                        className="text-blue-600 hover:text-blue-800 font-medium px-2 py-1 rounded hover:bg-blue-50"
                       >
                         Edit
                       </button>
@@ -184,7 +249,7 @@ export default function ClientList({ clients, title = 'Clients', onClientUpdated
                           setDeletingClientId(client.id);
                           setShowDeleteConfirm(true);
                         }}
-                        className="text-red-600 hover:text-red-800 font-medium"
+                        className="text-red-600 hover:text-red-800 font-medium px-2 py-1 rounded hover:bg-red-50"
                       >
                         Delete
                       </button>
