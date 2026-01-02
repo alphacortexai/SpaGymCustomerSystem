@@ -219,12 +219,12 @@ export default function Home() {
                     <div className="text-xs sm:text-sm text-gray-500 mt-1">View and search clients</div>
                   </button>
                   <button
-                    onClick={() => setActiveTab('upload')}
+                    onClick={() => setActiveTab('add')}
                     className="p-6 rounded-lg shadow-md text-left transition-all bg-white text-gray-800 hover:bg-blue-50 hover:shadow-lg border-2 border-transparent hover:border-blue-200"
                   >
-                    <div className="text-3xl mb-2">📤</div>
-                    <div className="font-semibold text-base sm:text-lg">Upload Excel</div>
-                    <div className="text-xs sm:text-sm text-gray-500 mt-1">Bulk import clients</div>
+                    <div className="text-3xl mb-2">➕</div>
+                    <div className="font-semibold text-base sm:text-lg">Add Client</div>
+                    <div className="text-xs sm:text-sm text-gray-500 mt-1">Add new client manually</div>
                   </button>
                   <button
                     onClick={() => setActiveTab('birthdays')}
@@ -266,12 +266,12 @@ export default function Home() {
                   {/* Admin Cards */}
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                     <button
-                      onClick={() => setActiveTab('add')}
+                      onClick={() => setActiveTab('upload')}
                       className="p-6 rounded-lg shadow-md text-left transition-all bg-white text-gray-800 hover:bg-blue-50 hover:shadow-lg border-2 border-transparent hover:border-blue-200"
                     >
-                      <div className="text-3xl mb-2">➕</div>
-                      <div className="font-semibold text-base sm:text-lg">Add Client</div>
-                      <div className="text-xs sm:text-sm text-gray-500 mt-1">Add new client manually</div>
+                      <div className="text-3xl mb-2">📤</div>
+                      <div className="font-semibold text-base sm:text-lg">Upload Excel</div>
+                      <div className="text-xs sm:text-sm text-gray-500 mt-1">Bulk import clients</div>
                     </button>
                     <button
                       onClick={() => setActiveTab('unrecognized')}
@@ -309,7 +309,7 @@ export default function Home() {
               <button
                 onClick={() => {
                   // Check if current tab is an admin tab
-                  const adminTabs = ['add', 'unrecognized', 'history', 'branches'];
+                  const adminTabs = ['upload', 'unrecognized', 'history', 'branches'];
                   if (adminTabs.includes(activeTab)) {
                     // Navigate back to Admin section
                     setActiveTab('home');
@@ -326,8 +326,8 @@ export default function Home() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                 </svg>
                 <span className="font-medium">
-                  {['add', 'unrecognized', 'history', 'branches'].includes(activeTab) 
-                    ? 'Back to Admin' 
+                  {['upload', 'unrecognized', 'history', 'branches'].includes(activeTab)
+                    ? 'Back to Admin'
                     : 'Back to Home'}
                 </span>
               </button>
