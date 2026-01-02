@@ -11,6 +11,7 @@ import { getAllBranches } from '@/lib/branches';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import BranchForm from '@/components/BranchForm';
 import UnrecognizedClientsList from '@/components/UnrecognizedClientsList';
+import UploadHistory from '@/components/UploadHistory';
 
 export default function Home() {
   const { user } = useAuth();
@@ -192,6 +193,14 @@ export default function Home() {
                   <div className="font-semibold text-base sm:text-lg">Unrecognised Data</div>
                   <div className="text-xs sm:text-sm text-gray-500 mt-1">Review unrecognized clients</div>
                 </button>
+                <button
+                  onClick={() => setActiveTab('history')}
+                  className="p-6 rounded-lg shadow-md text-left transition-all bg-white text-gray-800 hover:bg-blue-50 hover:shadow-lg border-2 border-transparent hover:border-blue-200"
+                >
+                  <div className="text-3xl mb-2">📜</div>
+                  <div className="font-semibold text-base sm:text-lg">Upload History</div>
+                  <div className="text-xs sm:text-sm text-gray-500 mt-1">View recent uploads</div>
+                </button>
               </div>
             </div>
           )}
@@ -369,7 +378,14 @@ export default function Home() {
           {activeTab === 'unrecognized' && (
             <div className="space-y-6">
               <UnrecognizedClientsList onClientUpdated={handleClientAdded} />
-        </div>
+            </div>
+          )}
+
+          {/* Upload History Tab */}
+          {activeTab === 'history' && (
+            <div className="space-y-6">
+              <UploadHistory />
+            </div>
           )}
       </main>
     </div>
