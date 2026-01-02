@@ -102,8 +102,8 @@ export async function POST(request) {
 
     const { jobId } = jobResult;
 
-    // Store the parsed data in Firestore for reliability
-    // This ensures data persists even if the function context ends
+    // Store the parsed data in Firestore - this is critical for Vercel
+    // On Vercel, serverless functions terminate after response, so we MUST store data
     try {
       const { doc, updateDoc } = await import('firebase/firestore');
       const { db } = await import('@/lib/firebase');
@@ -114,47 +114,39 @@ export async function POST(request) {
         jsonData: jsonData,
         defaultBranch: defaultBranch,
         dataStored: true,
+        total: jsonData.length,
       });
     } catch (storageError) {
       console.error('Error storing job data:', storageError);
-      // Continue anyway - we'll try to process with in-memory data
+      return NextResponse.json(
+        { error: 'Failed to store job data: ' + storageError.message },
+        { status: 500 }
+      );
     }
 
-    // Start processing asynchronously
-    // On Vercel, the function will continue running until timeout or completion
-    // We use an IIFE to start the async processing without blocking
-    const processPromise = (async () => {
-      try {
-        // Small delay to ensure response is sent first
-        await new Promise(resolve => setTimeout(resolve, 50));
-        await processExcelFile(jobId, jsonData, defaultBranch);
-      } catch (error) {
-        console.error('Background processing error:', error);
-        // Update job status to failed
+    // On Vercel, we cannot rely on background processing in the same function
+    // The function will terminate after this response is sent
+    // Processing will be triggered by the client via /api/jobs/process
+    // For localhost, we can still try to process immediately
+    if (!process.env.VERCEL) {
+      // On localhost, try to process immediately (non-blocking)
+      (async () => {
         try {
-          const { updateJobProgress } = await import('@/lib/jobProcessor');
-          await updateJobProgress(jobId, {
-            status: 'failed',
-            error: error.message || 'Unknown error during processing',
-          });
-        } catch (updateError) {
-          console.error('Failed to update job status:', updateError);
+          await new Promise(resolve => setTimeout(resolve, 100));
+          await processExcelFile(jobId, jsonData, defaultBranch);
+        } catch (error) {
+          console.error('Background processing error:', error);
+          try {
+            const { updateJobProgress } = await import('@/lib/jobProcessor');
+            await updateJobProgress(jobId, {
+              status: 'failed',
+              error: error.message || 'Unknown error during processing',
+            });
+          } catch (updateError) {
+            console.error('Failed to update job status:', updateError);
+          }
         }
-      }
-    })();
-
-    // On Vercel, we need to keep the function alive for processing
-    // Wait a bit to ensure processing starts, but don't wait for completion
-    // This is a compromise - processing will continue as long as function is alive
-    if (process.env.VERCEL) {
-      // On Vercel, give processing a chance to start
-      await Promise.race([
-        processPromise,
-        new Promise(resolve => setTimeout(resolve, 2000)), // Wait max 2 seconds
-      ]);
-    } else {
-      // On localhost, just start it without waiting
-      processPromise.catch(console.error);
+      })();
     }
 
     // Return immediately with job ID

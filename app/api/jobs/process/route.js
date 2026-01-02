@@ -33,10 +33,19 @@ export async function POST(request) {
     const jobData = jobSnap.data();
 
     // Check if job is already processing or completed
-    if (jobData.status === 'processing' || jobData.status === 'importing' || jobData.status === 'completed') {
+    // Allow restarting if status is 'failed' or 'pending'
+    if (jobData.status === 'processing' || jobData.status === 'importing') {
       return NextResponse.json({
         success: true,
-        message: 'Job is already being processed or completed',
+        message: 'Job is already being processed',
+        status: jobData.status,
+      });
+    }
+    
+    if (jobData.status === 'completed') {
+      return NextResponse.json({
+        success: true,
+        message: 'Job is already completed',
         status: jobData.status,
       });
     }
@@ -46,19 +55,81 @@ export async function POST(request) {
     const defaultBranch = jobData.defaultBranch || '';
 
     if (!jsonData || jsonData.length === 0) {
+      // If data isn't stored yet, wait a moment and retry once
+      if (!jobData.dataStored) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        const retrySnap = await getDoc(jobRef);
+        if (retrySnap.exists()) {
+          const retryData = retrySnap.data();
+          if (retryData.jsonData && retryData.jsonData.length > 0) {
+            // Data is now available, proceed with retry data
+            const retryJsonData = retryData.jsonData;
+            const retryDefaultBranch = retryData.defaultBranch || '';
+            
+            try {
+              await processExcelFile(jobId, retryJsonData, retryDefaultBranch);
+              return NextResponse.json({
+                success: true,
+                message: 'Job processing completed',
+              });
+            } catch (processError) {
+              console.error('Error processing job:', processError);
+              try {
+                await updateJobProgress(jobId, {
+                  status: 'failed',
+                  error: processError.message || 'Unknown error during processing',
+                });
+              } catch (updateError) {
+                console.error('Failed to update job status:', updateError);
+              }
+              return NextResponse.json(
+                { 
+                  error: 'Job processing failed: ' + (processError.message || 'Unknown error'),
+                  success: false 
+                },
+                { status: 500 }
+              );
+            }
+          }
+        }
+      }
+      
       return NextResponse.json(
         { error: 'No data found in job. Please re-upload the file.' },
         { status: 400 }
       );
     }
 
-    // Process the job
-    await processExcelFile(jobId, jsonData, defaultBranch);
-
-    return NextResponse.json({
-      success: true,
-      message: 'Job processing completed',
-    });
+    // Process the job - this will run to completion
+    // The function has maxDuration of 300 seconds (5 minutes) which should be enough
+    try {
+      await processExcelFile(jobId, jsonData, defaultBranch);
+      
+      return NextResponse.json({
+        success: true,
+        message: 'Job processing completed',
+      });
+    } catch (processError) {
+      console.error('Error processing job:', processError);
+      
+      // Update job status to failed
+      try {
+        await updateJobProgress(jobId, {
+          status: 'failed',
+          error: processError.message || 'Unknown error during processing',
+        });
+      } catch (updateError) {
+        console.error('Failed to update job status:', updateError);
+      }
+      
+      return NextResponse.json(
+        { 
+          error: 'Job processing failed: ' + (processError.message || 'Unknown error'),
+          success: false 
+        },
+        { status: 500 }
+      );
+    }
 
   } catch (error) {
     console.error('Process job error:', error);

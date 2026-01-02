@@ -93,6 +93,28 @@ export default function ExcelUpload({ onClientsAdded }) {
         setUploading(false);
         // Reset file input
         e.target.value = '';
+        
+        // Trigger processing in a separate API call
+        // This ensures processing happens even on Vercel where functions terminate after response
+        try {
+          const processResponse = await fetch('/api/jobs/process', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ jobId: result.jobId }),
+          });
+          
+          if (!processResponse.ok) {
+            const processError = await processResponse.json();
+            console.error('Failed to start processing:', processError);
+            // Don't show error to user - job status listener will handle it
+          }
+        } catch (processErr) {
+          console.error('Error triggering processing:', processErr);
+          // Don't show error to user - job status listener will handle it
+          // The job data is stored, so processing can be manually triggered if needed
+        }
       } else {
         setError(result.error || 'Upload failed');
         setUploading(false);
