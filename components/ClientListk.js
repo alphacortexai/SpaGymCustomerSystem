@@ -7,7 +7,7 @@ import EditClientModal from './EditClientModal';
 import { deleteClient } from '@/lib/clients';
 import { normalizePhoneNumber } from '@/lib/phoneUtils';
 
-export default function ClientList({ clients = [], totalCount, title = 'Clients', onClientUpdated }) {
+export default function ClientList({ clients = [], title = 'Clients', onClientUpdated }) {
   const [editingClient, setEditingClient] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [deletingClientId, setDeletingClientId] = useState(null);
@@ -87,7 +87,7 @@ export default function ClientList({ clients = [], totalCount, title = 'Clients'
           <p className="text-sm text-slate-500 mt-0.5">
             {searchQuery.trim() 
               ? `${filteredClients.length} matches found` 
-              : `${totalCount ?? clients.length} records found`}
+              : `${clients.length} records found`}
           </p>
         </div>
         

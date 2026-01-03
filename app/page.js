@@ -273,6 +273,7 @@ export default function Home() {
 
               <ClientList
                 clients={searchTerm ? searchResults : getPaginatedClients(allClients)}
+                totalCount={searchTerm ? searchResults.length : allClients.length}
                 title={searchTerm ? `Search Results for "${searchTerm}"` : "All Clients"}
                 onClientUpdated={loadData}
               />
@@ -346,6 +347,7 @@ export default function Home() {
 
               <ClientList
                 clients={getPaginatedClients(filteredBirthdays)}
+                totalCount={filteredBirthdays.length}
                 title={selectedMonth || selectedDay || selectedBranch ? "Filtered Birthdays" : "Today's Birthdays"}
                 onClientUpdated={loadData}
               />

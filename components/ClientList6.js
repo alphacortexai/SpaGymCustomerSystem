@@ -7,7 +7,7 @@ import EditClientModal from './EditClientModal';
 import { deleteClient } from '@/lib/clients';
 import { normalizePhoneNumber } from '@/lib/phoneUtils';
 
-export default function ClientList({ clients = [], totalCount, title = 'Clients', onClientUpdated }) {
+export default function ClientList({ clients = [], title = 'Clients', onClientUpdated }) {
   const [editingClient, setEditingClient] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [deletingClientId, setDeletingClientId] = useState(null);
@@ -84,11 +84,7 @@ export default function ClientList({ clients = [], totalCount, title = 'Clients'
           <h2 className="text-xl font-semibold text-slate-900 dark:text-white">
             {title} {title === "Today's Birthdays" && `(${format(new Date(), 'MMM dd, yyyy')})`}
           </h2>
-          <p className="text-sm text-slate-500 mt-0.5">
-            {searchQuery.trim() 
-              ? `${filteredClients.length} matches found` 
-              : `${totalCount ?? clients.length} records found`}
-          </p>
+          <p className="text-sm text-slate-500 mt-0.5">{filteredClients.length} records found</p>
         </div>
         
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
