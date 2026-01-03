@@ -32,13 +32,6 @@ export default function ClientList({ clients = [], title = 'Clients', onClientUp
     return `tel:${normalized}`;
   };
 
-  const getAbbreviatedBranch = (branch) => {
-    if (!branch) return 'N/A';
-    const words = branch.trim().split(/\s+/);
-    if (words.length === 1) return words[0].substring(0, 2).toUpperCase();
-    return (words[0][0] + words[1][0]).toUpperCase();
-  };
-
   const handleDelete = async () => {
     if (!deletingClientId) return;
     setDeleteLoading(true);
@@ -81,9 +74,7 @@ export default function ClientList({ clients = [], title = 'Clients', onClientUp
     <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
       <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
         <div>
-          <h2 className="text-xl font-semibold text-slate-900 dark:text-white">
-            {title} {title === "Today's Birthdays" && `(${format(new Date(), 'MMM dd, yyyy')})`}
-          </h2>
+          <h2 className="text-xl font-semibold text-slate-900 dark:text-white">{title}</h2>
           <p className="text-sm text-slate-500 mt-0.5">{filteredClients.length} records found</p>
         </div>
         
@@ -96,7 +87,7 @@ export default function ClientList({ clients = [], title = 'Clients', onClientUp
             </div>
             <input
               type="text"
-              placeholder="Search within these results..."
+              placeholder="Search by name, phone or branch..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="block w-full pl-10 pr-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm transition-all"
@@ -139,7 +130,7 @@ export default function ClientList({ clients = [], title = 'Clients', onClientUp
             </button>
           </div>
         ) : viewMode === 'table' ? (
-          <table className="w-full text-left border-collapse min-w-[700px]">
+          <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-slate-50/50 dark:bg-slate-800/50">
                 <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Client</th>
@@ -157,7 +148,7 @@ export default function ClientList({ clients = [], title = 'Clients', onClientUp
                   dobDisplay = `${monthNames[client.birthMonth - 1]} ${String(client.birthDay).padStart(2, '0')}`;
                 }
                 return (
-                  <tr key={client.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                  <tr key={client.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group">
                     <td className="px-6 py-4">
                       <div className="font-medium text-slate-900 dark:text-white">{client.name}</div>
                     </td>
@@ -166,18 +157,15 @@ export default function ClientList({ clients = [], title = 'Clients', onClientUp
                     </td>
                     <td className="px-6 py-4">
                       <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-xs font-medium">
-                        <svg className="w-3 h-3 hidden sm:block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 15.546c-.523 0-1.046.151-1.5.454a2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0 2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0 2.704 2.704 0 01-3 0 2.701 2.701 0 00-1.5-.454M9 6v2m3-2v2m3-2v2M9 3h.01M12 3h.01M15 3h.01M21 21v-7a2 2 0 00-2-2H5a2 2 0 00-2 2v7h18zm-3-9V9a2 2 0 00-2-2M6 12V9a2 2 0 002-2h8" /></svg>
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 15.546c-.523 0-1.046.151-1.5.454a2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0 2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0 2.704 2.704 0 01-3 0 2.701 2.701 0 00-1.5-.454M9 6v2m3-2v2m3-2v2M9 3h.01M12 3h.01M15 3h.01M21 21v-7a2 2 0 00-2-2H5a2 2 0 00-2 2v7h18zm-3-9V9a2 2 0 00-2-2M6 12V9a2 2 0 002-2h8" /></svg>
                         {dobDisplay}
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="text-sm text-slate-600 dark:text-slate-400">
-                        <span className="sm:hidden">{getAbbreviatedBranch(client.branch)}</span>
-                        <span className="hidden sm:inline">{client.branch || 'N/A'}</span>
-                      </div>
+                      <div className="text-sm text-slate-600 dark:text-slate-400">{client.branch || 'N/A'}</div>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <div className="flex justify-end gap-2">
+                      <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                         {client.phoneNumber && (
                           <>
                             <a href={generateCallLink(client.phoneNumber)} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all" title="Call">
@@ -210,7 +198,7 @@ export default function ClientList({ clients = [], title = 'Clients', onClientUp
                 dobDisplay = `${monthNames[client.birthMonth - 1]} ${String(client.birthDay).padStart(2, '0')}`;
               }
               return (
-                <div key={client.id} className="p-5 rounded-2xl border border-slate-100 dark:border-slate-800 hover:border-blue-200 dark:hover:border-blue-900/50 hover:shadow-md transition-all">
+                <div key={client.id} className="p-5 rounded-2xl border border-slate-100 dark:border-slate-800 hover:border-blue-200 dark:hover:border-blue-900/50 hover:shadow-md transition-all group">
                   <div className="flex justify-between items-start mb-4">
                     <div>
                       <h3 className="font-semibold text-slate-900 dark:text-white">{client.name}</h3>
@@ -224,12 +212,11 @@ export default function ClientList({ clients = [], title = 'Clients', onClientUp
                   </div>
                   <div className="flex items-center gap-3 text-xs font-medium">
                     <div className="px-2.5 py-1 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 flex items-center gap-1.5">
-                      <svg className="w-3 h-3 hidden sm:block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 15.546c-.523 0-1.046.151-1.5.454a2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0 2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0 2.704 2.704 0 01-3 0 2.701 2.701 0 00-1.5-.454M9 6v2m3-2v2m3-2v2M9 3h.01M12 3h.01M15 3h.01M21 21v-7a2 2 0 00-2-2H5a2 2 0 00-2 2v7h18zm-3-9V9a2 2 0 00-2-2M6 12V9a2 2 0 002-2h8" /></svg>
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 15.546c-.523 0-1.046.151-1.5.454a2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0 2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0 2.704 2.704 0 01-3 0 2.701 2.701 0 00-1.5-.454M9 6v2m3-2v2m3-2v2M9 3h.01M12 3h.01M15 3h.01M21 21v-7a2 2 0 00-2-2H5a2 2 0 00-2 2v7h18zm-3-9V9a2 2 0 00-2-2M6 12V9a2 2 0 002-2h8" /></svg>
                       {dobDisplay}
                     </div>
                     <div className="px-2.5 py-1 rounded-full bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
-                      🏢 <span className="sm:hidden">{getAbbreviatedBranch(client.branch)}</span>
-                      <span className="hidden sm:inline">{client.branch || 'N/A'}</span>
+                      🏢 {client.branch || 'N/A'}
                     </div>
                   </div>
                   <div className="mt-5 pt-4 border-t border-slate-50 dark:border-slate-800 flex justify-between items-center">

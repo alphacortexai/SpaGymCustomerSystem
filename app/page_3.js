@@ -14,17 +14,30 @@ import BranchForm from '@/components/BranchForm';
 import UnrecognizedClientsList from '@/components/UnrecognizedClientsList';
 import UploadHistory from '@/components/UploadHistory';
 
-const NavCard = ({ onClick, icon, title, description }) => {
+const NavCard = ({ onClick, icon, title, description, color = "blue" }) => {
+  const colorClasses = {
+    blue: "bg-blue-50/50 border-blue-100 text-blue-600 hover:bg-blue-50 hover:border-blue-200",
+    amber: "bg-amber-50/50 border-amber-100 text-amber-600 hover:bg-amber-50 hover:border-amber-200",
+    indigo: "bg-indigo-50/50 border-indigo-100 text-indigo-600 hover:bg-indigo-50 hover:border-indigo-200",
+    rose: "bg-rose-50/50 border-rose-100 text-rose-600 hover:bg-rose-50 hover:border-rose-200",
+    emerald: "bg-emerald-50/50 border-emerald-100 text-emerald-600 hover:bg-emerald-50 hover:border-emerald-200",
+    slate: "bg-slate-50/50 border-slate-100 text-slate-600 hover:bg-slate-50 hover:border-slate-200",
+  };
+
   return (
     <button
       onClick={onClick}
-      className="group relative flex flex-col items-center justify-center p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm transition-all duration-300 hover:shadow-md hover:-translate-y-1 text-center w-full aspect-square"
+      className={`group flex flex-col items-start p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm transition-all duration-300 hover:shadow-md hover:-translate-y-1 text-left w-full`}
     >
-      <div className="mb-3 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 text-slate-600 dark:text-slate-300 transition-colors duration-300 group-hover:bg-slate-100 dark:group-hover:bg-slate-700">
-        <span className="text-xl">{icon}</span>
+      <div className={`mb-4 p-3 rounded-xl ${colorClasses[color]} transition-colors duration-300`}>
+        <span className="text-2xl">{icon}</span>
       </div>
-      <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-1">{title}</h3>
-      <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-tight line-clamp-2 px-1">{description}</p>
+      <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">{title}</h3>
+      <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">{description}</p>
+      <div className="mt-4 flex items-center text-sm font-medium text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity">
+        Open module
+        <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+      </div>
     </button>
   );
 };
@@ -94,18 +107,17 @@ export default function Home() {
   }, [searchTerm, selectedBranch]);
 
   const filterClientsByBirthday = (clients) => {
+    if (!selectedMonth && !selectedDay) return clients;
     return clients.filter((client) => {
       const monthMatch = !selectedMonth || (client.birthMonth && parseInt(client.birthMonth) === parseInt(selectedMonth));
       const dayMatch = !selectedDay || (client.birthDay && parseInt(client.birthDay) === parseInt(selectedDay));
-      const branchMatch = !selectedBranch || (client.branch === selectedBranch);
-      return monthMatch && dayMatch && branchMatch;
+      return monthMatch && dayMatch;
     });
   };
 
   const handleResetFilters = () => {
     setSelectedMonth('');
     setSelectedDay('');
-    setSelectedBranch('');
     setSearchTerm('');
     setSearchResults([]);
     setCurrentPage(1);
@@ -190,33 +202,34 @@ export default function Home() {
 
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
           {activeTab === 'home' && (
-            <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
               <div className="max-w-2xl">
-                <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white sm:text-3xl">
+                <h1 className="text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white sm:text-5xl">
                   Welcome back, <span className="text-blue-600">{user?.displayName?.split(' ')[0] || 'User'}</span>
                 </h1>
-                <p className="mt-2 text-base text-slate-500 dark:text-slate-400 leading-relaxed">
+                <p className="mt-4 text-lg text-slate-500 dark:text-slate-400 leading-relaxed">
                   Manage your spa and gym customers with ease. Track birthdays, handle bulk uploads, and keep your database organized.
                 </p>
               </div>
 
               {!showAdminSection ? (
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                  <NavCard onClick={() => setActiveTab('dashboard')} icon="👥" title="Clients" description="Manage customer list." />
-                  <NavCard onClick={() => setActiveTab('birthdays')} icon="🎂" title="Birthdays" description="Today's celebrations." />
-                  <NavCard onClick={() => setActiveTab('branches')} icon="🏢" title="Branches" description="Manage locations." />
-                  <NavCard onClick={() => setActiveTab('upload')} icon="📤" title="Upload" description="Bulk data import." />
-                  <NavCard onClick={() => setShowAdminSection(true)} icon="⚙️" title="Admin" description="System tools." />
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <NavCard onClick={() => setActiveTab('dashboard')} icon="👥" title="Client Database" description="Search, edit, and manage your entire customer list." color="blue" />
+                  <NavCard onClick={() => setActiveTab('birthdays')} icon="🎂" title="Birthdays" description="See who's celebrating today and send them wishes." color="amber" />
+                  <NavCard onClick={() => setActiveTab('upload')} icon="📤" title="Bulk Upload" description="Import client data from Excel or CSV files instantly." color="emerald" />
+                  <NavCard onClick={() => setActiveTab('add-client')} icon="➕" title="New Client" description="Manually register a single customer to the system." color="indigo" />
+                  <NavCard onClick={() => setActiveTab('branches')} icon="🏢" title="Branches" description="Manage your different locations and facilities." color="slate" />
+                  <NavCard onClick={() => setShowAdminSection(true)} icon="⚙️" title="Administration" description="Access advanced tools and system logs." color="slate" />
                 </div>
               ) : (
                 <div className="space-y-6">
                   <div className="flex items-center justify-between">
-                    <h2 className="text-xl font-bold text-slate-900 dark:text-white">Admin Tools</h2>
+                    <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Admin Tools</h2>
                     <button onClick={() => setShowAdminSection(false)} className="text-sm font-medium text-blue-600 hover:text-blue-700">Back to main</button>
                   </div>
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                    <NavCard onClick={() => setActiveTab('unrecognized')} icon="⚠️" title="Issues" description="Fix failed imports." />
-                    <NavCard onClick={() => setActiveTab('history')} icon="📜" title="History" description="View upload logs." />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <NavCard onClick={() => setActiveTab('unrecognized')} icon="⚠️" title="Unrecognized Data" description="Review and fix client data that failed to import." color="rose" />
+                    <NavCard onClick={() => setActiveTab('history')} icon="📜" title="Upload History" description="View logs of all previous bulk data imports." color="slate" />
                   </div>
                 </div>
               )}
@@ -299,37 +312,17 @@ export default function Home() {
                   <p className="text-slate-500 mt-1">Celebrate with your customers.</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
-                  <select
-                    value={selectedBranch}
-                    onChange={(e) => setSelectedBranch(e.target.value)}
-                    className="px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-blue-500/20"
-                  >
-                    <option value="">All Branches</option>
-                    {branches.map(b => <option key={b.id} value={b.name}>{b.name}</option>)}
-                  </select>
-                  <select
-                    value={selectedMonth}
-                    onChange={(e) => setSelectedMonth(e.target.value)}
-                    className="px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-blue-500/20"
-                  >
+                  <select value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-blue-500/20">
                     <option value="">All Months</option>
                     {['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
-                  </select>
-                  <select
-                    value={selectedDay}
-                    onChange={(e) => setSelectedDay(e.target.value)}
-                    className="px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-blue-500/20"
-                  >
-                    <option value="">All Days</option>
-                    {Array.from({ length: 31 }, (_, i) => i + 1).map(d => <option key={d} value={d}>{d}</option>)}
                   </select>
                   <button onClick={handleResetFilters} className="px-4 py-2.5 text-sm font-medium text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white">Reset</button>
                 </div>
               </div>
 
               <ClientList
-                clients={filterClientsByBirthday(selectedMonth || selectedDay || selectedBranch ? allClients : todaysBirthdays)}
-                title={selectedMonth || selectedDay || selectedBranch ? "Filtered Birthdays" : "Today's Birthdays"}
+                clients={filterClientsByBirthday(selectedMonth || selectedDay ? allClients : todaysBirthdays)}
+                title={selectedMonth || selectedDay ? "Filtered Birthdays" : "Today's Birthdays"}
                 onClientUpdated={loadData}
               />
             </div>

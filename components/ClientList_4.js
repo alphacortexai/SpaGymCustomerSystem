@@ -81,9 +81,7 @@ export default function ClientList({ clients = [], title = 'Clients', onClientUp
     <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
       <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
         <div>
-          <h2 className="text-xl font-semibold text-slate-900 dark:text-white">
-            {title} {title === "Today's Birthdays" && `(${format(new Date(), 'MMM dd, yyyy')})`}
-          </h2>
+          <h2 className="text-xl font-semibold text-slate-900 dark:text-white">{title}</h2>
           <p className="text-sm text-slate-500 mt-0.5">{filteredClients.length} records found</p>
         </div>
         
