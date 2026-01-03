@@ -14,6 +14,40 @@ import BranchForm from '@/components/BranchForm';
 import UnrecognizedClientsList from '@/components/UnrecognizedClientsList';
 import UploadHistory from '@/components/UploadHistory';
 
+// Improved Card Component for better reusability and clean UI
+const NavCard = ({ onClick, icon, title, description, color = "blue" }) => {
+  const colorClasses = {
+    blue: "hover:border-blue-200 hover:bg-blue-50/50 text-blue-600",
+    amber: "hover:border-amber-200 hover:bg-amber-50/50 text-amber-600",
+    indigo: "hover:border-indigo-200 hover:bg-indigo-50/50 text-indigo-600",
+    rose: "hover:border-rose-200 hover:bg-rose-50/50 text-rose-600",
+    emerald: "hover:border-emerald-200 hover:bg-emerald-50/50 text-emerald-600",
+    slate: "hover:border-slate-300 hover:bg-slate-50/50 text-slate-600",
+  };
+
+  return (
+    <button
+      onClick={onClick}
+      className={`group relative flex flex-col items-center justify-center p-6 sm:p-8 bg-white border border-gray-100 rounded-2xl shadow-sm transition-all duration-300 hover:shadow-md hover:-translate-y-1 ${colorClasses[color] || colorClasses.blue}`}
+    >
+      <div className="mb-4 p-4 rounded-2xl bg-gray-50 group-hover:bg-white transition-colors duration-300">
+        {typeof icon === 'string' ? (
+          <span className="text-4xl sm:text-5xl">{icon}</span>
+        ) : (
+          icon
+        )}
+      </div>
+      <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-1">{title}</h3>
+      <p className="text-xs sm:text-sm text-gray-500 text-center max-w-[200px]">{description}</p>
+      <div className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+        </svg>
+      </div>
+    </button>
+  );
+};
+
 export default function Home() {
   const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
@@ -51,9 +85,7 @@ export default function Home() {
 
   // Reset admin section when navigating back to home
   useEffect(() => {
-    if (activeTab === 'home') {
-      // Keep admin section state when on home, but reset when switching from other tabs
-    } else {
+    if (activeTab !== 'home') {
       setShowAdminSection(false);
     }
   }, [activeTab]);
@@ -88,7 +120,7 @@ export default function Home() {
     setCurrentPage(1);
   }, [selectedMonth, selectedDay]);
 
-  // Filter clients by month and day
+  // Filter clients by birthday
   const filterClientsByBirthday = (clients) => {
     if (!selectedMonth && !selectedDay) {
       return clients;
@@ -130,32 +162,39 @@ export default function Home() {
 
   return (
     <ProtectedRoute>
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-[#F9FAFB] text-gray-900 font-sans">
         {/* Header */}
-        <header className="bg-white shadow-sm border-b sticky top-0 z-50">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
+        <header className="bg-white/80 backdrop-blur-md border-b border-gray-100 sticky top-0 z-50">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
             <div className="flex justify-between items-center">
-              <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-800">SPA Client Management</h1>
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold">S</div>
+                <h1 className="text-xl font-bold tracking-tight text-gray-900">SPA Manager</h1>
+              </div>
+              
               {user && (
                 <div className="relative">
-                  {/* Mobile: Dropdown Button */}
                   <button
                     onClick={() => setUserMenuOpen(!userMenuOpen)}
-                    className="flex items-center gap-2 sm:gap-3 focus:outline-none"
+                    className="flex items-center gap-3 p-1 pr-3 rounded-full hover:bg-gray-50 transition-colors focus:outline-none border border-transparent hover:border-gray-200"
                   >
-                    {user.photoURL && (
+                    {user.photoURL ? (
                       <img
                         src={user.photoURL}
                         alt={user.displayName || 'User'}
-                        className="w-8 h-8 sm:w-10 sm:h-10 rounded-full"
+                        className="w-8 h-8 rounded-full object-cover border border-gray-200"
                       />
+                    ) : (
+                      <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-medium text-sm">
+                        {user.displayName?.charAt(0) || user.email?.charAt(0) || 'U'}
+                      </div>
                     )}
-                    <div className="hidden sm:block text-right">
-                      <p className="text-sm font-medium text-gray-700">{user.displayName || 'User'}</p>
-                      <p className="text-xs text-gray-500">{user.email}</p>
+                    <div className="hidden sm:block text-left">
+                      <p className="text-sm font-semibold text-gray-900 leading-none">{user.displayName || 'User'}</p>
+                      <p className="text-xs text-gray-500 mt-1">{user.email}</p>
                     </div>
                     <svg
-                      className={`w-4 h-4 sm:w-5 sm:h-5 text-gray-600 transition-transform ${userMenuOpen ? 'rotate-180' : ''}`}
+                      className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${userMenuOpen ? 'rotate-180' : ''}`}
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -164,33 +203,25 @@ export default function Home() {
                     </svg>
                   </button>
 
-                  {/* Dropdown Menu */}
                   {userMenuOpen && (
                     <>
-                      <div
-                        className="fixed inset-0 z-40"
-                        onClick={() => setUserMenuOpen(false)}
-                      ></div>
-                      <div className="absolute right-0 mt-2 w-56 sm:w-64 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-50">
-                        <div className="py-1">
-                          <div className="px-4 py-3 border-b border-gray-200 sm:hidden">
-                            {user.photoURL && (
-                              <img
-                                src={user.photoURL}
-                                alt={user.displayName || 'User'}
-                                className="w-10 h-10 rounded-full mb-2"
-                              />
-                            )}
-                            <p className="text-sm font-medium text-gray-900">{user.displayName || 'User'}</p>
-                            <p className="text-xs text-gray-500 truncate">{user.email}</p>
-                          </div>
+                      <div className="fixed inset-0 z-40" onClick={() => setUserMenuOpen(false)}></div>
+                      <div className="absolute right-0 mt-2 w-64 bg-white rounded-2xl shadow-xl ring-1 ring-black ring-opacity-5 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                        <div className="p-4 border-b border-gray-100 sm:hidden">
+                          <p className="text-sm font-bold text-gray-900">{user.displayName || 'User'}</p>
+                          <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                        </div>
+                        <div className="p-2">
                           <button
                             onClick={async () => {
                               await signOut();
                               window.location.href = '/auth/signin';
                             }}
-                            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-rose-600 font-medium hover:bg-rose-50 rounded-xl transition-colors"
                           >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                            </svg>
                             Sign Out
                           </button>
                         </div>
@@ -204,102 +235,88 @@ export default function Home() {
         </header>
 
         {/* Main Content */}
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
-          {/* Home Page: Navigation Cards (Mobile & Desktop) */}
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {/* Home Page: Navigation Cards */}
           {activeTab === 'home' && (
-            <div className="mb-6">
+            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
               {!showAdminSection ? (
-                /* Main Cards */
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-4">
-                  <button
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                  <NavCard 
                     onClick={() => setActiveTab('dashboard')}
-                    className="p-6 rounded-lg shadow-md text-left transition-all bg-white text-gray-800 hover:bg-blue-50 hover:shadow-lg border-2 border-transparent hover:border-blue-200"
-                  >
-                    <div className="text-3xl mb-2">📊</div>
-                    <div className="font-semibold text-base sm:text-lg">Dashboard</div>
-                    <div className="text-xs sm:text-sm text-gray-500 mt-1">View and search clients</div>
-                  </button>
-                  <button
+                    icon="📊"
+                    title="Dashboard"
+                    description="Manage and search through your client database"
+                    color="blue"
+                  />
+                  <NavCard 
                     onClick={() => setActiveTab('add')}
-                    className="p-6 rounded-lg shadow-md text-left transition-all bg-white text-gray-800 hover:bg-blue-50 hover:shadow-lg border-2 border-transparent hover:border-blue-200"
-                  >
-                    <div className="text-3xl mb-2">➕</div>
-                    <div className="font-semibold text-base sm:text-lg">Add Client</div>
-                    <div className="text-xs sm:text-sm text-gray-500 mt-1">Add new client manually</div>
-                  </button>
-                  <button
+                    icon="➕"
+                    title="Add Client"
+                    description="Register a new client to the system manually"
+                    color="emerald"
+                  />
+                  <NavCard 
                     onClick={() => setActiveTab('birthdays')}
-                    className="p-6 rounded-lg shadow-md text-left transition-all bg-white text-gray-800 hover:bg-blue-50 hover:shadow-lg border-2 border-transparent hover:border-blue-200"
-                  >
-                    <div className="mb-2">
-                      <Image src="/cake.svg" alt="Birthdays" width={36} height={36} />
-                    </div>
-                    <div className="font-semibold text-base sm:text-lg">Today's Birthdays</div>
-                    <div className="text-xs sm:text-sm text-gray-500 mt-1">View today's birthdays</div>
-                  </button>
-                  <button
+                    icon={<Image src="/cake.svg" alt="Birthdays" width={48} height={48} className="sm:w-14 sm:h-14" />}
+                    title="Birthdays"
+                    description="See who is celebrating their birthday today"
+                    color="amber"
+                  />
+                  <NavCard 
                     onClick={() => setShowAdminSection(true)}
-                    className="p-6 rounded-lg shadow-md text-left transition-all bg-white text-gray-800 hover:bg-blue-50 hover:shadow-lg border-2 border-transparent hover:border-blue-200"
-                  >
-                    <div className="text-3xl mb-2">⚙️</div>
-                    <div className="font-semibold text-base sm:text-lg">Admin</div>
-                    <div className="text-xs sm:text-sm text-gray-500 mt-1">Administrative functions</div>
-                  </button>
+                    icon="⚙️"
+                    title="Admin"
+                    description="System settings and administrative tools"
+                    color="slate"
+                  />
                 </div>
               ) : (
-                /* Admin Sub-section */
-                <div className="space-y-4">
-                  {/* Back Button */}
-                  <button
-                    onClick={() => setShowAdminSection(false)}
-                    className="flex items-center gap-2 text-gray-600 hover:text-gray-800 transition-colors mb-2"
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                    </svg>
-                    <span className="font-medium">Back to Main</span>
-                  </button>
-
-                  {/* Admin Section Title */}
-                  <div className="mb-4">
-                    <h2 className="text-xl sm:text-2xl font-bold text-gray-800">Admin</h2>
-                    <p className="text-sm text-gray-600 mt-1">Administrative functions and settings</p>
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h2 className="text-2xl font-bold text-gray-900">Administration</h2>
+                      <p className="text-gray-500 mt-1">Manage system data and branch settings</p>
+                    </div>
+                    <button
+                      onClick={() => setShowAdminSection(false)}
+                      className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors shadow-sm"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                      </svg>
+                      Back to Main
+                    </button>
                   </div>
 
-                  {/* Admin Cards */}
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                    <button
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <NavCard 
                       onClick={() => setActiveTab('upload')}
-                      className="p-6 rounded-lg shadow-md text-left transition-all bg-white text-gray-800 hover:bg-blue-50 hover:shadow-lg border-2 border-transparent hover:border-blue-200"
-                    >
-                      <div className="text-3xl mb-2">📤</div>
-                      <div className="font-semibold text-base sm:text-lg">Upload Excel</div>
-                      <div className="text-xs sm:text-sm text-gray-500 mt-1">Bulk import clients</div>
-                    </button>
-                    <button
+                      icon="📤"
+                      title="Upload Excel"
+                      description="Bulk import client data from Excel files"
+                      color="indigo"
+                    />
+                    <NavCard 
                       onClick={() => setActiveTab('unrecognized')}
-                      className="p-6 rounded-lg shadow-md text-left transition-all bg-white text-gray-800 hover:bg-blue-50 hover:shadow-lg border-2 border-transparent hover:border-blue-200"
-                    >
-                      <div className="text-3xl mb-2">⚠️</div>
-                      <div className="font-semibold text-base sm:text-lg">Unrecognised Data</div>
-                      <div className="text-xs sm:text-sm text-gray-500 mt-1">Review unrecognized clients</div>
-                    </button>
-                    <button
+                      icon="⚠️"
+                      title="Unrecognized"
+                      description="Review and fix data from failed imports"
+                      color="rose"
+                    />
+                    <NavCard 
                       onClick={() => setActiveTab('history')}
-                      className="p-6 rounded-lg shadow-md text-left transition-all bg-white text-gray-800 hover:bg-blue-50 hover:shadow-lg border-2 border-transparent hover:border-blue-200"
-                    >
-                      <div className="text-3xl mb-2">📜</div>
-                      <div className="font-semibold text-base sm:text-lg">Upload History</div>
-                      <div className="text-xs sm:text-sm text-gray-500 mt-1">View recent uploads</div>
-                    </button>
-                    <button
+                      icon="📜"
+                      title="History"
+                      description="View logs of all previous data uploads"
+                      color="slate"
+                    />
+                    <NavCard 
                       onClick={() => setActiveTab('branches')}
-                      className="p-6 rounded-lg shadow-md text-left transition-all bg-white text-gray-800 hover:bg-blue-50 hover:shadow-lg border-2 border-transparent hover:border-blue-200"
-                    >
-                      <div className="text-3xl mb-2">🏢</div>
-                      <div className="font-semibold text-base sm:text-lg">Manage Branches</div>
-                      <div className="text-xs sm:text-sm text-gray-500 mt-1">Create and manage branches</div>
-                    </button>
+                      icon="🏢"
+                      title="Branches"
+                      description="Configure and manage business locations"
+                      color="blue"
+                    />
                   </div>
                 </div>
               )}
@@ -308,56 +325,38 @@ export default function Home() {
 
           {/* Back Button (shown when not on home) */}
           {activeTab !== 'home' && (
-            <div className="mb-6">
+            <div className="mb-8">
               <button
                 onClick={() => {
-                  // Check if current tab is an admin tab
                   const adminTabs = ['upload', 'unrecognized', 'history', 'branches'];
                   if (adminTabs.includes(activeTab)) {
-                    // Navigate back to Admin section
                     setActiveTab('home');
                     setShowAdminSection(true);
                   } else {
-                    // Navigate back to Home (main view)
                     setActiveTab('home');
                     setShowAdminSection(false);
                   }
                 }}
-                className="flex items-center gap-2 text-gray-600 hover:text-gray-800 transition-colors"
+                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors shadow-sm"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                 </svg>
-                <span className="font-medium">
-                  {['upload', 'unrecognized', 'history', 'branches'].includes(activeTab)
-                    ? 'Back to Admin'
-                    : 'Back to Home'}
-                </span>
+                {['upload', 'unrecognized', 'history', 'branches'].includes(activeTab)
+                  ? 'Back to Admin'
+                  : 'Back to Home'}
               </button>
-            </div>
-          )}
-
-          {/* Admin Link - only show on dashboard */}
-          {activeTab === 'dashboard' && (
-            <div className="mb-4 text-right">
-              <a
-                href="/admin/migrate-phones"
-                className="text-xs sm:text-sm text-gray-600 hover:text-gray-800 underline"
-              >
-                Migrate Phone Numbers
-              </a>
             </div>
           )}
 
           {/* Dashboard Tab */}
           {activeTab === 'dashboard' && (
-            <div className="space-y-6">
-              {/* Branch Selector, Search, and Filters Combined */}
-              <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md">
-                <div className="space-y-4">
+            <div className="space-y-8 animate-in fade-in duration-500">
+              <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-gray-100">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   {/* Branch Selector */}
-                  <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 sm:items-center">
-                    <label className="text-sm font-medium text-gray-700 sm:w-24 flex-shrink-0">Branch:</label>
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Branch</label>
                     <select
                       value={selectedBranch}
                       onChange={(e) => {
@@ -366,7 +365,7 @@ export default function Home() {
                         setSearchResults([]);
                         setCurrentPage(1);
                       }}
-                      className="flex-1 sm:flex-initial w-full sm:w-auto px-3 sm:px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 sm:min-w-[200px] text-sm sm:text-base"
+                      className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none text-sm"
                     >
                       <option value="">All Branches</option>
                       {branches.map((branch) => (
@@ -378,48 +377,49 @@ export default function Home() {
                   </div>
 
                   {/* Search */}
-                  <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-2 sm:gap-4 sm:items-center">
-                    <label className="text-sm font-medium text-gray-700 sm:w-24 flex-shrink-0">Search:</label>
-                    <input
-                      type="text"
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      placeholder="Name or phone number..."
-                      className="flex-1 w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
-                    />
-                    <button
-                      type="submit"
-                      className="w-full sm:w-auto px-4 sm:px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 whitespace-nowrap text-sm sm:text-base font-medium"
-                    >
-                      {isSearching ? 'Searching...' : 'Search'}
-                    </button>
-                  </form>
+                  <div className="lg:col-span-2 space-y-2">
+                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Search Clients</label>
+                    <form onSubmit={handleSearch} className="flex gap-2">
+                      <div className="relative flex-1">
+                        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                          <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                          </svg>
+                        </div>
+                        <input
+                          type="text"
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                          placeholder="Search by name or phone number..."
+                          className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none text-sm"
+                        />
+                      </div>
+                      <button
+                        type="submit"
+                        disabled={isSearching}
+                        className="px-6 py-2.5 bg-blue-600 text-white rounded-xl font-semibold text-sm hover:bg-blue-700 focus:ring-4 focus:ring-blue-500/20 transition-all disabled:opacity-50"
+                      >
+                        {isSearching ? '...' : 'Search'}
+                      </button>
+                    </form>
+                  </div>
 
                   {/* Birthday Filters */}
-                  <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 sm:items-center">
-                    <label className="text-sm font-medium text-gray-700 sm:w-24 flex-shrink-0">Birthday:</label>
-                    <div className="flex flex-col sm:flex-row gap-2 flex-1 w-full">
+                  <div className="lg:col-span-3 space-y-2">
+                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Filter by Birthday</label>
+                    <div className="flex flex-wrap gap-3">
                       <select
                         value={selectedMonth}
                         onChange={(e) => {
                           setSelectedMonth(e.target.value);
                           setCurrentPage(1);
                         }}
-                        className="flex-1 w-full sm:w-auto px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
+                        className="flex-1 min-w-[140px] px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none text-sm"
                       >
                         <option value="">All Months</option>
-                        <option value="1">January</option>
-                        <option value="2">February</option>
-                        <option value="3">March</option>
-                        <option value="4">April</option>
-                        <option value="5">May</option>
-                        <option value="6">June</option>
-                        <option value="7">July</option>
-                        <option value="8">August</option>
-                        <option value="9">September</option>
-                        <option value="10">October</option>
-                        <option value="11">November</option>
-                        <option value="12">December</option>
+                        {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map((m, i) => (
+                          <option key={m} value={i + 1}>{m}</option>
+                        ))}
                       </select>
                       <select
                         value={selectedDay}
@@ -427,19 +427,17 @@ export default function Home() {
                           setSelectedDay(e.target.value);
                           setCurrentPage(1);
                         }}
-                        className="flex-1 w-full sm:w-auto px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
+                        className="flex-1 min-w-[100px] px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none text-sm"
                       >
                         <option value="">All Days</option>
                         {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
-                          <option key={day} value={day}>
-                            {day}
-                          </option>
+                          <option key={day} value={day}>{day}</option>
                         ))}
                       </select>
                       {(selectedMonth || selectedDay) && (
                         <button
                           onClick={handleResetFilters}
-                          className="w-full sm:w-auto px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 whitespace-nowrap text-sm sm:text-base"
+                          className="px-4 py-2.5 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-xl transition-colors"
                         >
                           Clear Filters
                         </button>
@@ -449,230 +447,153 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* Search Results or All Clients with Filters and Pagination */}
-              {isSearching ? (
-                <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md">
-                  <div className="flex items-center gap-3">
-                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
-                    <p className="text-gray-600">Searching...</p>
+              {/* Results Section */}
+              <div className="space-y-4">
+                {isSearching ? (
+                  <div className="flex flex-col items-center justify-center py-12 bg-white rounded-2xl border border-gray-100 shadow-sm">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-4"></div>
+                    <p className="text-gray-500 font-medium">Searching database...</p>
                   </div>
-                </div>
-              ) : (() => {
-                // Get base clients (search results or all clients)
-                const baseClients = searchTerm.trim() ? searchResults : allClients;
-                
-                // Apply birthday filters
-                const filteredClients = filterClientsByBirthday(baseClients);
-                
-                // Get paginated clients
-                const paginatedClients = getPaginatedClients(filteredClients);
-                const totalPages = getTotalPages(filteredClients);
-                
-                if (filteredClients.length === 0) {
+                ) : (() => {
+                  const filteredClients = filterClientsByBirthday(searchTerm.trim() ? searchResults : allClients);
+                  const paginatedClients = getPaginatedClients(filteredClients);
+                  const totalPages = getTotalPages(filteredClients);
+
                   return (
-                    <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md">
-                      <p className="text-gray-500">
-                        {searchTerm.trim() 
-                          ? `No clients found matching "${searchTerm}"`
-                          : 'No clients found'}
-                        {(selectedMonth || selectedDay) && ' with selected birthday filter'}
-                      </p>
-                    </div>
-                  );
-                }
-                
-                return (
-                  <div>
-                    {/* Results Info */}
-                    <div className="mb-3 text-xs sm:text-sm text-gray-600 bg-blue-50 px-3 py-2 rounded-md">
-                      <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
-                        <span>
-                          Showing <strong>{paginatedClients.length}</strong> of <strong>{filteredClients.length}</strong> client{filteredClients.length !== 1 ? 's' : ''}
-                        </span>
-                        {searchTerm.trim() && (
-                          <span className="text-xs">matching "<strong>{searchTerm}</strong>"</span>
-                        )}
+                    <div className="space-y-6">
+                      <div className="flex items-center justify-between px-2">
+                        <h3 className="text-lg font-bold text-gray-900">
+                          {searchTerm.trim() ? 'Search Results' : 'All Clients'}
+                          <span className="ml-2 text-sm font-normal text-gray-500">({filteredClients.length})</span>
+                        </h3>
                         {(selectedMonth || selectedDay) && (
-                          <span className="text-xs">
-                            {' '}• Birthday:{' '}
-                            {selectedMonth && (
-                              <span>
-                                {new Date(2000, parseInt(selectedMonth) - 1).toLocaleString('default', { month: 'short' })}
-                              </span>
-                            )}
+                          <div className="flex items-center gap-2 px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-bold">
+                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
+                            </svg>
+                            {selectedMonth && ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][selectedMonth - 1]}
                             {selectedMonth && selectedDay && ' '}
-                            {selectedDay && <span>{selectedDay}</span>}
-                          </span>
+                            {selectedDay}
+                          </div>
                         )}
                       </div>
-                    </div>
-                    
-                    {/* Client List */}
-                    <ClientList clients={paginatedClients} title="" onClientUpdated={handleClientAdded} />
-                    
-                    {/* Pagination */}
-                    {totalPages > 1 && (
-                      <div className="mt-4 bg-white p-3 sm:p-4 rounded-lg shadow-md">
-                        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4">
-                          <div className="text-xs sm:text-sm text-gray-600">
-                            Page <strong>{currentPage}</strong> of <strong>{totalPages}</strong>
-                          </div>
-                          <div className="flex items-center gap-2 w-full sm:w-auto justify-center">
+                      
+                      <ClientList clients={paginatedClients} title="" onClientUpdated={handleClientAdded} />
+                      
+                      {/* Pagination */}
+                      {totalPages > 1 && (
+                        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
+                          <p className="text-sm text-gray-500">
+                            Showing page <span className="font-bold text-gray-900">{currentPage}</span> of <span className="font-bold text-gray-900">{totalPages}</span>
+                          </p>
+                          <div className="flex items-center gap-1.5">
                             <button
                               onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                               disabled={currentPage === 1}
-                              className="px-3 sm:px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-medium"
+                              className="p-2 text-gray-500 hover:bg-gray-50 rounded-lg disabled:opacity-30 transition-colors"
                             >
-                              ← Prev
+                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                              </svg>
                             </button>
-                            <div className="flex gap-1 overflow-x-auto max-w-[200px] sm:max-w-none">
+                            
+                            <div className="flex items-center gap-1">
                               {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                                 let pageNum;
-                                if (totalPages <= 5) {
-                                  pageNum = i + 1;
-                                } else if (currentPage <= 3) {
-                                  pageNum = i + 1;
-                                } else if (currentPage >= totalPages - 2) {
-                                  pageNum = totalPages - 4 + i;
-                                } else {
-                                  pageNum = currentPage - 2 + i;
-                                }
+                                if (totalPages <= 5) pageNum = i + 1;
+                                else if (currentPage <= 3) pageNum = i + 1;
+                                else if (currentPage >= totalPages - 2) pageNum = totalPages - 4 + i;
+                                else pageNum = currentPage - 2 + i;
                                 
                                 return (
                                   <button
                                     key={pageNum}
                                     onClick={() => setCurrentPage(pageNum)}
-                                    className={`min-w-[36px] px-2 sm:px-3 py-2 rounded-md text-xs sm:text-sm font-medium ${
+                                    className={`w-9 h-9 flex items-center justify-center rounded-lg text-sm font-bold transition-all ${
                                       currentPage === pageNum
-                                        ? 'bg-blue-600 text-white'
-                                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                    } focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                                        ? 'bg-blue-600 text-white shadow-md shadow-blue-200'
+                                        : 'text-gray-600 hover:bg-gray-50'
+                                    }`}
                                   >
                                     {pageNum}
                                   </button>
                                 );
                               })}
                             </div>
+
                             <button
                               onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                               disabled={currentPage === totalPages}
-                              className="px-3 sm:px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-medium"
+                              className="p-2 text-gray-500 hover:bg-gray-50 rounded-lg disabled:opacity-30 transition-colors"
                             >
-                              Next →
+                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                              </svg>
                             </button>
                           </div>
                         </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              })()}
-            </div>
-          )}
-
-          {/* Add Client Tab */}
-          {activeTab === 'add' && (
-            <div className="max-w-2xl">
-              <ClientForm onClientAdded={handleClientAdded} />
-            </div>
-          )}
-
-          {/* Upload Excel Tab */}
-          {activeTab === 'upload' && (
-            <div className="max-w-2xl">
-              <ExcelUpload onClientsAdded={handleClientAdded} />
-            </div>
-          )}
-
-          {/* Manage Branches Tab */}
-          {activeTab === 'branches' && (
-            <div className="max-w-2xl">
-              <BranchForm onBranchAdded={handleClientAdded} />
-            </div>
-          )}
-
-          {/* Today's Birthdays Tab */}
-          {activeTab === 'birthdays' && (
-            <div className="space-y-6">
-              {/* Today's Birthdays Display */}
-              <div className={`rounded-lg p-4 sm:p-6 shadow-md ${
-                todaysBirthdays.length > 0 
-                  ? 'bg-gradient-to-r from-yellow-50 to-orange-50 border-2 border-yellow-300' 
-                  : 'bg-white border border-gray-200'
-              }`}>
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-3">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h2 className={`text-xl sm:text-2xl font-bold ${
-                        todaysBirthdays.length > 0 ? 'text-yellow-800' : 'text-gray-800'
-                      }`}>
-                        <span className="inline-flex items-center gap-2">
-                          <Image src="/cake.svg" alt="Birthdays" width={20} height={20} />
-                          Today's Birthdays
-                        </span>
-                        {todaysBirthdays.length > 0 && (
-                          <span className="ml-2 text-base sm:text-lg">({todaysBirthdays.length})</span>
-                        )}
-                      </h2>
-                      <select
-                        value={selectedBranch}
-                        onChange={(e) => setSelectedBranch(e.target.value)}
-                        className="ml-2 px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white/50 backdrop-blur-sm"
-                      >
-                        <option value="">All Branches</option>
-                        {branches.map((branch) => (
-                          <option key={branch.id || branch} value={branch.name || branch}>
-                            {branch.name || branch}
-                          </option>
-                        ))}
-                      </select>
+                      )}
                     </div>
-                    {selectedBranch && (
-                      <p className="text-xs sm:text-sm text-gray-600 mt-1">
-                        Showing birthdays from: <span className="font-medium">{selectedBranch}</span>
-                      </p>
-                    )}
-                  </div>
-                  <span className="text-xs sm:text-sm text-gray-600">
-                    {new Date().toLocaleDateString('en-US', { 
-                      weekday: 'long', 
-                      year: 'numeric', 
-                      month: 'long', 
-                      day: 'numeric' 
-                    })}
-                  </span>
-                </div>
-                {todaysBirthdays.length > 0 ? (
-                  <ClientList clients={todaysBirthdays} title="" onClientUpdated={handleClientAdded} />
-                ) : (
-                  <div className="text-center py-8">
-                    <p className="text-gray-500 text-lg">
-                      <span className="inline-flex items-center gap-2">
-                        No birthdays today. Check back tomorrow!
-                        <Image src="/cake.svg" alt="Birthday" width={18} height={18} />
-                      </span>
-                    </p>
-                  </div>
-                )}
+                  );
+                })()}
               </div>
             </div>
           )}
 
-          {/* Unrecognised Uploaded Client Data Tab */}
-          {activeTab === 'unrecognized' && (
-            <div className="space-y-6">
-              <UnrecognizedClientsList onClientUpdated={handleClientAdded} />
-            </div>
-          )}
+          {/* Other Tabs */}
+          <div className="max-w-3xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
+            {activeTab === 'add' && <ClientForm onClientAdded={handleClientAdded} />}
+            {activeTab === 'upload' && <ExcelUpload onClientsAdded={handleClientAdded} />}
+            {activeTab === 'branches' && <BranchForm onBranchAdded={handleClientAdded} />}
+            {activeTab === 'unrecognized' && <UnrecognizedClientsList onClientUpdated={handleClientAdded} />}
+            {activeTab === 'history' && <UploadHistory />}
+            
+            {activeTab === 'birthdays' && (
+              <div className="space-y-6">
+                <div className={`rounded-2xl p-6 sm:p-8 shadow-sm border-2 transition-all ${
+                  todaysBirthdays.length > 0 
+                    ? 'bg-gradient-to-br from-amber-50 to-orange-50 border-amber-200' 
+                    : 'bg-white border-gray-100'
+                }`}>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
+                    <div className="space-y-1">
+                      <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
+                        <Image src="/cake.svg" alt="Birthdays" width={28} height={28} />
+                        Today's Birthdays
+                        {todaysBirthdays.length > 0 && (
+                          <span className="px-2.5 py-0.5 bg-amber-200 text-amber-800 text-sm rounded-full">{todaysBirthdays.length}</span>
+                        )}
+                      </h2>
+                      <p className="text-gray-500 text-sm font-medium">
+                        {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+                      </p>
+                    </div>
+                    <select
+                      value={selectedBranch}
+                      onChange={(e) => setSelectedBranch(e.target.value)}
+                      className="px-4 py-2 bg-white/50 backdrop-blur-sm border border-amber-200 rounded-xl focus:ring-2 focus:ring-amber-500/20 outline-none text-sm font-medium"
+                    >
+                      <option value="">All Branches</option>
+                      {branches.map((branch) => (
+                        <option key={branch.id || branch} value={branch.name || branch}>{branch.name || branch}</option>
+                      ))}
+                    </select>
+                  </div>
 
-          {/* Upload History Tab */}
-          {activeTab === 'history' && (
-            <div className="space-y-6">
-              <UploadHistory />
-            </div>
-          )}
-      </main>
-    </div>
+                  {todaysBirthdays.length > 0 ? (
+                    <ClientList clients={todaysBirthdays} title="" onClientUpdated={handleClientAdded} />
+                  ) : (
+                    <div className="text-center py-16 bg-white/40 rounded-xl border border-dashed border-gray-200">
+                      <div className="text-4xl mb-4">✨</div>
+                      <p className="text-gray-500 font-medium">No birthdays today. Check back tomorrow!</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </main>
+      </div>
     </ProtectedRoute>
   );
 }
