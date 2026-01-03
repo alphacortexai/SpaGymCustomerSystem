@@ -8,332 +8,223 @@ import { deleteClient } from '@/lib/clients';
 import { normalizePhoneNumber } from '@/lib/phoneUtils';
 
 export default function ClientList({ clients, title = 'Clients', onClientUpdated }) {
-  // Helper function to generate WhatsApp link
-  const generateWhatsAppLink = (phoneNumber) => {
-    if (!phoneNumber) return null;
-
-    const normalized = normalizePhoneNumber(phoneNumber);
-    if (!normalized) return null;
-
-    // Remove leading 0 and add country code for Uganda (256)
-    // Example: 0782830524 -> 256782830524
-    let whatsappNumber = normalized.replace(/^0/, '');
-    whatsappNumber = `256${whatsappNumber}`;
-
-    return `https://wa.me/${whatsappNumber}`;
-  };
-
-  // Helper function to generate call link
-  const generateCallLink = (phoneNumber) => {
-    if (!phoneNumber) return null;
-
-    const normalized = normalizePhoneNumber(phoneNumber);
-    if (!normalized) return null;
-
-    return `tel:${normalized}`;
-  };
   const [editingClient, setEditingClient] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [deletingClientId, setDeletingClientId] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
-  const [viewMode, setViewMode] = useState('table'); // 'table' or 'card'
+  const [viewMode, setViewMode] = useState('table');
+
+  const generateWhatsAppLink = (phoneNumber) => {
+    if (!phoneNumber) return null;
+    const normalized = normalizePhoneNumber(phoneNumber);
+    if (!normalized) return null;
+    let whatsappNumber = normalized.replace(/^0/, '');
+    whatsappNumber = `256${whatsappNumber}`;
+    return `https://wa.me/${whatsappNumber}`;
+  };
+
+  const generateCallLink = (phoneNumber) => {
+    if (!phoneNumber) return null;
+    const normalized = normalizePhoneNumber(phoneNumber);
+    if (!normalized) return null;
+    return `tel:${normalized}`;
+  };
+
+  const handleDelete = async () => {
+    if (!deletingClientId) return;
+    setDeleteLoading(true);
+    try {
+      await deleteClient(deletingClientId);
+      setShowDeleteConfirm(false);
+      setDeletingClientId(null);
+      if (onClientUpdated) onClientUpdated();
+    } catch (error) {
+      console.error('Error deleting client:', error);
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
   if (!clients || clients.length === 0) {
     return (
-      <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md">
-        {title && <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-4">{title}</h2>}
-        <p className="text-gray-500">No clients found</p>
+      <div className="bg-white dark:bg-slate-900 p-12 rounded-2xl border border-slate-200 dark:border-slate-800 text-center">
+        <div className="w-16 h-16 bg-slate-50 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
+          <svg className="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+        </div>
+        <h3 className="text-lg font-medium text-slate-900 dark:text-white">No clients found</h3>
+        <p className="text-slate-500 mt-1">Try adjusting your search or filters.</p>
       </div>
     );
   }
 
   return (
-    <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md">
-      <div className="flex justify-between items-center mb-4">
-        {title ? (
-          <h2 className="text-xl sm:text-2xl font-bold text-gray-800">{title} ({clients.length})</h2>
-        ) : (
-          <h2 className="text-xl sm:text-2xl font-bold text-gray-800">Clients ({clients.length})</h2>
-        )}
-        {/* View Toggle */}
-        <div className="flex gap-2 border border-gray-300 rounded-md p-1">
+    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+      <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h2 className="text-xl font-semibold text-slate-900 dark:text-white">{title}</h2>
+          <p className="text-sm text-slate-500 mt-0.5">{clients.length} records found</p>
+        </div>
+        
+        <div className="flex items-center bg-slate-50 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
           <button
             onClick={() => setViewMode('table')}
-            className={`px-3 py-1 rounded text-sm transition-colors ${
-              viewMode === 'table'
-                ? 'bg-blue-600 text-white'
-                : 'text-gray-600 hover:bg-gray-100'
-            }`}
-            title="Table View"
+            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${viewMode === 'table' ? 'bg-white dark:bg-slate-700 text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-            </svg>
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+            Table
           </button>
           <button
             onClick={() => setViewMode('card')}
-            className={`px-3 py-1 rounded text-sm transition-colors ${
-              viewMode === 'card'
-                ? 'bg-blue-600 text-white'
-                : 'text-gray-600 hover:bg-gray-100'
-            }`}
-            title="Card View"
+            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${viewMode === 'card' ? 'bg-white dark:bg-slate-700 text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-            </svg>
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>
+            Cards
           </button>
         </div>
       </div>
-      
-      {/* Card View */}
-      {viewMode === 'card' && (
-        <div className="space-y-4">
-        {clients.map((client) => {
-          let dobDisplay = 'N/A';
-          
-          if (client.birthMonth && client.birthDay) {
-            const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-            dobDisplay = `${monthNames[client.birthMonth - 1]} ${String(client.birthDay).padStart(2, '0')}`;
-          } else if (client.dateOfBirth) {
-            const dob = new Date(client.dateOfBirth);
-            dobDisplay = format(dob, 'MMM dd');
-          }
-          
-          return (
-            <div key={client.id} className="border border-gray-200 rounded-lg p-4 space-y-2">
-              <div className="flex justify-between items-start">
-                <div className="flex-1">
-                  <h3 className="font-semibold text-gray-900">{client.name}</h3>
-                  <p className="text-sm text-gray-600 font-mono">{client.phoneNumber || 'N/A'}</p>
-                </div>
-              </div>
-              <div className="flex flex-wrap gap-2 text-sm text-gray-500">
-                <span className="inline-flex items-center gap-1">
-                  <Image src="/cake.svg" alt="Birthday" width={16} height={16} />
-                  {dobDisplay}
-                </span>
-                <span>🏢 {client.branch || 'N/A'}</span>
-              </div>
-              <div className="flex gap-3 mt-3 justify-center">
-                {client.phoneNumber && (
-                  <>
-                    <a
-                      href={generateCallLink(client.phoneNumber)}
-                      className="p-2 rounded-full hover:bg-gray-100/50 transition-colors"
-                      title="Call client"
-                    >
-                      <Image src="/telephone.svg" alt="Call" width={20} height={20} />
-                    </a>
-                    <a
-                      href={generateWhatsAppLink(client.phoneNumber)}
-                      className="p-2 rounded-full hover:bg-gray-100/50 transition-colors"
-                      title="WhatsApp client"
-                    >
-                      <Image src="/whatsapp.svg" alt="WhatsApp" width={20} height={20} />
-                    </a>
-                  </>
-                )}
-                <button
-                  onClick={() => {
-                    setEditingClient(client);
-                    setIsModalOpen(true);
-                  }}
-                  className="p-2 rounded-full hover:bg-gray-100/50 transition-colors"
-                  title="Edit client"
-                >
-                  <Image src="/edit.svg" alt="Edit" width={20} height={20} />
-                </button>
-                <button
-                  onClick={() => {
-                    setDeletingClientId(client.id);
-                    setShowDeleteConfirm(true);
-                  }}
-                  className="p-2 rounded-full hover:bg-red-50 transition-colors"
-                  title="Delete client"
-                >
-                  <Image src="/bin.svg" alt="Delete" width={20} height={20} className="text-red-600" />
-                </button>
-              </div>
-            </div>
-          );
-        })}
-        </div>
-      )}
 
-      {/* Table View */}
-      {viewMode === 'table' && (
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Name
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Phone Number
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Date of Birth
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Branch
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+      <div className="overflow-x-auto">
+        {viewMode === 'table' ? (
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-slate-50/50 dark:bg-slate-800/50">
+                <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Client</th>
+                <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Contact</th>
+                <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Birthday</th>
+                <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Branch</th>
+                <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+              {clients.map((client) => {
+                let dobDisplay = 'N/A';
+                if (client.birthMonth && client.birthDay) {
+                  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                  dobDisplay = `${monthNames[client.birthMonth - 1]} ${String(client.birthDay).padStart(2, '0')}`;
+                }
+                return (
+                  <tr key={client.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group">
+                    <td className="px-6 py-4">
+                      <div className="font-medium text-slate-900 dark:text-white">{client.name}</div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="text-sm text-slate-600 dark:text-slate-400 font-mono">{client.phoneNumber || 'N/A'}</div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-xs font-medium">
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 15.546c-.523 0-1.046.151-1.5.454a2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0 2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0 2.704 2.704 0 01-3 0 2.701 2.701 0 00-1.5-.454M9 6v2m3-2v2m3-2v2M9 3h.01M12 3h.01M15 3h.01M21 21v-7a2 2 0 00-2-2H5a2 2 0 00-2 2v7h18zm-3-9V9a2 2 0 00-2-2M6 12V9a2 2 0 002-2h8" /></svg>
+                        {dobDisplay}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="text-sm text-slate-600 dark:text-slate-400">{client.branch || 'N/A'}</div>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        {client.phoneNumber && (
+                          <>
+                            <a href={generateCallLink(client.phoneNumber)} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all" title="Call">
+                              <Image src="/telephone.svg" alt="Call" width={18} height={18} />
+                            </a>
+                            <a href={generateWhatsAppLink(client.phoneNumber)} target="_blank" rel="noopener noreferrer" className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-all" title="WhatsApp">
+                              <Image src="/whatsapp.svg" alt="WhatsApp" width={18} height={18} />
+                            </a>
+                          </>
+                        )}
+                        <button onClick={() => { setEditingClient(client); setIsModalOpen(true); }} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all" title="Edit">
+                          <Image src="/edit.svg" alt="Edit" width={18} height={18} />
+                        </button>
+                        <button onClick={() => { setDeletingClientId(client.id); setShowDeleteConfirm(true); }} className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-lg transition-all" title="Delete">
+                          <Image src="/bin.svg" alt="Delete" width={18} height={18} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        ) : (
+          <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {clients.map((client) => {
-              // Display date of birth (month and day only)
               let dobDisplay = 'N/A';
-              
               if (client.birthMonth && client.birthDay) {
-                // Use stored month and day
                 const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
                 dobDisplay = `${monthNames[client.birthMonth - 1]} ${String(client.birthDay).padStart(2, '0')}`;
-              } else if (client.dateOfBirth) {
-                // Fallback to dateOfBirth if month/day not stored
-                const dob = new Date(client.dateOfBirth);
-                dobDisplay = format(dob, 'MMM dd');
               }
-              
               return (
-                <tr key={client.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {client.name}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {client.phoneNumber ? (
-                      <span className="font-mono">{client.phoneNumber}</span>
-                    ) : (
-                      'N/A'
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {dobDisplay}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {client.branch || 'N/A'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <div key={client.id} className="p-5 rounded-2xl border border-slate-100 dark:border-slate-800 hover:border-blue-200 dark:hover:border-blue-900/50 hover:shadow-md transition-all group">
+                  <div className="flex justify-between items-start mb-4">
+                    <div>
+                      <h3 className="font-semibold text-slate-900 dark:text-white">{client.name}</h3>
+                      <p className="text-sm text-slate-500 font-mono mt-0.5">{client.phoneNumber || 'N/A'}</p>
+                    </div>
+                    <div className="flex gap-1">
+                      <button onClick={() => { setEditingClient(client); setIsModalOpen(true); }} className="p-1.5 text-slate-400 hover:text-blue-600 rounded-lg transition-colors">
+                        <Image src="/edit.svg" alt="Edit" width={16} height={16} />
+                      </button>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 text-xs font-medium">
+                    <div className="px-2.5 py-1 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 flex items-center gap-1.5">
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 15.546c-.523 0-1.046.151-1.5.454a2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0 2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0 2.704 2.704 0 01-3 0 2.701 2.701 0 00-1.5-.454M9 6v2m3-2v2m3-2v2M9 3h.01M12 3h.01M15 3h.01M21 21v-7a2 2 0 00-2-2H5a2 2 0 00-2 2v7h18zm-3-9V9a2 2 0 00-2-2M6 12V9a2 2 0 002-2h8" /></svg>
+                      {dobDisplay}
+                    </div>
+                    <div className="px-2.5 py-1 rounded-full bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                      🏢 {client.branch || 'N/A'}
+                    </div>
+                  </div>
+                  <div className="mt-5 pt-4 border-t border-slate-50 dark:border-slate-800 flex justify-between items-center">
                     <div className="flex gap-2">
                       {client.phoneNumber && (
                         <>
-                          <a
-                            href={generateCallLink(client.phoneNumber)}
-                            className="text-green-600 hover:text-green-800 font-medium p-2 rounded hover:bg-green-50"
-                            title="Call client"
-                            aria-label="Call client"
-                          >
+                          <a href={generateCallLink(client.phoneNumber)} className="w-9 h-9 flex items-center justify-center bg-slate-50 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-slate-600 hover:text-blue-600 rounded-xl transition-all">
                             <Image src="/telephone.svg" alt="Call" width={18} height={18} />
                           </a>
-                          <a
-                            href={generateWhatsAppLink(client.phoneNumber)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-green-500 hover:text-green-600 font-medium p-2 rounded hover:bg-green-50"
-                            title="WhatsApp client"
-                            aria-label="WhatsApp client"
-                          >
+                          <a href={generateWhatsAppLink(client.phoneNumber)} target="_blank" rel="noopener noreferrer" className="w-9 h-9 flex items-center justify-center bg-slate-50 dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 text-slate-600 hover:text-emerald-600 rounded-xl transition-all">
                             <Image src="/whatsapp.svg" alt="WhatsApp" width={18} height={18} />
                           </a>
                         </>
                       )}
-                      <button
-                        onClick={() => {
-                          setEditingClient(client);
-                          setIsModalOpen(true);
-                        }}
-                        className="text-blue-600 hover:text-blue-800 font-medium p-2 rounded hover:bg-blue-50"
-                        title="Edit client"
-                        aria-label="Edit client"
-                      >
-                        <Image src="/edit.svg" alt="Edit" width={18} height={18} />
-                      </button>
-                      <button
-                        onClick={() => {
-                          setDeletingClientId(client.id);
-                          setShowDeleteConfirm(true);
-                        }}
-                        className="text-red-600 hover:text-red-800 font-medium p-2 rounded hover:bg-red-50"
-                        title="Delete client"
-                        aria-label="Delete client"
-                      >
-                        <Image src="/bin.svg" alt="Delete" width={18} height={18} />
-                      </button>
                     </div>
-                  </td>
-                </tr>
+                    <button onClick={() => { setDeletingClientId(client.id); setShowDeleteConfirm(true); }} className="w-9 h-9 flex items-center justify-center text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-xl transition-all">
+                      <Image src="/bin.svg" alt="Delete" width={18} height={18} />
+                    </button>
+                  </div>
+                </div>
               );
             })}
-          </tbody>
-        </table>
-        </div>
-      )}
-      
-      <EditClientModal
-        client={editingClient}
-        isOpen={isModalOpen}
-        onClose={() => {
-          setIsModalOpen(false);
-          setEditingClient(null);
-        }}
-        onClientUpdated={() => {
-          if (onClientUpdated) {
-            onClientUpdated();
-          }
-        }}
-      />
+          </div>
+        )}
+      </div>
 
-      {/* Delete Confirmation Modal */}
+      {isModalOpen && editingClient && (
+        <EditClientModal
+          client={editingClient}
+          isOpen={isModalOpen}
+          onClose={() => { setIsModalOpen(false); setEditingClient(null); }}
+          onClientUpdated={onClientUpdated}
+        />
+      )}
+
       {showDeleteConfirm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
-            <div className="p-6">
-              <h3 className="text-xl font-bold text-gray-800 mb-4">Confirm Delete</h3>
-              <p className="text-gray-600 mb-6">
-                Are you sure you want to delete this client? This action cannot be undone.
-              </p>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => {
-                    setShowDeleteConfirm(false);
-                    setDeletingClientId(null);
-                  }}
-                  disabled={deleteLoading}
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={async () => {
-                    setDeleteLoading(true);
-                    const result = await deleteClient(deletingClientId);
-                    setDeleteLoading(false);
-                    if (result.success) {
-                      setShowDeleteConfirm(false);
-                      setDeletingClientId(null);
-                      if (onClientUpdated) {
-                        onClientUpdated();
-                      }
-                    } else {
-                      alert('Failed to delete client: ' + (result.error || 'Unknown error'));
-                    }
-                  }}
-                  disabled={deleteLoading}
-                  className="flex-1 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {deleteLoading ? 'Deleting...' : 'Delete'}
-                </button>
-              </div>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-md w-full p-6 border border-slate-200 dark:border-slate-800">
+            <div className="w-12 h-12 bg-rose-50 dark:bg-rose-900/20 rounded-full flex items-center justify-center mb-4">
+              <svg className="w-6 h-6 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+            </div>
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Delete Client</h3>
+            <p className="text-slate-500 mt-2">Are you sure you want to delete this client? This action cannot be undone.</p>
+            <div className="mt-6 flex gap-3">
+              <button onClick={() => setShowDeleteConfirm(false)} className="flex-1 px-4 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-medium rounded-xl transition-colors">Cancel</button>
+              <button onClick={handleDelete} disabled={deleteLoading} className="flex-1 px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-medium rounded-xl transition-colors disabled:opacity-50">
+                {deleteLoading ? 'Deleting...' : 'Delete'}
+              </button>
             </div>
           </div>
         </div>
       )}
     </div>
   );
-
 }
-

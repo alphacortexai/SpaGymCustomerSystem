@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { addClient, checkDuplicatePhone } from '@/lib/clients';
 import { getAllBranches } from '@/lib/branches';
-import { normalizePhoneNumber, normalizePhoneNumberWithAll, extractAllPhoneNumbers } from '@/lib/phoneUtils';
+import { normalizePhoneNumberWithAll, extractAllPhoneNumbers } from '@/lib/phoneUtils';
 
 export default function ClientForm({ onClientAdded }) {
   const [formData, setFormData] = useState({
@@ -38,17 +38,13 @@ export default function ClientForm({ onClientAdded }) {
 
   const handlePhoneBlur = async () => {
     if (formData.phoneNumber.trim()) {
-      // Get all phone numbers (valid and invalid)
       const phoneData = normalizePhoneNumberWithAll(formData.phoneNumber);
-      
-      // Show warning if there are unrecognized numbers
       if (phoneData.hasUnrecognized) {
-        setError(`Warning: Some phone numbers could not be recognized: ${phoneData.invalidPhoneNumbers.join(', ')}. These will be saved to "Unrecognised Uploaded Client Data" for review.`);
+        setError(`Warning: Some phone numbers could not be recognized: ${phoneData.invalidPhoneNumbers.join(', ')}.`);
       } else {
         setError('');
       }
       
-      // Check for duplicates using the original input (checkDuplicatePhone handles normalization)
       const exists = await checkDuplicatePhone(formData.phoneNumber, formData.branch);
       if (exists) {
         setDuplicateWarning(true);
@@ -62,67 +58,35 @@ export default function ClientForm({ onClientAdded }) {
     setSuccess('');
     setLoading(true);
 
-    // Validation
-    if (!formData.name.trim()) {
-      setError('Client name is required');
+    if (!formData.name.trim() || !formData.phoneNumber.trim() || !formData.birthMonth || !formData.birthDay || !formData.branch.trim()) {
+      setError('All fields marked with * are required');
       setLoading(false);
       return;
     }
 
-    if (!formData.phoneNumber.trim()) {
-      setError('Phone number is required');
-      setLoading(false);
-      return;
-    }
-
-    if (!formData.birthMonth || !formData.birthDay) {
-      setError('Date of birth (month and day) is required');
-      setLoading(false);
-      return;
-    }
-
-    if (!formData.branch.trim()) {
-      setError('Branch is required');
-      setLoading(false);
-      return;
-    }
-
-    // Convert month/day to a date string (using current year for storage)
     const currentYear = new Date().getFullYear();
     const month = parseInt(formData.birthMonth);
     const day = parseInt(formData.birthDay);
-    
-    // Validate date
     const date = new Date(currentYear, month - 1, day);
+    
     if (date.getMonth() !== month - 1 || date.getDate() !== day) {
       setError('Invalid date. Please check month and day.');
       setLoading(false);
       return;
     }
 
-    // Format as YYYY-MM-DD for storage (using current year)
     const dateOfBirth = `${currentYear}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-
-    // Get all phone numbers (valid and invalid)
     const phoneData = normalizePhoneNumberWithAll(formData.phoneNumber);
-
-    // Check for duplicate phone number before submitting
-    // This checks ALL numbers if multiple are provided (e.g., "0776961331/ 0758583813")
     const exists = await checkDuplicatePhone(formData.phoneNumber, formData.branch);
+    
     if (exists) {
-      const allNumbers = extractAllPhoneNumbers(formData.phoneNumber);
-      if (allNumbers.length > 1) {
-        setError(`One or more of these phone numbers already exist in the same branch: ${allNumbers.join(', ')}. Please use different phone numbers.`);
-      } else {
-        setError('A client with this phone number already exists in the same branch. Please use a different phone number.');
-      }
+      setError('A client with this phone number already exists in this branch.');
       setLoading(false);
       return;
     }
     
-    // Warn if there are unrecognized numbers
     if (phoneData.hasUnrecognized && phoneData.validNumbers.length === 0) {
-      setError('No valid phone numbers found. The client data will be saved to "Unrecognised Uploaded Client Data" for review.');
+      setError('No valid phone numbers found.');
       setLoading(false);
       return;
     }
@@ -130,192 +94,154 @@ export default function ClientForm({ onClientAdded }) {
     try {
       const result = await addClient({
         ...formData,
-        phoneNumber: formData.phoneNumber, // Pass original - addClient will normalize
+        phoneNumber: formData.phoneNumber,
         dateOfBirth,
         birthMonth: month,
         birthDay: day,
       });
       
       if (result.success) {
-        if (phoneData.hasUnrecognized && phoneData.invalidPhoneNumbers.length > 0) {
-          setSuccess(`Client added successfully! Valid phone numbers (${phoneData.validNumbers.join(', ')}) saved. Unrecognized numbers saved to "Unrecognised Uploaded Client Data" for review.`);
-        } else {
-          setSuccess('Client added successfully!');
-        }
-        setFormData({
-          name: '',
-          phoneNumber: '',
-          birthMonth: '',
-          birthDay: '',
-          branch: '',
-        });
+        setSuccess('Client added successfully!');
+        setFormData({ name: '', phoneNumber: '', birthMonth: '', birthDay: '', branch: '' });
         setDuplicateWarning(false);
-        setError('');
-        if (onClientAdded) {
-          onClientAdded();
-        }
+        if (onClientAdded) onClientAdded();
       } else {
-        if (result.unrecognized) {
-          setError(result.error || 'Client data saved to "Unrecognised Uploaded Client Data" for review.');
-        } else {
-          setError(result.error || 'Failed to add client');
-        }
+        setError(result.error || 'Failed to add client');
       }
     } catch (err) {
       setError('An error occurred while adding the client');
-      console.error(err);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 bg-white p-4 sm:p-6 rounded-lg shadow-md">
-      <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-4">Add New Client</h2>
+    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+      <div className="p-6 border-b border-slate-100 dark:border-slate-800">
+        <h2 className="text-xl font-semibold text-slate-900 dark:text-white">Add New Client</h2>
+        <p className="text-sm text-slate-500 mt-1">Register a new customer to the system.</p>
+      </div>
       
-      {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-          {error}
-        </div>
-      )}
-      
-      {success && (
-        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
-          {success}
-        </div>
-      )}
-
-      <div>
-        <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
-          Client Name *
-        </label>
-        <input
-          type="text"
-          id="name"
-          name="name"
-          value={formData.name}
-          onChange={handleChange}
-          required
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          placeholder="Enter client name"
-        />
-      </div>
-
-      <div>
-        <label htmlFor="phoneNumber" className="block text-sm font-medium text-gray-700 mb-1">
-          Phone Number *
-        </label>
-        <input
-          type="tel"
-          id="phoneNumber"
-          name="phoneNumber"
-          value={formData.phoneNumber}
-          onChange={handleChange}
-          onBlur={handlePhoneBlur}
-          required
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          placeholder="Enter phone number"
-        />
-        {duplicateWarning && (
-          <p className="mt-1 text-sm text-yellow-600">
-            ⚠️ A client with this phone number already exists
-          </p>
+      <form onSubmit={handleSubmit} className="p-6 space-y-5">
+        {error && (
+          <div className="p-3 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/30 text-red-600 dark:text-red-400 text-sm flex items-center gap-2">
+            <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            {error}
+          </div>
         )}
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Date of Birth (Month & Day) *
-        </label>
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label htmlFor="birthMonth" className="block text-xs text-gray-600 mb-1">
-              Month
-            </label>
-            <select
-              id="birthMonth"
-              name="birthMonth"
-              value={formData.birthMonth}
-              onChange={handleChange}
-              required
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">Select Month</option>
-              <option value="1">January</option>
-              <option value="2">February</option>
-              <option value="3">March</option>
-              <option value="4">April</option>
-              <option value="5">May</option>
-              <option value="6">June</option>
-              <option value="7">July</option>
-              <option value="8">August</option>
-              <option value="9">September</option>
-              <option value="10">October</option>
-              <option value="11">November</option>
-              <option value="12">December</option>
-            </select>
+        
+        {success && (
+          <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-900/30 text-emerald-600 dark:text-emerald-400 text-sm flex items-center gap-2">
+            <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+            {success}
           </div>
-          <div>
-            <label htmlFor="birthDay" className="block text-xs text-gray-600 mb-1">
-              Day
-            </label>
-            <select
-              id="birthDay"
-              name="birthDay"
-              value={formData.birthDay}
-              onChange={handleChange}
-              required
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">Select Day</option>
-              {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
-                <option key={day} value={day}>
-                  {day}
-                </option>
-              ))}
-            </select>
+        )}
+
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label htmlFor="name" className="text-sm font-medium text-slate-700 dark:text-slate-300">Client Name *</label>
+              <input
+                type="text"
+                id="name"
+                name="name"
+                value={formData.name}
+                onChange={handleChange}
+                required
+                className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
+                placeholder="John Doe"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label htmlFor="phoneNumber" className="text-sm font-medium text-slate-700 dark:text-slate-300">Phone Number *</label>
+              <input
+                type="tel"
+                id="phoneNumber"
+                name="phoneNumber"
+                value={formData.phoneNumber}
+                onChange={handleChange}
+                onBlur={handlePhoneBlur}
+                required
+                className={`w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border ${duplicateWarning ? 'border-amber-400' : 'border-slate-200 dark:border-slate-700'} rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all`}
+                placeholder="07..."
+              />
+              {duplicateWarning && (
+                <p className="text-xs text-amber-600 mt-1 flex items-center gap-1">
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                  Already exists in this branch
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Date of Birth *</label>
+            <div className="grid grid-cols-2 gap-4">
+              <select
+                name="birthMonth"
+                value={formData.birthMonth}
+                onChange={handleChange}
+                required
+                className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
+              >
+                <option value="">Month</option>
+                {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map((m, i) => (
+                  <option key={m} value={i + 1}>{m}</option>
+                ))}
+              </select>
+              <select
+                name="birthDay"
+                value={formData.birthDay}
+                onChange={handleChange}
+                required
+                className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
+              >
+                <option value="">Day</option>
+                {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
+                  <option key={day} value={day}>{day}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <label htmlFor="branch" className="text-sm font-medium text-slate-700 dark:text-slate-300">Branch *</label>
+            {branches.length === 0 ? (
+              <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-900/30 text-amber-700 dark:text-amber-400 text-xs">
+                No branches available. Please create a branch first.
+              </div>
+            ) : (
+              <select
+                id="branch"
+                name="branch"
+                value={formData.branch}
+                onChange={handleChange}
+                required
+                className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
+              >
+                <option value="">Select a branch</option>
+                {branches.map((branch) => (
+                  <option key={branch.id} value={branch.name}>{branch.name}</option>
+                ))}
+              </select>
+            )}
           </div>
         </div>
-        <p className="mt-1 text-xs text-gray-500">
-          Year is not required - only month and day are needed
-        </p>
-      </div>
 
-      <div>
-        <label htmlFor="branch" className="block text-sm font-medium text-gray-700 mb-1">
-          Branch *
-        </label>
-        {branches.length === 0 ? (
-          <div className="w-full px-3 py-2 border border-yellow-300 bg-yellow-50 rounded-md text-sm text-yellow-700">
-            No branches available. Please create a branch first.
-          </div>
-        ) : (
-          <select
-            id="branch"
-            name="branch"
-            value={formData.branch}
-            onChange={handleChange}
-            required
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="">Select a branch</option>
-            {branches.map((branch) => (
-              <option key={branch.id} value={branch.name}>
-                {branch.name}
-              </option>
-            ))}
-          </select>
-        )}
-      </div>
-
-      <button
-        type="submit"
-        disabled={loading}
-        className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        {loading ? 'Adding...' : 'Add Client'}
-      </button>
-    </form>
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl shadow-lg shadow-blue-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        >
+          {loading ? (
+            <>
+              <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+              Processing...
+            </>
+          ) : 'Add Client'}
+        </button>
+      </form>
+    </div>
   );
 }
-
