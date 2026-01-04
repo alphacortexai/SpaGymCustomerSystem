@@ -76,10 +76,6 @@ export default function Home() {
     if (activeTab !== 'home') setShowAdminSection(false);
     
     if (activeTab === 'birthdays') {
-      // Reset month and day filters when navigating to birthdays tab
-      setSelectedMonth('');
-      setSelectedDay('');
-      
       const defaultBranch = localStorage.getItem('defaultBirthdayBranch');
       if (defaultBranch) {
         setSelectedBranch(defaultBranch);
