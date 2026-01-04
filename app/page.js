@@ -14,12 +14,17 @@ import BranchForm from '@/components/BranchForm';
 import UnrecognizedClientsList from '@/components/UnrecognizedClientsList';
 import UploadHistory from '@/components/UploadHistory';
 
-const NavCard = ({ onClick, icon, title, description }) => {
+const NavCard = ({ onClick, icon, title, description, badge }) => {
   return (
     <button
       onClick={onClick}
       className="group relative flex flex-col items-center justify-center p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm transition-all duration-300 hover:shadow-md hover:-translate-y-1 text-center w-full aspect-square"
     >
+      {badge !== undefined && (
+        <div className="absolute top-3 right-3 min-w-[20px] h-5 px-1.5 flex items-center justify-center bg-blue-600 text-white text-[10px] font-bold rounded-full shadow-lg shadow-blue-500/30 z-10">
+          {badge}
+        </div>
+      )}
       <div className="mb-3 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 text-slate-600 dark:text-slate-300 transition-colors duration-300 group-hover:bg-slate-100 dark:group-hover:bg-slate-700">
         <span className="text-xl">{icon}</span>
       </div>
@@ -210,9 +215,9 @@ export default function Home() {
 
               {!showAdminSection ? (
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                  <NavCard onClick={() => setActiveTab('dashboard')} icon="👥" title="Clients" description="Manage customer list." />
-                  <NavCard onClick={() => setActiveTab('birthdays')} icon="🎂" title="Birthdays" description="Today's celebrations." />
-                  <NavCard onClick={() => setActiveTab('branches')} icon="🏢" title="Branches" description="Manage locations." />
+                  <NavCard onClick={() => setActiveTab('dashboard')} icon="👥" title="Clients" description="Manage customer list." badge={allClients.length} />
+                  <NavCard onClick={() => setActiveTab('birthdays')} icon="🎂" title="Birthdays" description="Today's celebrations." badge={todaysBirthdays.length} />
+                  <NavCard onClick={() => setActiveTab('branches')} icon="🏢" title="Branches" description="Manage locations." badge={branches.length} />
                   <NavCard onClick={() => setActiveTab('upload')} icon="📤" title="Upload" description="Bulk data import." />
                   <NavCard onClick={() => setShowAdminSection(true)} icon="⚙️" title="Admin" description="System tools." />
                 </div>
