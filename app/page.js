@@ -321,12 +321,12 @@ export default function Home() {
                     <option value="">All Branches</option>
                     {branches.map(b => <option key={b.id} value={b.name}>{b.name}</option>)}
                   </select>
-                  {!profile?.role || profile.role !== 'General' ? (
+                  {profile?.role !== 'General' && (
                     <button onClick={() => setActiveTab('add-client')} className="w-full md:w-auto px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl shadow-lg shadow-blue-500/20 transition-all flex items-center justify-center gap-2">
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" /></svg>
                       Add Client
                     </button>
-                  ) : null}
+                  )}
                 </div>
               </div>
 
@@ -570,18 +570,22 @@ export default function Home() {
               
               {gymSubTab === 'overview' ? (
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                  <NavCard 
-                    onClick={() => setGymSubTab('create-type')} 
-                    icon="📋" 
-                    title="Membership Types" 
-                    description="Create and manage membership options." 
-                  />
-                  <NavCard 
-                    onClick={() => setGymSubTab('enroll')} 
-                    icon="✍️" 
-                    title="Enroll Client" 
-                    description="Enroll a client in a membership." 
-                  />
+                  {profile?.role !== 'General' && (
+                    <>
+                      <NavCard 
+                        onClick={() => setGymSubTab('create-type')} 
+                        icon="📋" 
+                        title="Membership Types" 
+                        description="Create and manage membership options." 
+                      />
+                      <NavCard 
+                        onClick={() => setGymSubTab('enroll')} 
+                        icon="✍️" 
+                        title="Enroll Client" 
+                        description="Enroll a client in a membership." 
+                      />
+                    </>
+                  )}
                   <NavCard 
                     onClick={() => setGymSubTab('active-members')} 
                     icon="🏃" 

@@ -3,6 +3,7 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
+import { signOut } from '@/lib/auth';
 
 export default function ProtectedRoute({ children, requiredRoles = [] }) {
   const { user, profile, loading } = useAuth();
@@ -44,12 +45,23 @@ export default function ProtectedRoute({ children, requiredRoles = [] }) {
           <p className="text-slate-500 dark:text-slate-400 mb-8">
             Your account has been created successfully. Please wait for an administrator to approve your access and assign a role.
           </p>
-          <button 
-            onClick={() => window.location.reload()}
-            className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-all"
-          >
-            Check Status
-          </button>
+          <div className="space-y-3">
+            <button 
+              onClick={() => window.location.reload()}
+              className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-all shadow-lg shadow-blue-500/20"
+            >
+              Check Status
+            </button>
+            <button 
+              onClick={async () => {
+                await signOut();
+                window.location.href = '/auth/signin';
+              }}
+              className="w-full py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl transition-all"
+            >
+              Logout
+            </button>
+          </div>
         </div>
       </div>
     );

@@ -259,9 +259,11 @@ export default function ClientList({ clients = [], totalCount, title = 'Clients'
                         </>
                       )}
                     </div>
-                    <button onClick={() => { setDeletingClientId(client.id); setShowDeleteConfirm(true); }} className="w-9 h-9 flex items-center justify-center bg-slate-50 dark:bg-slate-800 hover:bg-rose-50 dark:hover:bg-rose-900/20 text-slate-600 hover:text-rose-600 rounded-xl transition-all">
-                      <Image src="/bin.svg" alt="Delete" width={20} height={20} className="w-5 h-5" />
-                    </button>
+                    {!isGeneralUser && (
+                      <button onClick={() => { setDeletingClientId(client.id); setShowDeleteConfirm(true); }} className="w-9 h-9 flex items-center justify-center bg-slate-50 dark:bg-slate-800 hover:bg-rose-50 dark:hover:bg-rose-900/20 text-slate-600 hover:text-rose-600 rounded-xl transition-all">
+                        <Image src="/bin.svg" alt="Delete" width={20} height={20} className="w-5 h-5" />
+                      </button>
+                    )}
                   </div>
                 </div>
               );

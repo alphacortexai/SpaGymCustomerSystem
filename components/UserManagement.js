@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getAllUsers, updateUserRole, ROLES } from '@/lib/users';
+import { getAllUsers, updateUserRole, ROLES, ROLE_PERMISSIONS } from '@/lib/users';
 import { format } from 'date-fns';
 
 export default function UserManagement() {
@@ -57,6 +57,7 @@ export default function UserManagement() {
             <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800">
               <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">User</th>
               <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Role</th>
+              <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Access Permissions</th>
               <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Status</th>
               <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Joined</th>
               <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-right">Actions</th>
@@ -91,6 +92,17 @@ export default function UserManagement() {
                       <option key={role} value={role}>{role}</option>
                     ))}
                   </select>
+                </td>
+                <td className="px-6 py-4">
+                  <div className="flex flex-wrap gap-1.5">
+                    {ROLE_PERMISSIONS[user.role] && Object.entries(ROLE_PERMISSIONS[user.role]).map(([key, perms]) => (
+                      perms.view && (
+                        <span key={key} className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-[10px] font-semibold text-slate-600 dark:text-slate-400 capitalize">
+                          {key}
+                        </span>
+                      )
+                    ))}
+                  </div>
                 </td>
                 <td className="px-6 py-4">
                   <span className={`px-2.5 py-1 rounded-lg text-xs font-medium ${
