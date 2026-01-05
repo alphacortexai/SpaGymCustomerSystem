@@ -13,6 +13,9 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 import BranchForm from '@/components/BranchForm';
 import UnrecognizedClientsList from '@/components/UnrecognizedClientsList';
 import UploadHistory from '@/components/UploadHistory';
+import MembershipForm from '@/components/MembershipForm';
+import EnrollmentForm from '@/components/EnrollmentForm';
+import MembershipList from '@/components/MembershipList';
 
 const NavCard = ({ onClick, icon, title, description, badge }) => {
   return (
@@ -206,13 +209,13 @@ export default function Home() {
               </button>
 
               <nav className="hidden md:flex items-center gap-1">
-                {['home', 'dashboard', 'birthdays'].map((tab) => (
+                {['home', 'dashboard', 'birthdays', 'gym'].map((tab) => (
                   <button
                     key={tab}
                     onClick={() => setActiveTab(tab)}
                     className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === tab ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400' : 'text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'}`}
                   >
-                    {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                    {tab === 'gym' ? 'GYM Memberships' : tab.charAt(0).toUpperCase() + tab.slice(1)}
                   </button>
                 ))}
               </nav>
@@ -271,6 +274,7 @@ export default function Home() {
                   <NavCard onClick={() => setActiveTab('dashboard')} icon="👥" title="Clients" description="Manage customer list." badge={allClients.length} />
                   <NavCard onClick={() => setActiveTab('birthdays')} icon="🎂" title="Birthdays" description="Today's celebrations." badge={birthdayBadge} />
                   <NavCard onClick={() => setActiveTab('branches')} icon="🏢" title="Branches" description="Manage locations." badge={branches.length} />
+                  <NavCard onClick={() => setActiveTab('gym')} icon="🏋️" title="GYM" description="Memberships." />
                   <NavCard onClick={() => setShowAdminSection(true)} icon="⚙️" title="Admin" description="System tools." />
                 </div>
               ) : (
@@ -509,6 +513,26 @@ export default function Home() {
             <div className="space-y-8 animate-in fade-in duration-300">
               <h2 className="text-3xl font-bold text-slate-900 dark:text-white">Upload History</h2>
               <UploadHistory />
+            </div>
+          )}
+
+          {activeTab === 'gym' && (
+            <div className="space-y-8 animate-in fade-in duration-300">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                  <h2 className="text-3xl font-bold text-slate-900 dark:text-white">GYM Memberships</h2>
+                  <p className="text-slate-500 mt-1">Manage membership types and client enrollments.</p>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <MembershipForm onMembershipAdded={() => {}} />
+                <EnrollmentForm onEnrolled={() => setActiveTab('gym')} />
+              </div>
+
+              <div className="mt-12">
+                <MembershipList />
+              </div>
             </div>
           )}
         </main>
