@@ -17,6 +17,7 @@ import MembershipForm from '@/components/MembershipForm';
 import EnrollmentForm from '@/components/EnrollmentForm';
 import MembershipList from '@/components/MembershipList';
 import UserManagement from '@/components/UserManagement';
+import UserProfile from '@/components/UserProfile';
 
 const NavCard = ({ onClick, icon, title, description, badge }) => {
   return (
@@ -210,8 +211,8 @@ export default function Home() {
                 <span className="text-lg font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-600 dark:from-white dark:to-slate-400">SpaManager</span>
               </button>
 
-              <nav className="hidden md:flex items-center gap-1">
-                {['home', 'dashboard', 'birthdays', 'gym'].map((tab) => (
+                <nav className="hidden md:flex items-center gap-1">
+                {['home', 'dashboard', 'birthdays', 'gym', 'profile'].map((tab) => (
                   <button
                     key={tab}
                     onClick={() => setActiveTab(tab)}
@@ -251,7 +252,13 @@ export default function Home() {
                           </span>
                         </div>
                       </div>
-                      <div className="p-2">
+                      <div className="p-2 space-y-1">
+                        <button
+                          onClick={() => { setActiveTab('profile'); setUserMenuOpen(false); }}
+                          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 dark:text-slate-300 font-medium hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl transition-colors"
+                        >
+                          My Profile
+                        </button>
                         <button
                           onClick={async () => { await signOut(); window.location.href = '/auth/signin'; }}
                           className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-rose-600 font-medium hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-xl transition-colors"
@@ -542,6 +549,12 @@ export default function Home() {
           {activeTab === 'users' && (
             <div className="space-y-8 animate-in fade-in duration-300">
               <UserManagement />
+            </div>
+          )}
+
+          {activeTab === 'profile' && (
+            <div className="space-y-8 animate-in fade-in duration-300">
+              <UserProfile />
             </div>
           )}
 

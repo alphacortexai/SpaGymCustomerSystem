@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getAllUsers, updateUserRole, ROLES, ROLE_PERMISSIONS } from '@/lib/users';
+import { getAllUsers, updateUserRole, updateUserPermissions, ROLES, ROLE_PERMISSIONS } from '@/lib/users';
 import { format } from 'date-fns';
 
 export default function UserManagement() {
@@ -38,6 +38,29 @@ export default function UserManagement() {
       await loadUsers();
     } else {
       alert('Error approving user: ' + result.error);
+    }
+    setUpdating(null);
+  };
+
+  const togglePermission = async (user, category, action) => {
+    const newPermissions = { ...user.permissions };
+    if (!newPermissions[category]) {
+      newPermissions[category] = { view: false, edit: false, delete: false, add: false };
+    }
+    
+    if (typeof newPermissions[category] === 'boolean') {
+      newPermissions[category] = !newPermissions[category];
+    } else {
+      newPermissions[category] = {
+        ...newPermissions[category],
+        [action]: !newPermissions[category][action]
+      };
+    }
+    
+    setUpdating(user.uid);
+    const result = await updateUserPermissions(user.uid, newPermissions);
+    if (result.success) {
+      await loadUsers();
     }
     setUpdating(null);
   };
@@ -94,13 +117,42 @@ export default function UserManagement() {
                   </select>
                 </td>
                 <td className="px-6 py-4">
-                  <div className="flex flex-wrap gap-1.5">
-                    {ROLE_PERMISSIONS[user.role] && Object.entries(ROLE_PERMISSIONS[user.role]).map(([key, perms]) => (
-                      perms.view && (
-                        <span key={key} className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-[10px] font-semibold text-slate-600 dark:text-slate-400 capitalize">
-                          {key}
-                        </span>
-                      )
+                  <div className="flex flex-wrap gap-2">
+                    {user.permissions && Object.entries(user.permissions).map(([category, perms]) => (
+                      <div key={category} className="flex flex-col gap-1 p-2 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-100 dark:border-slate-800">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase">{category}</span>
+                        <div className="flex gap-1">
+                          {typeof perms === 'object' ? (
+                            Object.entries(perms).map(([action, allowed]) => (
+                              <button
+                                key={action}
+                                onClick={() => togglePermission(user, category, action)}
+                                disabled={updating === user.uid || user.email === 'alphacortexai@gmail.com'}
+                                className={`px-1.5 py-0.5 rounded text-[9px] font-bold transition-all ${
+                                  allowed 
+                                    ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' 
+                                    : 'bg-slate-200 dark:bg-slate-700 text-slate-400'
+                                }`}
+                                title={`${allowed ? 'Disable' : 'Enable'} ${action}`}
+                              >
+                                {action.charAt(0).toUpperCase()}
+                              </button>
+                            ))
+                          ) : (
+                            <button
+                              onClick={() => togglePermission(user, category, 'view')}
+                              disabled={updating === user.uid || user.email === 'alphacortexai@gmail.com'}
+                              className={`px-1.5 py-0.5 rounded text-[9px] font-bold transition-all ${
+                                perms 
+                                  ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' 
+                                  : 'bg-slate-200 dark:bg-slate-700 text-slate-400'
+                              }`}
+                            >
+                              VIEW
+                            </button>
+                          )}
+                        </div>
+                      </div>
                     ))}
                   </div>
                 </td>

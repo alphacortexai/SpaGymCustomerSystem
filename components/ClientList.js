@@ -231,9 +231,11 @@ export default function ClientList({ clients = [], totalCount, title = 'Clients'
                       <p className="text-sm text-slate-500 font-mono mt-0.5">{client.phoneNumber || 'N/A'}</p>
                     </div>
                     <div className="flex gap-1">
-                      <button onClick={() => { setEditingClient(client); setIsModalOpen(true); }} className="p-1.5 text-slate-400 hover:text-blue-600 rounded-lg transition-colors">
-                        <Image src="/edit.svg" alt="Edit" width={18} height={18} className="w-4.5 h-4.5" />
-                      </button>
+                      {!isGeneralUser && (
+                        <button onClick={() => { setEditingClient(client); setIsModalOpen(true); }} className="p-1.5 text-slate-400 hover:text-blue-600 rounded-lg transition-colors">
+                          <Image src="/edit.svg" alt="Edit" width={18} height={18} className="w-4.5 h-4.5" />
+                        </button>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center gap-3 text-xs font-medium">
