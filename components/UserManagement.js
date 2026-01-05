@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getAllUsers, updateUserRole, updateUserPermissions, ROLES, ROLE_PERMISSIONS } from '@/lib/users';
+import { getAllUsers, updateUserRole, updateUserStatus, updateUserPermissions, ROLES, ROLE_PERMISSIONS } from '@/lib/users';
 import { format } from 'date-fns';
 
 export default function UserManagement() {
@@ -22,7 +22,7 @@ export default function UserManagement() {
 
   const handleRoleChange = async (uid, newRole) => {
     setUpdating(uid);
-    const result = await updateUserRole(uid, newRole, 'approved');
+    const result = await updateUserRole(uid, newRole);
     if (result.success) {
       await loadUsers();
     } else {
@@ -31,13 +31,13 @@ export default function UserManagement() {
     setUpdating(null);
   };
 
-  const handleApprove = async (uid) => {
+  const handleStatusChange = async (uid, newStatus) => {
     setUpdating(uid);
-    const result = await updateUserRole(uid, ROLES.GENERAL, 'approved');
+    const result = await updateUserStatus(uid, newStatus);
     if (result.success) {
       await loadUsers();
     } else {
-      alert('Error approving user: ' + result.error);
+      alert('Error updating status: ' + result.error);
     }
     setUpdating(null);
   };
@@ -157,13 +157,19 @@ export default function UserManagement() {
                   </div>
                 </td>
                 <td className="px-6 py-4">
-                  <span className={`px-2.5 py-1 rounded-lg text-xs font-medium ${
-                    user.status === 'approved' 
-                      ? 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400' 
-                      : 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400'
-                  }`}>
-                    {user.status}
-                  </span>
+                  <select
+                    value={user.status}
+                    disabled={updating === user.uid || user.email === 'alphacortexai@gmail.com'}
+                    onChange={(e) => handleStatusChange(user.uid, e.target.value)}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-medium outline-none border-none cursor-pointer transition-all ${
+                      user.status === 'approved' 
+                        ? 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400' 
+                        : 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400'
+                    }`}
+                  >
+                    <option value="approved">Approved</option>
+                    <option value="pending">Pending</option>
+                  </select>
                 </td>
                 <td className="px-6 py-4 text-sm text-slate-500">
                   {user.createdAt && format(user.createdAt.toDate(), 'MMM d, yyyy')}
@@ -171,7 +177,7 @@ export default function UserManagement() {
                 <td className="px-6 py-4 text-right">
                   {user.status === 'pending' && (
                     <button
-                      onClick={() => handleApprove(user.uid)}
+                      onClick={() => handleStatusChange(user.uid, 'approved')}
                       disabled={updating === user.uid}
                       className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg transition-all disabled:opacity-50"
                     >
