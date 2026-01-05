@@ -213,15 +213,22 @@ export default function Home() {
               </button>
 
                 <nav className="hidden md:flex items-center gap-1">
-                {['home', 'dashboard', 'birthdays', 'gym', 'profile'].map((tab) => (
-                  <button
-                    key={tab}
-                    onClick={() => setActiveTab(tab)}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === tab ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400' : 'text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'}`}
-                  >
-                    {tab === 'gym' ? 'GYM Memberships' : tab.charAt(0).toUpperCase() + tab.slice(1)}
-                  </button>
-                ))}
+                {['home', 'dashboard', 'birthdays', 'gym', 'profile'].map((tab) => {
+                  // Check permissions for each tab
+                  if (tab === 'dashboard' && profile?.permissions?.clients?.view === false) return null;
+                  if (tab === 'birthdays' && profile?.permissions?.birthdays?.view === false) return null;
+                  if (tab === 'gym' && profile?.permissions?.gym?.view === false) return null;
+                  
+                  return (
+                    <button
+                      key={tab}
+                      onClick={() => setActiveTab(tab)}
+                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === tab ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400' : 'text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+                    >
+                      {tab === 'gym' ? 'GYM Memberships' : tab.charAt(0).toUpperCase() + tab.slice(1)}
+                    </button>
+                  );
+                })}
               </nav>
             </div>
             
@@ -318,7 +325,9 @@ export default function Home() {
                     {profile?.permissions?.clients?.edit !== false && (
                       <NavCard onClick={() => setActiveTab('unrecognized')} icon="⚠️" title="Issues" description="Fix failed imports." />
                     )}
-                    <NavCard onClick={() => setActiveTab('history')} icon="📜" title="History" description="View upload logs." />
+                    {profile?.permissions?.clients?.view !== false && (
+                      <NavCard onClick={() => setActiveTab('history')} icon="📜" title="History" description="View upload logs." />
+                    )}
                     {profile?.permissions?.users?.view !== false && (
                       <NavCard onClick={() => setActiveTab('users')} icon="👥" title="Users" description="Manage roles." />
                     )}
@@ -538,11 +547,11 @@ export default function Home() {
                 <h2 className="text-3xl font-bold text-slate-900 dark:text-white">Branches</h2>
                 <p className="text-slate-500 mt-1">Manage your facility locations.</p>
               </div>
-              {profile?.role === 'Admin' ? (
+              {profile?.permissions?.branches?.view !== false ? (
                 <BranchForm onBranchAdded={loadData} />
               ) : (
                 <div className="p-8 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 text-center">
-                  <p className="text-slate-500">You do not have permission to manage branches.</p>
+                  <p className="text-slate-500">You do not have permission to view or manage branches.</p>
                 </div>
               )}
             </div>
@@ -603,32 +612,34 @@ export default function Home() {
                 </div>
               </div>
               
-              {gymSubTab === 'overview' ? (
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                  {profile?.permissions?.gym?.add !== false && (
-                    <>
-                      <NavCard 
-                        onClick={() => setGymSubTab('create-type')} 
-                        icon="📋" 
-                        title="Membership Types" 
-                        description="Create and manage membership options." 
-                      />
-                      <NavCard 
-                        onClick={() => setGymSubTab('enroll')} 
-                        icon="✍️" 
-                        title="Enroll Client" 
-                        description="Enroll a client in a membership." 
-                      />
-                    </>
-                  )}
-                  <NavCard 
-                    onClick={() => setGymSubTab('active-members')} 
-                    icon="🏃" 
-                    title="Active Members" 
-                    description="View and manage active memberships." 
-                  />
-                </div>
-              ) : (
+	              {gymSubTab === 'overview' ? (
+	                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+	                  {profile?.permissions?.gym?.add !== false && (
+	                    <NavCard 
+	                      onClick={() => setGymSubTab('create-type')} 
+	                      icon="📋" 
+	                      title="Membership Types" 
+	                      description="Create and manage membership options." 
+	                    />
+	                  )}
+	                  {profile?.permissions?.gym?.add !== false && (
+	                    <NavCard 
+	                      onClick={() => setGymSubTab('enroll')} 
+	                      icon="✍️" 
+	                      title="Enroll Client" 
+	                      description="Enroll a client in a membership." 
+	                    />
+	                  )}
+	                  {profile?.permissions?.gym?.view !== false && (
+	                    <NavCard 
+	                      onClick={() => setGymSubTab('active-members')} 
+	                      icon="🏃" 
+	                      title="Active Members" 
+	                      description="View and manage active memberships." 
+	                    />
+	                  )}
+	                </div>
+	              ) : (
                 <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
                   {gymSubTab === 'create-type' && (
                     <div className="max-w-2xl mx-auto">
