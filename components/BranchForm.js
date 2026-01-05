@@ -5,7 +5,8 @@ import { addBranch, getAllBranches } from '@/lib/branches';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function BranchForm({ onBranchAdded }) {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
+  const canAdd = profile?.permissions?.branches?.add !== false;
   const [branchName, setBranchName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -89,10 +90,10 @@ export default function BranchForm({ onBranchAdded }) {
 
         <button
           type="submit"
-          disabled={loading}
+          disabled={loading || !canAdd}
           className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {loading ? 'Adding...' : 'Add Branch'}
+          {loading ? 'Adding...' : !canAdd ? 'No Permission to Add' : 'Add Branch'}
         </button>
       </form>
 

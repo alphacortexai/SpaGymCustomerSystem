@@ -5,7 +5,8 @@ import { addMembershipType } from '@/lib/memberships';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function MembershipForm({ onMembershipAdded }) {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
+  const canAdd = profile?.permissions?.gym?.add !== false;
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     type: '',
@@ -101,10 +102,10 @@ export default function MembershipForm({ onMembershipAdded }) {
 
       <button
         type="submit"
-        disabled={loading}
+        disabled={loading || !canAdd}
         className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg shadow-blue-500/20 transition-all disabled:opacity-50"
       >
-        {loading ? 'Creating...' : 'Create Membership Type'}
+        {loading ? 'Creating...' : !canAdd ? 'No Permission to Add' : 'Create Membership Type'}
       </button>
     </form>
   );

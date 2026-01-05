@@ -7,7 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 
 export default function MembershipDetailsModal({ enrollment, onClose, onUpdate }) {
   const { profile } = useAuth();
-  const isGeneralUser = profile?.role === 'General';
+  const canEdit = profile?.permissions?.gym?.edit !== false;
   const [accessLogs, setAccessLogs] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -113,15 +113,15 @@ export default function MembershipDetailsModal({ enrollment, onClose, onUpdate }
                 return (
 	                  <button
 	                    key={idx}
-	                    disabled={isRedeemed || loading || isGeneralUser}
-	                    onClick={() => handleRedeem(ent)}
-	                    className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${
-	                      isRedeemed 
-	                        ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed line-through' 
-	                        : isGeneralUser
-	                          ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
-	                          : 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-100'
-	                    }`}
+		                    disabled={isRedeemed || loading || !canEdit}
+		                    onClick={() => handleRedeem(ent)}
+		                    className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${
+		                      isRedeemed 
+		                        ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed line-through' 
+		                        : !canEdit
+		                          ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
+		                          : 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-100'
+		                    }`}
 	                  >
 	                    {ent} {isRedeemed && '✓'}
 	                  </button>
@@ -133,15 +133,15 @@ export default function MembershipDetailsModal({ enrollment, onClose, onUpdate }
           <div>
             <div className="flex justify-between items-center mb-3">
               <h3 className="text-sm font-bold text-slate-900 dark:text-white">Access Calendar ({format(new Date(), 'MMMM yyyy')})</h3>
-	              {!isGeneralUser && (
-	                <button 
-	                  onClick={handleLogAccess}
-	                  disabled={loading}
-	                  className="text-xs bg-green-600 text-white px-3 py-1.5 rounded-lg hover:bg-green-700 transition-colors"
-	                >
-	                  Log Today&apos;s Access
-	                </button>
-	              )}
+		              {canEdit && (
+		                <button 
+		                  onClick={handleLogAccess}
+		                  disabled={loading}
+		                  className="text-xs bg-green-600 text-white px-3 py-1.5 rounded-lg hover:bg-green-700 transition-colors"
+		                >
+		                  Log Today&apos;s Access
+		                </button>
+		              )}
             </div>
             <div className="grid grid-cols-7 gap-2 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl">
               {renderCalendar()}

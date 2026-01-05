@@ -11,9 +11,8 @@ import { useAuth } from '@/contexts/AuthContext';
 
 export default function ClientList({ clients = [], totalCount, title = 'Clients', onClientUpdated }) {
   const { user, profile } = useAuth();
-  const isGeneralUser = profile?.role === 'General';
-  const isManageUser = profile?.role === 'Manage';
-  const isAdmin = profile?.role === 'Admin';
+  const canEdit = profile?.permissions?.clients?.edit !== false;
+  const canDelete = profile?.permissions?.clients?.delete !== false;
   const [editingClient, setEditingClient] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [deletingClientId, setDeletingClientId] = useState(null);
@@ -198,16 +197,18 @@ export default function ClientList({ clients = [], totalCount, title = 'Clients'
                             </a>
                           </>
                         )}
-	                        {!isGeneralUser && (
-	                          <>
-	                            <button onClick={() => { setEditingClient(client); setIsModalOpen(true); }} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all" title="Edit">
-	                              <Image src="/edit.svg" alt="Edit" width={20} height={20} className="w-5 h-5" />
-	                            </button>
-	                            <button onClick={() => { setDeletingClientId(client.id); setShowDeleteConfirm(true); }} className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-lg transition-all" title="Delete">
-	                              <Image src="/bin.svg" alt="Delete" width={20} height={20} className="w-5 h-5" />
-	                            </button>
-	                          </>
-	                        )}
+		                        <div className="flex gap-1">
+		                          {canEdit && (
+		                            <button onClick={() => { setEditingClient(client); setIsModalOpen(true); }} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all" title="Edit">
+		                              <Image src="/edit.svg" alt="Edit" width={20} height={20} className="w-5 h-5" />
+		                            </button>
+		                          )}
+		                          {canDelete && (
+		                            <button onClick={() => { setDeletingClientId(client.id); setShowDeleteConfirm(true); }} className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-lg transition-all" title="Delete">
+		                              <Image src="/bin.svg" alt="Delete" width={20} height={20} className="w-5 h-5" />
+		                            </button>
+		                          )}
+		                        </div>
                       </div>
                     </td>
                   </tr>
@@ -231,7 +232,7 @@ export default function ClientList({ clients = [], totalCount, title = 'Clients'
                       <p className="text-sm text-slate-500 font-mono mt-0.5">{client.phoneNumber || 'N/A'}</p>
                     </div>
                     <div className="flex gap-1">
-                      {!isGeneralUser && (
+                      {canEdit && (
                         <button onClick={() => { setEditingClient(client); setIsModalOpen(true); }} className="p-1.5 text-slate-400 hover:text-blue-600 rounded-lg transition-colors">
                           <Image src="/edit.svg" alt="Edit" width={18} height={18} className="w-4.5 h-4.5" />
                         </button>
@@ -261,7 +262,7 @@ export default function ClientList({ clients = [], totalCount, title = 'Clients'
                         </>
                       )}
                     </div>
-                    {!isGeneralUser && (
+                    {canDelete && (
                       <button onClick={() => { setDeletingClientId(client.id); setShowDeleteConfirm(true); }} className="w-9 h-9 flex items-center justify-center bg-slate-50 dark:bg-slate-800 hover:bg-rose-50 dark:hover:bg-rose-900/20 text-slate-600 hover:text-rose-600 rounded-xl transition-all">
                         <Image src="/bin.svg" alt="Delete" width={20} height={20} className="w-5 h-5" />
                       </button>

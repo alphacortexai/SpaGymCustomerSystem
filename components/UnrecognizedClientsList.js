@@ -6,8 +6,12 @@ import { addClient } from '@/lib/clients';
 import { getAllBranches } from '@/lib/branches';
 import { format } from 'date-fns';
 import Image from 'next/image';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function UnrecognizedClientsList({ onClientUpdated }) {
+  const { profile } = useAuth();
+  const canEdit = profile?.permissions?.clients?.edit !== false;
+  const canDelete = profile?.permissions?.clients?.delete !== false;
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState(null);
@@ -272,32 +276,38 @@ export default function UnrecognizedClientsList({ onClientUpdated }) {
                   <div className="text-xs text-gray-500 bg-gray-50 p-2 rounded">
                     {client.reason || 'Unrecognized phone number'}
                   </div>
-                  <div className="flex gap-2 pt-2 border-t border-gray-100">
-                    <button
-                      onClick={() => handleEdit(client)}
-                      className="flex-1 px-3 py-2 text-sm rounded-md border border-gray-200 bg-white/70 backdrop-blur-md text-gray-800 hover:bg-white/90 hover:border-gray-300 transition-colors"
-                    >
-                      <span className="inline-flex items-center justify-center gap-2">
-                        <Image src="/edit.svg" alt="Edit" width={18} height={18} />
-                        Edit
-                      </span>
-                    </button>
-                    <button
-                      onClick={() => handleApprove(client)}
-                      disabled={!client.branch || !client.branch.trim()}
-                      className="flex-1 px-3 py-2 text-sm rounded-md border border-gray-200 bg-white/70 backdrop-blur-md text-green-700 hover:bg-white/90 hover:border-gray-300 transition-colors disabled:text-gray-400 disabled:bg-white/70 disabled:cursor-not-allowed"
-                    >
-                      Approve
-                    </button>
-                    <button
-                      onClick={() => handleDelete(client.id)}
-                      className="px-3 py-2 text-sm rounded-md border border-gray-200 bg-white/70 backdrop-blur-md text-red-700 hover:bg-white/90 hover:border-gray-300 transition-colors"
-                    >
-                      <span className="inline-flex items-center justify-center">
-                        <Image src="/bin.svg" alt="Delete" width={18} height={18} />
-                      </span>
-                    </button>
-                  </div>
+	                  <div className="flex gap-2 pt-2 border-t border-gray-100">
+	                    {canEdit && (
+	                      <>
+	                        <button
+	                          onClick={() => handleEdit(client)}
+	                          className="flex-1 px-3 py-2 text-sm rounded-md border border-gray-200 bg-white/70 backdrop-blur-md text-gray-800 hover:bg-white/90 hover:border-gray-300 transition-colors"
+	                        >
+	                          <span className="inline-flex items-center justify-center gap-2">
+	                            <Image src="/edit.svg" alt="Edit" width={18} height={18} />
+	                            Edit
+	                          </span>
+	                        </button>
+	                        <button
+	                          onClick={() => handleApprove(client)}
+	                          disabled={!client.branch || !client.branch.trim()}
+	                          className="flex-1 px-3 py-2 text-sm rounded-md border border-gray-200 bg-white/70 backdrop-blur-md text-green-700 hover:bg-white/90 hover:border-gray-300 transition-colors disabled:text-gray-400 disabled:bg-white/70 disabled:cursor-not-allowed"
+	                        >
+	                          Approve
+	                        </button>
+	                      </>
+	                    )}
+	                    {canDelete && (
+	                      <button
+	                        onClick={() => handleDelete(client.id)}
+	                        className="px-3 py-2 text-sm rounded-md border border-gray-200 bg-white/70 backdrop-blur-md text-red-700 hover:bg-white/90 hover:border-gray-300 transition-colors"
+	                      >
+	                        <span className="inline-flex items-center justify-center">
+	                          <Image src="/bin.svg" alt="Delete" width={18} height={18} />
+	                        </span>
+	                      </button>
+	                    )}
+	                  </div>
                 </>
               )}
             </div>
@@ -426,32 +436,38 @@ export default function UnrecognizedClientsList({ onClientUpdated }) {
                         </button>
                       </div>
                     ) : (
-                      <div className="flex gap-3">
-                        <button
-                          onClick={() => handleEdit(client)}
-                          className="text-blue-600 hover:text-blue-800 font-medium p-2 rounded hover:bg-blue-50"
-                          title="Edit client"
-                          aria-label="Edit client"
-                        >
-                          <Image src="/edit.svg" alt="Edit" width={18} height={18} />
-                        </button>
-                        <button
-                          onClick={() => handleApprove(client)}
-                          disabled={!client.branch || !client.branch.trim()}
-                          className="text-green-600 hover:text-green-800 font-medium disabled:text-gray-400 disabled:cursor-not-allowed"
-                          title={!client.branch ? 'Set a branch first' : 'Approve and add to regular clients'}
-                        >
-                          Approve
-                        </button>
-                        <button
-                          onClick={() => handleDelete(client.id)}
-                          className="text-red-600 hover:text-red-800 font-medium p-2 rounded hover:bg-red-50"
-                          title="Delete client"
-                          aria-label="Delete client"
-                        >
-                          <Image src="/bin.svg" alt="Delete" width={18} height={18} />
-                        </button>
-                      </div>
+	                      <div className="flex gap-3">
+	                        {canEdit && (
+	                          <>
+	                            <button
+	                              onClick={() => handleEdit(client)}
+	                              className="text-blue-600 hover:text-blue-800 font-medium p-2 rounded hover:bg-blue-50"
+	                              title="Edit client"
+	                              aria-label="Edit client"
+	                            >
+	                              <Image src="/edit.svg" alt="Edit" width={18} height={18} />
+	                            </button>
+	                            <button
+	                              onClick={() => handleApprove(client)}
+	                              disabled={!client.branch || !client.branch.trim()}
+	                              className="text-green-600 hover:text-green-800 font-medium disabled:text-gray-400 disabled:cursor-not-allowed"
+	                              title={!client.branch ? 'Set a branch first' : 'Approve and add to regular clients'}
+	                            >
+	                              Approve
+	                            </button>
+	                          </>
+	                        )}
+	                        {canDelete && (
+	                          <button
+	                            onClick={() => handleDelete(client.id)}
+	                            className="text-red-600 hover:text-red-800 font-medium p-2 rounded hover:bg-red-50"
+	                            title="Delete client"
+	                            aria-label="Delete client"
+	                          >
+	                            <Image src="/bin.svg" alt="Delete" width={18} height={18} />
+	                          </button>
+	                        )}
+	                      </div>
                     )}
                   </td>
                 </tr>

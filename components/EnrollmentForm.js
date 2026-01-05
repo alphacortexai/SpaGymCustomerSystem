@@ -6,7 +6,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { searchClients } from '@/lib/clients';
 
 export default function EnrollmentForm({ onEnrolled }) {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
+  const canAdd = profile?.permissions?.gym?.add !== false;
   const [loading, setLoading] = useState(false);
   const [membershipTypes, setMembershipTypes] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -145,10 +146,10 @@ export default function EnrollmentForm({ onEnrolled }) {
 
       <button
         type="submit"
-        disabled={loading || !selectedClient || !formData.membershipTypeId}
+        disabled={loading || !selectedClient || !formData.membershipTypeId || !canAdd}
         className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-500/20 transition-all disabled:opacity-50"
       >
-        {loading ? 'Enrolling...' : 'Enroll Client'}
+        {loading ? 'Enrolling...' : !canAdd ? 'No Permission to Enroll' : 'Enroll Client'}
       </button>
     </form>
   );
