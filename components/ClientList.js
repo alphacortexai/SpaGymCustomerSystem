@@ -7,7 +7,13 @@ import EditClientModal from './EditClientModal';
 import { deleteClient } from '@/lib/clients';
 import { normalizePhoneNumber } from '@/lib/phoneUtils';
 
+import { useAuth } from '@/contexts/AuthContext';
+
 export default function ClientList({ clients = [], totalCount, title = 'Clients', onClientUpdated }) {
+  const { profile } = useAuth();
+  const isGeneralUser = profile?.role === 'General';
+  const isManageUser = profile?.role === 'Manage';
+  const isAdmin = profile?.role === 'Admin';
   const [editingClient, setEditingClient] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [deletingClientId, setDeletingClientId] = useState(null);
@@ -192,12 +198,16 @@ export default function ClientList({ clients = [], totalCount, title = 'Clients'
                             </a>
                           </>
                         )}
-                        <button onClick={() => { setEditingClient(client); setIsModalOpen(true); }} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all" title="Edit">
-                          <Image src="/edit.svg" alt="Edit" width={20} height={20} className="w-5 h-5" />
-                        </button>
-                        <button onClick={() => { setDeletingClientId(client.id); setShowDeleteConfirm(true); }} className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-lg transition-all" title="Delete">
-                          <Image src="/bin.svg" alt="Delete" width={20} height={20} className="w-5 h-5" />
-                        </button>
+	                        {!isGeneralUser && (
+	                          <>
+	                            <button onClick={() => { setEditingClient(client); setIsModalOpen(true); }} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all" title="Edit">
+	                              <Image src="/edit.svg" alt="Edit" width={20} height={20} className="w-5 h-5" />
+	                            </button>
+	                            <button onClick={() => { setDeletingClientId(client.id); setShowDeleteConfirm(true); }} className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-lg transition-all" title="Delete">
+	                              <Image src="/bin.svg" alt="Delete" width={20} height={20} className="w-5 h-5" />
+	                            </button>
+	                          </>
+	                        )}
                       </div>
                     </td>
                   </tr>

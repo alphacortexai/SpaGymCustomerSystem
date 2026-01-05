@@ -3,8 +3,11 @@
 import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { redeemEntitlement, getAccessLogs, logAccess } from '@/lib/memberships';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function MembershipDetailsModal({ enrollment, onClose, onUpdate }) {
+  const { profile } = useAuth();
+  const isGeneralUser = profile?.role === 'General';
   const [accessLogs, setAccessLogs] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -108,18 +111,20 @@ export default function MembershipDetailsModal({ enrollment, onClose, onUpdate }
               {enrollment.entitlements?.map((ent, idx) => {
                 const isRedeemed = enrollment.redeemedEntitlements?.some(r => r.name === ent);
                 return (
-                  <button
-                    key={idx}
-                    disabled={isRedeemed || loading}
-                    onClick={() => handleRedeem(ent)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${
-                      isRedeemed 
-                        ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed line-through' 
-                        : 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-100'
-                    }`}
-                  >
-                    {ent} {isRedeemed && '✓'}
-                  </button>
+	                  <button
+	                    key={idx}
+	                    disabled={isRedeemed || loading || isGeneralUser}
+	                    onClick={() => handleRedeem(ent)}
+	                    className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${
+	                      isRedeemed 
+	                        ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed line-through' 
+	                        : isGeneralUser
+	                          ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
+	                          : 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-100'
+	                    }`}
+	                  >
+	                    {ent} {isRedeemed && '✓'}
+	                  </button>
                 );
               })}
             </div>
@@ -128,13 +133,15 @@ export default function MembershipDetailsModal({ enrollment, onClose, onUpdate }
           <div>
             <div className="flex justify-between items-center mb-3">
               <h3 className="text-sm font-bold text-slate-900 dark:text-white">Access Calendar ({format(new Date(), 'MMMM yyyy')})</h3>
-              <button 
-                onClick={handleLogAccess}
-                disabled={loading}
-                className="text-xs bg-green-600 text-white px-3 py-1.5 rounded-lg hover:bg-green-700 transition-colors"
-              >
-                Log Today&apos;s Access
-              </button>
+	              {!isGeneralUser && (
+	                <button 
+	                  onClick={handleLogAccess}
+	                  disabled={loading}
+	                  className="text-xs bg-green-600 text-white px-3 py-1.5 rounded-lg hover:bg-green-700 transition-colors"
+	                >
+	                  Log Today&apos;s Access
+	                </button>
+	              )}
             </div>
             <div className="grid grid-cols-7 gap-2 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl">
               {renderCalendar()}

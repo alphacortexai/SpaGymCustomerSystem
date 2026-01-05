@@ -2,10 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import { updateClient, checkDuplicatePhone } from '@/lib/clients';
+import { useAuth } from '@/contexts/AuthContext';
 import { getAllBranches } from '@/lib/branches';
 import { normalizePhoneNumber, extractAllPhoneNumbers } from '@/lib/phoneUtils';
 
 export default function EditClientModal({ client, isOpen, onClose, onClientUpdated }) {
+  const { profile } = useAuth();
+  const isGeneralUser = profile?.role === 'General';
   const [formData, setFormData] = useState({
     name: '',
     phoneNumber: '',
@@ -296,13 +299,15 @@ export default function EditClientModal({ client, isOpen, onClose, onClientUpdat
               >
                 Cancel
               </button>
-              <button
-                type="submit"
-                disabled={loading}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {loading ? 'Updating...' : 'Update Client'}
-              </button>
+	              {!isGeneralUser && (
+	                <button
+	                  type="submit"
+	                  disabled={loading}
+	                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+	                >
+	                  {loading ? 'Updating...' : 'Update Client'}
+	                </button>
+	              )}
             </div>
           </form>
         </div>
