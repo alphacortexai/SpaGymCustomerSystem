@@ -16,6 +16,7 @@ export default function EnrollmentForm({ onEnrolled }) {
   const [formData, setFormData] = useState({
     membershipTypeId: '',
     startDate: new Date().toISOString().split('T')[0],
+    price: '',
   });
 
   useEffect(() => {
@@ -45,18 +46,20 @@ export default function EnrollmentForm({ onEnrolled }) {
 
     setLoading(true);
     const selectedType = membershipTypes.find(t => t.id === formData.membershipTypeId);
+    const isReducingBalance = selectedType.isReducingBalance || false;
+    const enrollmentPrice = isReducingBalance ? formData.price : selectedType.price;
     
     const result = await enrollClient({
       clientId: selectedClient.id,
       clientName: selectedClient.name,
       membershipTypeId: formData.membershipTypeId,
       membershipType: selectedType.type,
-      price: selectedType.price,
+      price: enrollmentPrice,
       description: selectedType.description,
       durationDays: selectedType.duration,
       entitlements: selectedType.entitlements,
-      isReducingBalance: selectedType.isReducingBalance || false,
-      balance: selectedType.isReducingBalance ? selectedType.price : 0,
+      isReducingBalance: isReducingBalance,
+      balance: isReducingBalance ? enrollmentPrice : 0,
       startDate: formData.startDate,
     }, user);
 
@@ -119,20 +122,43 @@ export default function EnrollmentForm({ onEnrolled }) {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
+        <div className={membershipTypes.find(t => t.id === formData.membershipTypeId)?.isReducingBalance ? "md:col-span-2" : ""}>
           <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Membership Type</label>
           <select
             required
             value={formData.membershipTypeId}
-            onChange={(e) => setFormData({ ...formData, membershipTypeId: e.target.value })}
+            onChange={(e) => {
+              const type = membershipTypes.find(t => t.id === e.target.value);
+              setFormData({ 
+                ...formData, 
+                membershipTypeId: e.target.value,
+                price: type?.isReducingBalance ? '' : (type?.price || '')
+              });
+            }}
             className="w-full px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
           >
             <option value="">Select Type</option>
             {membershipTypes.map(type => (
-              <option key={type.id} value={type.id}>{type.type} - ${type.price}</option>
+              <option key={type.id} value={type.id}>
+                {type.type} {type.isReducingBalance ? '(Reducing Balance)' : `- $${type.price}`}
+              </option>
             ))}
           </select>
         </div>
+
+        {membershipTypes.find(t => t.id === formData.membershipTypeId)?.isReducingBalance && (
+          <div>
+            <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Enrollment Price (Balance)</label>
+            <input
+              type="number"
+              required
+              value={formData.price}
+              onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+              className="w-full px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+              placeholder="Enter balance amount"
+            />
+          </div>
+        )}
 
         <div>
           <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Start Date</label>

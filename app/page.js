@@ -14,6 +14,7 @@ import BranchForm from '@/components/BranchForm';
 import UnrecognizedClientsList from '@/components/UnrecognizedClientsList';
 import UploadHistory from '@/components/UploadHistory';
 import MembershipForm from '@/components/MembershipForm';
+import MembershipTypeManager from '@/components/MembershipTypeManager';
 import EnrollmentForm from '@/components/EnrollmentForm';
 import MembershipList from '@/components/MembershipList';
 import UserManagement from '@/components/UserManagement';
@@ -624,16 +625,24 @@ export default function Home() {
                 </div>
               </div>
               
-	              {gymSubTab === 'overview' ? (
-	                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-	                  {profile?.permissions?.gym?.add !== false && (
-	                    <NavCard 
-	                      onClick={() => setGymSubTab('create-type')} 
-	                      icon="📋" 
-	                      title="Membership Types" 
-	                      description="Create and manage membership options." 
-	                    />
-	                  )}
+		              {gymSubTab === 'overview' ? (
+		                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+		                  {profile?.permissions?.gym?.add !== false && (
+		                    <NavCard 
+		                      onClick={() => setGymSubTab('create-type')} 
+		                      icon="📋" 
+		                      title="Create Type" 
+		                      description="Define new membership packages." 
+		                    />
+		                  )}
+		                  {profile?.role === 'Admin' && (
+		                    <NavCard 
+		                      onClick={() => setGymSubTab('manage-types')} 
+		                      icon="⚙️" 
+		                      title="Manage Types" 
+		                      description="Edit or delete membership types." 
+		                    />
+		                  )}
 	                  {profile?.permissions?.gym?.add !== false && (
 	                    <NavCard 
 	                      onClick={() => setGymSubTab('enroll')} 
@@ -653,12 +662,17 @@ export default function Home() {
 	                </div>
 	              ) : (
                 <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
-                  {gymSubTab === 'create-type' && (
-                    <div className="max-w-2xl mx-auto">
-                      <MembershipForm onMembershipAdded={() => setGymSubTab('overview')} />
-                    </div>
-                  )}
-                  {gymSubTab === 'enroll' && (
+	                  {gymSubTab === 'create-type' && (
+	                    <div className="max-w-2xl mx-auto">
+	                      <MembershipForm onMembershipAdded={() => setGymSubTab('overview')} />
+	                    </div>
+	                  )}
+	                  {gymSubTab === 'manage-types' && (
+	                    <div className="max-w-4xl mx-auto">
+	                      <MembershipTypeManager />
+	                    </div>
+	                  )}
+	                  {gymSubTab === 'enroll' && (
                     <div className="max-w-2xl mx-auto">
                       <EnrollmentForm onEnrolled={() => setGymSubTab('active-members')} />
                     </div>
