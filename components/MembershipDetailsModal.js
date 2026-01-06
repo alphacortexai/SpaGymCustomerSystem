@@ -5,7 +5,7 @@ import { format } from 'date-fns';
 import { redeemEntitlement, getAccessLogs, logAccess, cancelEnrollment, deleteEnrollment, logTreatment, updateEnrollmentDocuments } from '@/lib/memberships';
 import { useAuth } from '@/contexts/AuthContext';
 
-export default function MembershipDetailsModal({ enrollment, onClose, onUpdate }) {
+export default function MembershipDetailsModal({ enrollment, onClose, onUpdate, isSpa = false }) {
   const { profile } = useAuth();
   const canEdit = profile?.permissions?.gym?.edit !== false;
   const [accessLogs, setAccessLogs] = useState([]);
@@ -15,7 +15,7 @@ export default function MembershipDetailsModal({ enrollment, onClose, onUpdate }
 
   useEffect(() => {
     const loadLogs = async () => {
-      const logs = await getAccessLogs(enrollment.clientId, new Date().getFullYear());
+      const logs = await getAccessLogs(enrollment.clientId, new Date().getFullYear(), isSpa);
       setAccessLogs(logs);
     };
     loadLogs();
@@ -24,7 +24,7 @@ export default function MembershipDetailsModal({ enrollment, onClose, onUpdate }
   const handleRedeem = async (entitlementName) => {
     if (confirm(`Redeem "${entitlementName}"?`)) {
       setLoading(true);
-      await redeemEntitlement(enrollment.id, entitlementName);
+      await redeemEntitlement(enrollment.id, entitlementName, isSpa);
       onUpdate();
       setLoading(false);
     }
@@ -32,8 +32,8 @@ export default function MembershipDetailsModal({ enrollment, onClose, onUpdate }
 
   const handleLogAccess = async () => {
     setLoading(true);
-    await logAccess(enrollment.clientId, enrollment.id, new Date(), profile ? { uid: profile.uid, displayName: profile.name, email: profile.email } : null);
-    const logs = await getAccessLogs(enrollment.clientId, new Date().getFullYear());
+    await logAccess(enrollment.clientId, enrollment.id, new Date(), profile ? { uid: profile.uid, displayName: profile.name, email: profile.email } : null, isSpa);
+    const logs = await getAccessLogs(enrollment.clientId, new Date().getFullYear(), isSpa);
     setAccessLogs(logs);
     setLoading(false);
   };
@@ -43,7 +43,7 @@ export default function MembershipDetailsModal({ enrollment, onClose, onUpdate }
     if (!treatmentForm.service || !treatmentForm.amount) return;
     
     setLoading(true);
-    const result = await logTreatment(enrollment.id, treatmentForm, profile ? { uid: profile.uid, displayName: profile.name, email: profile.email } : null);
+    const result = await logTreatment(enrollment.id, treatmentForm, profile ? { uid: profile.uid, displayName: profile.name, email: profile.email } : null, isSpa);
     if (result.success) {
       setTreatmentForm({ service: '', amount: '' });
       onUpdate();
@@ -56,7 +56,7 @@ export default function MembershipDetailsModal({ enrollment, onClose, onUpdate }
   const handleCancel = async () => {
     if (confirm('Are you sure you want to cancel this membership?')) {
       setLoading(true);
-      const result = await cancelEnrollment(enrollment.id, profile ? { uid: profile.uid, displayName: profile.name, email: profile.email } : null);
+      const result = await cancelEnrollment(enrollment.id, profile ? { uid: profile.uid, displayName: profile.name, email: profile.email } : null, isSpa);
       if (result.success) {
         onUpdate();
         onClose();
@@ -70,7 +70,7 @@ export default function MembershipDetailsModal({ enrollment, onClose, onUpdate }
   const handleDelete = async () => {
     if (confirm('Are you sure you want to PERMANENTLY DELETE this membership record? This cannot be undone.')) {
       setLoading(true);
-      const result = await deleteEnrollment(enrollment.id, profile ? { uid: profile.uid, displayName: profile.name, email: profile.email } : null);
+      const result = await deleteEnrollment(enrollment.id, profile ? { uid: profile.uid, displayName: profile.name, email: profile.email } : null, isSpa);
       if (result.success) {
         onUpdate();
         onClose();
@@ -100,7 +100,7 @@ export default function MembershipDetailsModal({ enrollment, onClose, onUpdate }
       
       if (result.success) {
         const docData = { [type]: { url: result.url, name: result.name, type: result.type } };
-        await updateEnrollmentDocuments(enrollment.id, docData, profile ? { uid: profile.uid, displayName: profile.name, email: profile.email } : null);
+        await updateEnrollmentDocuments(enrollment.id, docData, profile ? { uid: profile.uid, displayName: profile.name, email: profile.email } : null, isSpa);
         onUpdate();
       } else {
         alert('Upload Error: ' + result.error);
