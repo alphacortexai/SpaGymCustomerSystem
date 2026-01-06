@@ -70,11 +70,13 @@ export default function MembershipList() {
                 </td>
                 <td className="px-6 py-4">
                   <span className={`px-2.5 py-1 rounded-lg text-xs font-medium ${
-                    new Date() > enrollment.expiryDate 
-                      ? 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400' 
-                      : 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400'
+                    enrollment.status === 'cancelled'
+                      ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400'
+                      : new Date() > enrollment.expiryDate 
+                        ? 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400' 
+                        : 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400'
                   }`}>
-                    {new Date() > enrollment.expiryDate ? 'Expired' : 'Active'}
+                    {enrollment.status === 'cancelled' ? 'Cancelled' : (new Date() > enrollment.expiryDate ? 'Expired' : 'Active')}
                   </span>
                 </td>
                 <td className="px-6 py-4 text-right">
