@@ -18,6 +18,9 @@ export default function EnrollmentForm({ onEnrolled }) {
     startDate: new Date().toISOString().split('T')[0],
     price: '',
   });
+  const [invoiceFile, setInvoiceFile] = useState(null);
+  const [popFile, setPopFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     const loadTypes = async () => {
@@ -40,38 +43,71 @@ export default function EnrollmentForm({ onEnrolled }) {
     return () => clearTimeout(delayDebounceFn);
   }, [searchTerm]);
 
+  const uploadDocument = async (file, type, clientId) => {
+    if (!file) return null;
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('type', type);
+    formData.append('clientId', clientId);
+
+    const response = await fetch('/api/upload-doc', {
+      method: 'POST',
+      body: formData,
+    });
+    const result = await response.json();
+    if (!result.success) throw new Error(result.error);
+    return { url: result.url, name: result.name, type: result.type };
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!selectedClient || !formData.membershipTypeId) return;
 
     setLoading(true);
-    const selectedType = membershipTypes.find(t => t.id === formData.membershipTypeId);
-    const isReducingBalance = selectedType.isReducingBalance || false;
-    const enrollmentPrice = isReducingBalance ? formData.price : selectedType.price;
+    setUploading(true);
     
-    const result = await enrollClient({
-      clientId: selectedClient.id,
-      clientName: selectedClient.name,
-      membershipTypeId: formData.membershipTypeId,
-      membershipType: selectedType.type,
-      price: enrollmentPrice,
-      description: selectedType.description,
-      durationDays: selectedType.duration,
-      entitlements: selectedType.entitlements,
-      isReducingBalance: isReducingBalance,
-      balance: isReducingBalance ? enrollmentPrice : 0,
-      startDate: formData.startDate,
-    }, user);
+    try {
+      const invoiceDoc = await uploadDocument(invoiceFile, 'invoice', selectedClient.id);
+      const popDoc = await uploadDocument(popFile, 'pop', selectedClient.id);
+      
+      const selectedType = membershipTypes.find(t => t.id === formData.membershipTypeId);
+      const isReducingBalance = selectedType.isReducingBalance || false;
+      const enrollmentPrice = isReducingBalance ? formData.price : selectedType.price;
+      
+      const result = await enrollClient({
+        clientId: selectedClient.id,
+        clientName: selectedClient.name,
+        membershipTypeId: formData.membershipTypeId,
+        membershipType: selectedType.type,
+        price: enrollmentPrice,
+        description: selectedType.description,
+        durationDays: selectedType.duration,
+        entitlements: selectedType.entitlements,
+        isReducingBalance: isReducingBalance,
+        balance: isReducingBalance ? enrollmentPrice : 0,
+        startDate: formData.startDate,
+        documents: {
+          invoice: invoiceDoc,
+          pop: popDoc
+        }
+      }, user);
 
-    if (result.success) {
-      setSelectedClient(null);
-      setSearchTerm('');
-      setFormData({ ...formData, membershipTypeId: '' });
-      if (onEnrolled) onEnrolled();
-    } else {
-      alert('Error: ' + result.error);
+      if (result.success) {
+        setSelectedClient(null);
+        setSearchTerm('');
+        setFormData({ ...formData, membershipTypeId: '', price: '' });
+        setInvoiceFile(null);
+        setPopFile(null);
+        if (onEnrolled) onEnrolled();
+      } else {
+        alert('Error: ' + result.error);
+      }
+    } catch (error) {
+      alert('Upload Error: ' + error.message);
+    } finally {
+      setLoading(false);
+      setUploading(false);
     }
-    setLoading(false);
   };
 
   return (
@@ -172,12 +208,36 @@ export default function EnrollmentForm({ onEnrolled }) {
         </div>
       </div>
 
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-700">
+        <div className="md:col-span-2">
+          <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Documents (Optional)</h3>
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Client Invoice (PDF/Image)</label>
+          <input
+            type="file"
+            accept="application/pdf,image/*"
+            onChange={(e) => setInvoiceFile(e.target.files[0])}
+            className="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Proof of Payment (PDF/Image)</label>
+          <input
+            type="file"
+            accept="application/pdf,image/*"
+            onChange={(e) => setPopFile(e.target.files[0])}
+            className="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100"
+          />
+        </div>
+      </div>
+
       <button
         type="submit"
         disabled={loading || !selectedClient || !formData.membershipTypeId || !canAdd}
         className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-500/20 transition-all disabled:opacity-50"
       >
-        {loading ? 'Enrolling...' : !canAdd ? 'No Permission to Enroll' : 'Enroll Client'}
+        {uploading ? 'Uploading Documents...' : loading ? 'Enrolling...' : !canAdd ? 'No Permission to Enroll' : 'Enroll Client'}
       </button>
     </form>
   );

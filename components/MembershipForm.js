@@ -23,7 +23,7 @@ export default function MembershipForm({ onMembershipAdded }) {
     
     const result = await addMembershipType({
       ...formData,
-      price: parseFloat(formData.price),
+      price: formData.isReducingBalance ? 0 : parseFloat(formData.price),
       duration: parseInt(formData.duration),
       entitlements: formData.isReducingBalance ? [] : formData.entitlements.split(',').map(e => {
         const item = e.trim();
@@ -74,11 +74,12 @@ export default function MembershipForm({ onMembershipAdded }) {
           <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Price</label>
           <input
             type="number"
-            required
-            value={formData.price}
+            required={!formData.isReducingBalance}
+            disabled={formData.isReducingBalance}
+            value={formData.isReducingBalance ? '' : formData.price}
             onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-            className="w-full px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-            placeholder="0.00"
+            className="w-full px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-blue-500 outline-none transition-all disabled:opacity-50"
+            placeholder={formData.isReducingBalance ? "Set at enrollment" : "0.00"}
           />
         </div>
 
