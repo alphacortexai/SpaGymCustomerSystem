@@ -89,8 +89,8 @@ export default function Home() {
   useEffect(() => {
     const getAffirmation = () => {
       const now = new Date();
-      // Use 30-minute intervals for rotation
-      const intervalIndex = Math.floor(now.getTime() / (30 * 60 * 1000));
+      // Use 5-minute intervals for rotation
+      const intervalIndex = Math.floor(now.getTime() / (5 * 60 * 1000));
       const index = intervalIndex % affirmations.length;
       return affirmations[index];
     };
@@ -248,9 +248,14 @@ export default function Home() {
         <header className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl border-b border-slate-200 dark:border-slate-800 sticky top-0 z-50">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
             <div className="flex items-center gap-8">
-              <button onClick={() => setActiveTab('home')} className="flex items-center gap-2.5 group">
-                <div className="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-500/20 group-hover:scale-105 transition-transform">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+              <button onClick={() => setActiveTab('home')} className="flex items-center gap-3 group">
+                <div className="flex -space-x-2">
+                  <div className="w-10 h-10 rounded-full border-2 border-white dark:border-slate-800 bg-white overflow-hidden shadow-md group-hover:scale-105 transition-transform relative z-20">
+                    <Image src="/logo1.png" alt="Logo 1" fill className="object-contain p-1" />
+                  </div>
+                  <div className="w-10 h-10 rounded-full border-2 border-white dark:border-slate-800 bg-slate-100 dark:bg-slate-800 overflow-hidden shadow-md group-hover:scale-105 transition-transform relative z-10 flex items-center justify-center">
+                    <span className="text-[10px] text-slate-400">Logo 2</span>
+                  </div>
                 </div>
                 <span className="text-lg font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-600 dark:from-white dark:to-slate-400">SpaManager</span>
               </button>
@@ -333,9 +338,12 @@ export default function Home() {
                 <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white sm:text-3xl">
                   Hi, <span className="text-blue-600">{user?.displayName?.split(' ')[0] || 'User'}</span>
                 </h1>
-                <p className="mt-2 text-base text-slate-500 dark:text-slate-400 leading-relaxed italic">
-                  "{currentAffirmation}"
-                </p>
+                <div className="mt-4 p-4 bg-white/50 dark:bg-slate-900/50 rounded-2xl border border-slate-200/50 dark:border-slate-800/50 backdrop-blur-sm">
+                  <h2 className="text-xs font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 mb-1">Power Quotes</h2>
+                  <p className="text-base text-slate-600 dark:text-slate-300 leading-relaxed italic font-medium">
+                    "{currentAffirmation}"
+                  </p>
+                </div>
               </div>
 
                   {!showAdminSection ? (
