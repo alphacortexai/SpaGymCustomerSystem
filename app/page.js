@@ -26,7 +26,7 @@ import UserProfile from '@/components/UserProfile';
 import ActionsTimeline from '@/components/ActionsTimeline';
 import DuplicateSearch from '@/components/DuplicateSearch';
 
-const NavCard = ({ onClick, icon, title, description, badge }) => {
+const NavCard = ({ onClick, icon, title, description, badge, isImage }) => {
   return (
     <button
       onClick={onClick}
@@ -37,8 +37,14 @@ const NavCard = ({ onClick, icon, title, description, badge }) => {
           {badge}
         </div>
       )}
-      <div className="mb-3 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 text-slate-600 dark:text-slate-300 transition-colors duration-300 group-hover:bg-slate-100 dark:group-hover:bg-slate-700">
-        <span className="text-xl">{icon}</span>
+      <div className="mb-3 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 text-slate-600 dark:text-slate-300 transition-colors duration-300 group-hover:bg-slate-100 dark:group-hover:bg-slate-700 flex items-center justify-center overflow-hidden">
+        {isImage ? (
+          <div className="w-8 h-8 relative">
+            <Image src={icon} alt={title} fill className="object-contain" />
+          </div>
+        ) : (
+          <span className="text-xl">{icon}</span>
+        )}
       </div>
       <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-1">{title}</h3>
       <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-tight line-clamp-2 px-1">{description}</p>
@@ -311,13 +317,16 @@ export default function Home() {
                     <NavCard onClick={() => setActiveTab('duplicates')} icon="🔍" title="Duplicates" description="Find duplicate phones." />
                   )}
                   {profile?.permissions?.birthdays?.view !== false && (
-                    <NavCard onClick={() => setActiveTab('birthdays')} icon="🎂" title="Birthdays" description="Today's celebrations." badge={birthdayBadge} />
+                    <NavCard onClick={() => setActiveTab('birthdays')} icon="/birthday.png" title="Birthdays" description="Today's celebrations." badge={birthdayBadge} isImage={true} />
                   )}
                   {profile?.permissions?.branches?.view !== false && (
                     <NavCard onClick={() => setActiveTab('branches')} icon="🏢" title="Branches" description="Manage locations." badge={branches.length} />
                   )}
                   {profile?.permissions?.gym?.view !== false && (
                     <NavCard onClick={() => setActiveTab('gym')} icon="🏋️" title="GYM" description="Memberships." />
+                  )}
+                  {profile?.permissions?.spa?.view !== false && (
+                    <NavCard onClick={() => setActiveTab('spa')} icon="/spa.png" title="SPA" description="Memberships." isImage={true} />
                   )}
                   {profile?.role === 'Admin' && (
                     <NavCard onClick={() => setShowAdminSection(true)} icon="⚙️" title="Admin" description="System tools." />
