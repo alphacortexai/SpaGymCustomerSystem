@@ -85,6 +85,48 @@ export default function Home() {
   const [showBranchPrompt, setShowBranchPrompt] = useState(false);
   const [allBirthdays, setAllBirthdays] = useState([]);
   const [currentAffirmation, setCurrentAffirmation] = useState('');
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
+
+  // Handle back button
+  useEffect(() => {
+    // Push initial state
+    window.history.pushState({ tab: activeTab, gymSub: gymSubTab, spaSub: spaSubTab }, '');
+
+    const handlePopState = (event) => {
+      if (activeTab === 'home') {
+        setShowExitConfirm(true);
+        // Push state back to prevent actual back navigation
+        window.history.pushState({ tab: 'home' }, '');
+      } else {
+        if (activeTab === 'gym' && gymSubTab !== 'overview') {
+          setGymSubTab('overview');
+        } else if (activeTab === 'spa' && spaSubTab !== 'overview') {
+          setSpaSubTab('overview');
+        } else if (showAdminSection) {
+          setShowAdminSection(false);
+        } else {
+          setActiveTab('home');
+        }
+        // Push state back to keep intercepting
+        window.history.pushState({ tab: activeTab }, '');
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [activeTab, gymSubTab, spaSubTab, showAdminSection]);
+
+  const handleExitApp = () => {
+    // In a web app, we can't truly "close" the window unless it was opened by script
+    // But we can try or redirect to a blank page/close
+    if (typeof window !== 'undefined') {
+      window.close();
+      // Fallback if window.close() is blocked
+      setTimeout(() => {
+        window.location.href = 'about:blank';
+      }, 100);
+    }
+  };
 
   useEffect(() => {
     const getAffirmation = () => {
@@ -244,6 +286,36 @@ export default function Home() {
   return (
     <ProtectedRoute>
       <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans selection:bg-blue-100 selection:text-blue-900">
+        {/* Exit Confirmation Modal */}
+        {showExitConfirm && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 max-w-sm w-full shadow-2xl border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-200">
+              <div className="flex items-center gap-4 mb-4">
+                <div className="w-12 h-12 rounded-full bg-rose-100 dark:bg-rose-900/30 flex items-center justify-center text-rose-600 dark:text-rose-400 text-2xl">
+                  🚪
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-white">Exit App?</h3>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">Are you sure you want to exit the application?</p>
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowExitConfirm(false)}
+                  className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-sm font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleExitApp}
+                  className="flex-1 px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-sm font-semibold shadow-lg shadow-rose-500/20 transition-all"
+                >
+                  Yes, Exit
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
         {/* Navigation */}
         <header className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl border-b border-slate-200 dark:border-slate-800 sticky top-0 z-50">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
