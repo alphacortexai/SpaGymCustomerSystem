@@ -9,6 +9,7 @@ import ClientList from '@/components/ClientList';
 import ExcelUpload from '@/components/ExcelUpload';
 import { searchClients, getTodaysBirthdays, getAllClients } from '@/lib/clients';
 import { getAllBranches } from '@/lib/branches';
+import { affirmations } from '@/lib/affirmations';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import BranchForm from '@/components/BranchForm';
 import UnrecognizedClientsList from '@/components/UnrecognizedClientsList';
@@ -83,6 +84,25 @@ export default function Home() {
   const [showAdminSection, setShowAdminSection] = useState(false);
   const [showBranchPrompt, setShowBranchPrompt] = useState(false);
   const [allBirthdays, setAllBirthdays] = useState([]);
+  const [currentAffirmation, setCurrentAffirmation] = useState('');
+
+  useEffect(() => {
+    const getAffirmation = () => {
+      const now = new Date();
+      // Use 30-minute intervals for rotation
+      const intervalIndex = Math.floor(now.getTime() / (30 * 60 * 1000));
+      const index = intervalIndex % affirmations.length;
+      return affirmations[index];
+    };
+
+    setCurrentAffirmation(getAffirmation());
+
+    const interval = setInterval(() => {
+      setCurrentAffirmation(getAffirmation());
+    }, 60000); // Check every minute
+
+    return () => clearInterval(interval);
+  }, []);
 
   const loadData = useCallback(async () => {
     const branch = selectedBranch || null;
@@ -311,10 +331,10 @@ export default function Home() {
             <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
               <div className="max-w-2xl">
                 <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white sm:text-3xl">
-                  Welcome back, <span className="text-blue-600">{user?.displayName?.split(' ')[0] || 'User'}</span>
+                  Hi, <span className="text-blue-600">{user?.displayName?.split(' ')[0] || 'User'}</span>
                 </h1>
-                <p className="mt-2 text-base text-slate-500 dark:text-slate-400 leading-relaxed">
-                  Manage your spa and gym customers with ease. Track birthdays, handle bulk uploads, and keep your database organized.
+                <p className="mt-2 text-base text-slate-500 dark:text-slate-400 leading-relaxed italic">
+                  "{currentAffirmation}"
                 </p>
               </div>
 
