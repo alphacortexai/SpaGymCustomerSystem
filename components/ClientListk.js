@@ -180,23 +180,23 @@ export default function ClientList({ clients = [], title = 'Clients', onClientUp
                         <span className="hidden sm:inline">{client.branch || 'N/A'}</span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex justify-end gap-2">
+                    <td className="px-6 py-4 text-right whitespace-nowrap">
+                      <div className="flex justify-end items-center gap-1">
                         {client.phoneNumber && (
                           <>
-                            <a href={generateCallLink(client.phoneNumber)} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all" title="Call">
-                              <Image src="/telephone.svg" alt="Call" width={24} height={24} className="w-6 h-6" />
+                            <a href={generateCallLink(client.phoneNumber)} className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all flex-shrink-0" title="Call">
+                              <Image src="/telephone.svg" alt="Call" width={24} height={24} className="w-6 h-6 min-w-[24px] min-h-[24px]" />
                             </a>
-                            <a href={generateWhatsAppLink(client.phoneNumber)} target="_blank" rel="noopener noreferrer" className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-all" title="WhatsApp">
-                              <Image src="/whatsapp.svg" alt="WhatsApp" width={24} height={24} className="w-6 h-6" />
+                            <a href={generateWhatsAppLink(client.phoneNumber)} target="_blank" rel="noopener noreferrer" className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-all flex-shrink-0" title="WhatsApp">
+                              <Image src="/whatsapp.svg" alt="WhatsApp" width={24} height={24} className="w-6 h-6 min-w-[24px] min-h-[24px]" />
                             </a>
                           </>
                         )}
-                        <button onClick={() => { setEditingClient(client); setIsModalOpen(true); }} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all" title="Edit">
-                          <Image src="/edit.svg" alt="Edit" width={24} height={24} className="w-6 h-6" />
+                        <button onClick={() => { setEditingClient(client); setIsModalOpen(true); }} className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all flex-shrink-0" title="Edit">
+                          <Image src="/edit.svg" alt="Edit" width={24} height={24} className="w-6 h-6 min-w-[24px] min-h-[24px]" />
                         </button>
-                        <button onClick={() => { setDeletingClientId(client.id); setShowDeleteConfirm(true); }} className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-lg transition-all" title="Delete">
-                          <Image src="/bin.svg" alt="Delete" width={24} height={24} className="w-6 h-6" />
+                        <button onClick={() => { setDeletingClientId(client.id); setShowDeleteConfirm(true); }} className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-lg transition-all flex-shrink-0" title="Delete">
+                          <Image src="/bin.svg" alt="Delete" width={24} height={24} className="w-6 h-6 min-w-[24px] min-h-[24px]" />
                         </button>
                       </div>
                     </td>
