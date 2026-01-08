@@ -401,7 +401,7 @@ export default function Home() {
                   {!showAdminSection ? (
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
                   {profile?.permissions?.clients?.view !== false && (
-                    <NavCard onClick={() => setActiveTab('dashboard')} icon="/clients.png" title="Clients" description="Manage customer list." badge={allClients.length} isImage={true} fullBg={true} />
+                    <NavCard onClick={() => setActiveTab('dashboard')} icon="/clients_bg.png" title="Clients" description="Manage customer list." badge={allClients.length} isImage={true} fullBg={true} />
                   )}
                   {profile?.role === 'Admin' && (
                     <NavCard onClick={() => setActiveTab('duplicates')} icon="🔍" title="Duplicates" description="Find duplicate phones." />
