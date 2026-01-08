@@ -253,8 +253,8 @@ export default function Home() {
                   <div className="w-10 h-10 rounded-full border-2 border-white dark:border-slate-800 bg-white overflow-hidden shadow-md group-hover:scale-105 transition-transform relative z-20">
                     <Image src="/logo1.png" alt="Logo 1" fill className="object-contain p-1" />
                   </div>
-                  <div className="w-10 h-10 rounded-full border-2 border-white dark:border-slate-800 bg-slate-100 dark:bg-slate-800 overflow-hidden shadow-md group-hover:scale-105 transition-transform relative z-10 flex items-center justify-center">
-                    <span className="text-[10px] text-slate-400">Logo 2</span>
+                  <div className="w-10 h-10 rounded-full border-2 border-white dark:border-slate-800 bg-white overflow-hidden shadow-md group-hover:scale-105 transition-transform relative z-10">
+                    <Image src="/logo2.png" alt="Logo 2" fill className="object-contain p-1" />
                   </div>
                 </div>
                 <span className="text-lg font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-600 dark:from-white dark:to-slate-400">SpaManager</span>
