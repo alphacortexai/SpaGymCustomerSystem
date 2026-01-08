@@ -146,7 +146,10 @@ export default function Home() {
     return () => clearInterval(interval);
   }, []);
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (force = false) => {
+    // Only load if data is empty or forced
+    if (!force && allClients.length > 0 && branches.length > 0) return;
+
     const branch = selectedBranch || null;
     const [birthdays, clients, allBranches, allBdays] = await Promise.all([
       getTodaysBirthdays(branch),
@@ -158,24 +161,37 @@ export default function Home() {
     setAllClients(clients);
     setBranches(allBranches);
     setAllBirthdays(allBdays);
-  }, [selectedBranch]);
+  }, [selectedBranch, allClients.length, branches.length]);
 
+  // Initial load
   useEffect(() => {
     if (user) loadData();
-  }, [user, loadData]);
+  }, [user]); // Only run when user changes
+
+  // Handle branch changes separately to avoid reloading everything on tab switch
+  useEffect(() => {
+    if (user && selectedBranch) {
+      const reloadBranchData = async () => {
+        const branch = selectedBranch;
+        const [birthdays, clients] = await Promise.all([
+          getTodaysBirthdays(branch),
+          getAllClients(branch),
+        ]);
+        setTodaysBirthdays(birthdays);
+        setAllClients(clients);
+      };
+      reloadBranchData();
+    }
+  }, [selectedBranch, user]);
 
   useEffect(() => {
     if (activeTab !== 'home') setShowAdminSection(false);
     
     if (activeTab === 'birthdays') {
-      // Reset month and day filters when navigating to birthdays tab
-      setSelectedMonth('');
-      setSelectedDay('');
-      
       const defaultBranch = localStorage.getItem('defaultBirthdayBranch');
-      if (defaultBranch) {
+      if (defaultBranch && !selectedBranch) {
         setSelectedBranch(defaultBranch);
-      } else {
+      } else if (!defaultBranch && !selectedBranch) {
         setShowBranchPrompt(true);
       }
     }
@@ -253,7 +269,7 @@ export default function Home() {
   const getTotalPages = (clients) => Math.ceil(clients.length / clientsPerPage);
 
   const handleClientAdded = () => {
-    loadData();
+    loadData(true); // Force reload to show new client
     setSearchTerm('');
     setSearchResults([]);
   };
