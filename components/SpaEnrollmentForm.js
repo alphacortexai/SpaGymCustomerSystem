@@ -8,7 +8,7 @@ import { getAllBranches } from '@/lib/branches';
 
 export default function SpaEnrollmentForm({ onEnrolled }) {
   const { user, profile } = useAuth();
-  const canAdd = profile?.permissions?.gym?.add !== false;
+  const canAdd = profile?.permissions?.spa?.add !== false;
   const [loading, setLoading] = useState(false);
   const [membershipTypes, setMembershipTypes] = useState([]);
   const [branches, setBranches] = useState([]);

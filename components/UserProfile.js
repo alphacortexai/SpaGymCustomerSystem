@@ -70,6 +70,7 @@ export default function UserProfile() {
                     if (category === 'birthdays' && perms?.view === false) return false;
                     if (category === 'branches' && perms?.view === false) return false;
                     if (category === 'gym' && perms?.view === false) return false;
+                    if (category === 'spa' && perms?.view === false) return false;
                     if (category === 'users' && perms?.view === false) return false;
                     return true;
                   })

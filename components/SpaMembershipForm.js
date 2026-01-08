@@ -6,7 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 
 export default function SpaMembershipForm({ onMembershipAdded }) {
   const { user, profile } = useAuth();
-  const canAdd = profile?.permissions?.gym?.add !== false; // Reusing gym permissions for now or you can add spa specific
+  const canAdd = profile?.permissions?.spa?.add !== false;
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     type: '',

@@ -7,7 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 
 export default function MembershipDetailsModal({ enrollment, onClose, onUpdate, isSpa = false }) {
   const { profile } = useAuth();
-  const canEdit = profile?.permissions?.gym?.edit !== false;
+  const canEdit = isSpa ? profile?.permissions?.spa?.edit !== false : profile?.permissions?.gym?.edit !== false;
   const [accessLogs, setAccessLogs] = useState([]);
   const [loading, setLoading] = useState(false);
   const [treatmentForm, setTreatmentForm] = useState({ service: '', amount: '' });

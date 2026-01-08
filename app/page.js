@@ -250,54 +250,18 @@ export default function Home() {
     // Simulate a small delay for "processing" feel if needed, or just set it back
     setTimeout(() => setIsFiltering(false), 100);
     return filtered;
-  }, [allClients, todaysBirthdays, selectedMonth, selectedDay, selectedBranch]);
-
-  const handleResetFilters = () => {
-    setSelectedMonth('');
-    setSelectedDay('');
-    setSelectedBranch('');
-    setSearchTerm('');
-    setSearchResults([]);
-    setCurrentPage(1);
-  };
-
-  const getPaginatedClients = (clients) => {
-    const startIndex = (currentPage - 1) * clientsPerPage;
-    return clients.slice(startIndex, startIndex + clientsPerPage);
-  };
-
-  const getTotalPages = (clients) => Math.ceil(clients.length / clientsPerPage);
-
-  const handleClientAdded = () => {
-    loadData(true); // Force reload to show new client
-    setSearchTerm('');
-    setSearchResults([]);
-  };
+  }, [todaysBirthdays, allClients, selectedMonth, selectedDay, selectedBranch]);
 
   const birthdayBadge = useMemo(() => {
-    if (allBirthdays.length === 0) return 0;
-    
-    const branchCounts = {};
-    allBirthdays.forEach(client => {
-      const b = client.branch || 'Other';
-      branchCounts[b] = (branchCounts[b] || 0) + 1;
-    });
-    
-    const entries = Object.entries(branchCounts);
-    if (entries.length === 0) return '0';
-
-    return entries.map(([branchName, count]) => {
-      if (branchName === 'Other') return `Other: ${count}`;
-      
-      // Abbreviation logic: first letters of the first two words
-      const words = branchName.trim().split(/\s+/);
-      const abrev = words.length >= 2 
-        ? (words[0][0] + words[1][0]).toUpperCase()
-        : words[0][0].toUpperCase();
-      
-      return `${abrev}: ${count}`;
-    }).join(', ');
+    return allBirthdays.length;
   }, [allBirthdays]);
+
+  const getPaginatedClients = (list) => {
+    const startIndex = (currentPage - 1) * clientsPerPage;
+    return list.slice(startIndex, startIndex + clientsPerPage);
+  };
+
+  const getTotalPages = (list) => Math.ceil(list.length / clientsPerPage);
 
   return (
     <ProtectedRoute>
@@ -673,49 +637,49 @@ export default function Home() {
             <div className="max-w-3xl mx-auto animate-in fade-in duration-300">
               <div className="mb-8">
                 <h2 className="text-3xl font-bold text-slate-900 dark:text-white">Bulk Upload</h2>
-                <p className="text-slate-500 mt-1">Import your customer database from Excel or CSV.</p>
+                <p className="text-slate-500 mt-1">Import clients from Excel files.</p>
               </div>
               <ExcelUpload onUploadComplete={loadData} />
             </div>
           )}
 
-          {activeTab === 'add-client' && (
-            <div className="max-w-2xl mx-auto animate-in fade-in duration-300">
-              <div className="mb-8">
-                <h2 className="text-3xl font-bold text-slate-900 dark:text-white">New Client</h2>
-                <p className="text-slate-500 mt-1">Add a single customer to your database.</p>
-              </div>
-              <ClientForm onClientAdded={handleClientAdded} />
-            </div>
-          )}
-
-          {activeTab === 'branches' && (
-            <div className="max-w-2xl mx-auto animate-in fade-in duration-300">
-              <div className="mb-8">
-                <h2 className="text-3xl font-bold text-slate-900 dark:text-white">Branches</h2>
-                <p className="text-slate-500 mt-1">Manage your facility locations.</p>
-              </div>
-              {profile?.permissions?.branches?.view !== false ? (
-                <BranchForm onBranchAdded={loadData} />
-              ) : (
-                <div className="p-8 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 text-center">
-                  <p className="text-slate-500">You do not have permission to view or manage branches.</p>
-                </div>
-              )}
-            </div>
-          )}
-
           {activeTab === 'unrecognized' && (
             <div className="space-y-8 animate-in fade-in duration-300">
-              <h2 className="text-3xl font-bold text-slate-900 dark:text-white">Unrecognized Data</h2>
-              <UnrecognizedClientsList onClientProcessed={loadData} />
+              <div className="mb-8">
+                <h2 className="text-3xl font-bold text-slate-900 dark:text-white">Data Issues</h2>
+                <p className="text-slate-500 mt-1">Fix clients with unrecognized phone numbers.</p>
+              </div>
+              <UnrecognizedClientsList onApproved={loadData} />
             </div>
           )}
 
           {activeTab === 'history' && (
             <div className="space-y-8 animate-in fade-in duration-300">
-              <h2 className="text-3xl font-bold text-slate-900 dark:text-white">Upload History</h2>
+              <div className="mb-8">
+                <h2 className="text-3xl font-bold text-slate-900 dark:text-white">Upload History</h2>
+                <p className="text-slate-500 mt-1">Track and manage your data imports.</p>
+              </div>
               <UploadHistory />
+            </div>
+          )}
+
+          {activeTab === 'add-client' && (
+            <div className="max-w-2xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-300">
+              <div className="mb-8">
+                <h2 className="text-3xl font-bold text-slate-900 dark:text-white">Add New Client</h2>
+                <p className="text-slate-500 mt-1">Register a new customer to the system.</p>
+              </div>
+              <ClientForm onClientAdded={() => { loadData(true); setActiveTab('dashboard'); }} />
+            </div>
+          )}
+
+          {activeTab === 'branches' && (
+            <div className="max-w-4xl mx-auto animate-in fade-in duration-300">
+              <div className="mb-8">
+                <h2 className="text-3xl font-bold text-slate-900 dark:text-white">Branch Management</h2>
+                <p className="text-slate-500 mt-1">Manage your business locations.</p>
+              </div>
+              <BranchForm onBranchAdded={loadData} />
             </div>
           )}
 
@@ -724,16 +688,24 @@ export default function Home() {
               <UserManagement />
             </div>
           )}
-          
+
           {activeTab === 'timeline' && (
             <div className="space-y-8 animate-in fade-in duration-300">
+              <div className="mb-8">
+                <h2 className="text-3xl font-bold text-slate-900 dark:text-white">Activity Timeline</h2>
+                <p className="text-slate-500 mt-1">Track all system actions and changes.</p>
+              </div>
               <ActionsTimeline />
             </div>
           )}
 
           {activeTab === 'duplicates' && (
             <div className="space-y-8 animate-in fade-in duration-300">
-              <DuplicateSearch />
+              <div className="mb-8">
+                <h2 className="text-3xl font-bold text-slate-900 dark:text-white">Duplicate Search</h2>
+                <p className="text-slate-500 mt-1">Find and resolve duplicate client records.</p>
+              </div>
+              <DuplicateSearch onMerged={loadData} />
             </div>
           )}
 
@@ -743,171 +715,171 @@ export default function Home() {
             </div>
           )}
 
-	          {activeTab === 'gym' && (
-	            <div className="space-y-8 animate-in fade-in duration-300">
-	              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-	                <div>
-	                  <div className="flex items-center gap-2 mb-1">
-	                    {gymSubTab !== 'overview' && (
-	                      <button 
-	                        onClick={() => setGymSubTab('overview')}
-	                        className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500 transition-colors"
-	                      >
-	                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
-	                      </button>
-	                    )}
-	                    <h2 className="text-3xl font-bold text-slate-900 dark:text-white">GYM Memberships</h2>
-	                  </div>
-	                  <p className="text-slate-500">
-	                    {gymSubTab === 'overview' ? 'Manage membership types and client enrollments.' : 
-	                     gymSubTab === 'create-type' ? 'Define new membership packages.' :
-	                     gymSubTab === 'enroll' ? 'Register a client for a membership.' : 'View active gym members.'}
-	                  </p>
-	                </div>
-	              </div>
-	              
-			              {gymSubTab === 'overview' ? (
-			                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-			                  {profile?.permissions?.gym?.add !== false && (
-			                    <NavCard 
-			                      onClick={() => setGymSubTab('create-type')} 
-			                      icon="📋" 
-			                      title="Create Type" 
-			                      description="Define new membership packages." 
-			                    />
-			                  )}
-			                  {profile?.role === 'Admin' && (
-			                    <NavCard 
-			                      onClick={() => setGymSubTab('manage-types')} 
-			                      icon="⚙️" 
-			                      title="Manage Types" 
-			                      description="Edit or delete membership types." 
-			                    />
-			                  )}
-			                  {profile?.permissions?.gym?.add !== false && (
-			                    <NavCard 
-			                      onClick={() => setGymSubTab('enroll')} 
-			                      icon="✍️" 
-			                      title="Enroll Client" 
-			                      description="Enroll a client in a membership." 
-			                    />
-			                  )}
-			                  {profile?.permissions?.gym?.view !== false && (
-			                    <NavCard 
-			                      onClick={() => setGymSubTab('active-members')} 
-			                      icon="🏃" 
-			                      title="Active Members" 
-			                      description="View and manage active memberships." 
-			                    />
-			                  )}
-			                </div>
-			              ) : (
-	                <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
-		                  {gymSubTab === 'create-type' && (
-		                    <div className="max-w-2xl mx-auto">
-		                      <MembershipForm onMembershipAdded={() => setGymSubTab('overview')} />
-		                    </div>
-		                  )}
-		                  {gymSubTab === 'manage-types' && (
-		                    <div className="max-w-4xl mx-auto">
-		                      <MembershipTypeManager />
-		                    </div>
-		                  )}
-		                  {gymSubTab === 'enroll' && (
-	                    <div className="max-w-2xl mx-auto">
-	                      <EnrollmentForm onEnrolled={() => setGymSubTab('active-members')} />
-	                    </div>
-	                  )}
-	                  {gymSubTab === 'active-members' && (
-	                    <MembershipList />
-	                  )}
-	                </div>
-	              )}
-	            </div>
-	          )}
+          {activeTab === 'gym' && (
+            <div className="space-y-8 animate-in fade-in duration-300">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    {gymSubTab !== 'overview' && (
+                      <button 
+                        onClick={() => setGymSubTab('overview')}
+                        className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500 transition-colors"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+                      </button>
+                    )}
+                    <h2 className="text-3xl font-bold text-slate-900 dark:text-white">GYM Memberships</h2>
+                  </div>
+                  <p className="text-slate-500">
+                    {gymSubTab === 'overview' ? 'Manage membership types and client enrollments.' : 
+                     gymSubTab === 'create-type' ? 'Define new membership packages.' :
+                     gymSubTab === 'enroll' ? 'Register a client for a membership.' : 'View active gym members.'}
+                  </p>
+                </div>
+              </div>
+              
+              {gymSubTab === 'overview' ? (
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                  {profile?.permissions?.gym?.add !== false && (
+                    <NavCard 
+                      onClick={() => setGymSubTab('create-type')} 
+                      icon="📋" 
+                      title="Create Type" 
+                      description="Define new membership packages." 
+                    />
+                  )}
+                  {profile?.role === 'Admin' && (
+                    <NavCard 
+                      onClick={() => setGymSubTab('manage-types')} 
+                      icon="⚙️" 
+                      title="Manage Types" 
+                      description="Edit or delete membership types." 
+                    />
+                  )}
+                  {profile?.permissions?.gym?.add !== false && (
+                    <NavCard 
+                      onClick={() => setGymSubTab('enroll')} 
+                      icon="✍️" 
+                      title="Enroll Client" 
+                      description="Enroll a client in a membership." 
+                    />
+                  )}
+                  {profile?.permissions?.gym?.view !== false && (
+                    <NavCard 
+                      onClick={() => setGymSubTab('active-members')} 
+                      icon="🏃" 
+                      title="Active Members" 
+                      description="View and manage active memberships." 
+                    />
+                  )}
+                </div>
+              ) : (
+                <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
+                  {gymSubTab === 'create-type' && (
+                    <div className="max-w-2xl mx-auto">
+                      <MembershipForm onMembershipAdded={() => setGymSubTab('overview')} />
+                    </div>
+                  )}
+                  {gymSubTab === 'manage-types' && (
+                    <div className="max-w-4xl mx-auto">
+                      <MembershipTypeManager />
+                    </div>
+                  )}
+                  {gymSubTab === 'enroll' && (
+                    <div className="max-w-2xl mx-auto">
+                      <EnrollmentForm onEnrolled={() => setGymSubTab('active-members')} />
+                    </div>
+                  )}
+                  {gymSubTab === 'active-members' && (
+                    <MembershipList />
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
-	          {activeTab === 'spa' && (
-	            <div className="space-y-8 animate-in fade-in duration-300">
-	              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-	                <div>
-	                  <div className="flex items-center gap-2 mb-1">
-	                    {spaSubTab !== 'overview' && (
-	                      <button 
-	                        onClick={() => setSpaSubTab('overview')}
-	                        className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500 transition-colors"
-	                      >
-	                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
-	                      </button>
-	                    )}
-	                    <h2 className="text-3xl font-bold text-slate-900 dark:text-white">SPA Memberships</h2>
-	                  </div>
-	                  <p className="text-slate-500">
-	                    {spaSubTab === 'overview' ? 'Manage spa membership types and client enrollments.' : 
-	                     spaSubTab === 'create-type' ? 'Define new spa membership packages.' :
-	                     spaSubTab === 'enroll' ? 'Register a client for a spa membership.' : 'View active spa members.'}
-	                  </p>
-	                </div>
-	              </div>
-	              
-			              {spaSubTab === 'overview' ? (
-			                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-			                  {profile?.permissions?.gym?.add !== false && (
-			                    <NavCard 
-			                      onClick={() => setSpaSubTab('create-type')} 
-			                      icon="💆‍♀️" 
-			                      title="Create Type" 
-			                      description="Define new spa membership packages." 
-			                    />
-			                  )}
-			                  {profile?.role === 'Admin' && (
-			                    <NavCard 
-			                      onClick={() => setSpaSubTab('manage-types')} 
-			                      icon="⚙️" 
-			                      title="Manage Types" 
-			                      description="Edit or delete spa membership types." 
-			                    />
-			                  )}
-			                  {profile?.permissions?.gym?.add !== false && (
-			                    <NavCard 
-			                      onClick={() => setSpaSubTab('enroll')} 
-			                      icon="✍️" 
-			                      title="Enroll Client" 
-			                      description="Enroll a client in a spa membership." 
-			                    />
-			                  )}
-			                  {profile?.permissions?.gym?.view !== false && (
-			                    <NavCard 
-			                      onClick={() => setSpaSubTab('active-members')} 
-			                      icon="✨" 
-			                      title="Active Members" 
-			                      description="View and manage active spa memberships." 
-			                    />
-			                  )}
-			                </div>
-			              ) : (
-	                <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
-		                  {spaSubTab === 'create-type' && (
-		                    <div className="max-w-2xl mx-auto">
-		                      <SpaMembershipForm onMembershipAdded={() => setSpaSubTab('overview')} />
-		                    </div>
-		                  )}
-		                  {spaSubTab === 'manage-types' && (
-		                    <div className="max-w-4xl mx-auto">
-		                      <SpaMembershipTypeManager />
-		                    </div>
-		                  )}
-		                  {spaSubTab === 'enroll' && (
-	                    <div className="max-w-2xl mx-auto">
-	                      <SpaEnrollmentForm onEnrolled={() => setSpaSubTab('active-members')} />
-	                    </div>
-	                  )}
-	                  {spaSubTab === 'active-members' && (
-	                    <SpaMembershipList />
-	                  )}
-	                </div>
-	              )}
-	            </div>
-	          )}
+          {activeTab === 'spa' && (
+            <div className="space-y-8 animate-in fade-in duration-300">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    {spaSubTab !== 'overview' && (
+                      <button 
+                        onClick={() => setSpaSubTab('overview')}
+                        className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500 transition-colors"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+                      </button>
+                    )}
+                    <h2 className="text-3xl font-bold text-slate-900 dark:text-white">SPA Memberships</h2>
+                  </div>
+                  <p className="text-slate-500">
+                    {spaSubTab === 'overview' ? 'Manage spa membership types and client enrollments.' : 
+                     spaSubTab === 'create-type' ? 'Define new spa membership packages.' :
+                     spaSubTab === 'enroll' ? 'Register a client for a spa membership.' : 'View active spa members.'}
+                  </p>
+                </div>
+              </div>
+              
+              {spaSubTab === 'overview' ? (
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                  {profile?.permissions?.spa?.add !== false && (
+                    <NavCard 
+                      onClick={() => setSpaSubTab('create-type')} 
+                      icon="💆‍♀️" 
+                      title="Create Type" 
+                      description="Define new spa membership packages." 
+                    />
+                  )}
+                  {profile?.role === 'Admin' && (
+                    <NavCard 
+                      onClick={() => setSpaSubTab('manage-types')} 
+                      icon="⚙️" 
+                      title="Manage Types" 
+                      description="Edit or delete spa membership types." 
+                    />
+                  )}
+                  {profile?.permissions?.spa?.add !== false && (
+                    <NavCard 
+                      onClick={() => setSpaSubTab('enroll')} 
+                      icon="✍️" 
+                      title="Enroll Client" 
+                      description="Enroll a client in a spa membership." 
+                    />
+                  )}
+                  {profile?.permissions?.spa?.view !== false && (
+                    <NavCard 
+                      onClick={() => setSpaSubTab('active-members')} 
+                      icon="✨" 
+                      title="Active Members" 
+                      description="View and manage active spa memberships." 
+                    />
+                  )}
+                </div>
+              ) : (
+                <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
+                  {spaSubTab === 'create-type' && (
+                    <div className="max-w-2xl mx-auto">
+                      <SpaMembershipForm onMembershipAdded={() => setSpaSubTab('overview')} />
+                    </div>
+                  )}
+                  {spaSubTab === 'manage-types' && (
+                    <div className="max-w-4xl mx-auto">
+                      <SpaMembershipTypeManager />
+                    </div>
+                  )}
+                  {spaSubTab === 'enroll' && (
+                    <div className="max-w-2xl mx-auto">
+                      <SpaEnrollmentForm onEnrolled={() => setSpaSubTab('active-members')} />
+                    </div>
+                  )}
+                  {spaSubTab === 'active-members' && (
+                    <SpaMembershipList />
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </main>
       </div>
     </ProtectedRoute>
