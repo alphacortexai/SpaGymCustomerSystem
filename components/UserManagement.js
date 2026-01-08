@@ -48,6 +48,11 @@ export default function UserManagement() {
       newPermissions[category] = { view: false, edit: false, delete: false, add: false };
     }
     
+    // Ensure all standard actions exist for object-based permissions
+    if (typeof newPermissions[category] === 'object' && !newPermissions[category][action] && newPermissions[category][action] === undefined) {
+      newPermissions[category][action] = false;
+    }
+    
     if (typeof newPermissions[category] === 'boolean') {
       newPermissions[category] = !newPermissions[category];
     } else {
@@ -123,21 +128,24 @@ export default function UserManagement() {
                         <span className="text-[10px] font-bold text-slate-400 uppercase">{category}</span>
                         <div className="flex gap-1">
                           {typeof perms === 'object' ? (
-                            Object.entries(perms).map(([action, allowed]) => (
-                              <button
-                                key={action}
-                                onClick={() => togglePermission(user, category, action)}
-                                disabled={updating === user.uid || user.email === 'alphacortexai@gmail.com'}
-                                className={`px-1.5 py-0.5 rounded text-[9px] font-bold transition-all ${
-                                  allowed 
-                                    ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' 
-                                    : 'bg-slate-200 dark:bg-slate-700 text-slate-400'
-                                }`}
-                                title={`${allowed ? 'Disable' : 'Enable'} ${action}`}
-                              >
-                                {action.charAt(0).toUpperCase()}
-                              </button>
-                            ))
+                            ['view', 'add', 'edit', 'delete'].map((action) => {
+                              const allowed = perms[action];
+                              return (
+                                <button
+                                  key={action}
+                                  onClick={() => togglePermission(user, category, action)}
+                                  disabled={updating === user.uid || user.email === 'alphacortexai@gmail.com'}
+                                  className={`px-1.5 py-0.5 rounded text-[9px] font-bold transition-all ${
+                                    allowed 
+                                      ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' 
+                                      : 'bg-slate-200 dark:bg-slate-700 text-slate-400'
+                                  }`}
+                                  title={`${allowed ? 'Disable' : 'Enable'} ${action}`}
+                                >
+                                  {action.charAt(0).toUpperCase()}
+                                </button>
+                              );
+                            })
                           ) : (
                             <button
                               onClick={() => togglePermission(user, category, 'view')}

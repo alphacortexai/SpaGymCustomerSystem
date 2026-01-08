@@ -181,18 +181,18 @@ export default function ClientList({ clients = [], title = 'Clients', onClientUp
                         {client.phoneNumber && (
                           <>
                             <a href={generateCallLink(client.phoneNumber)} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all" title="Call">
-                              <Image src="/telephone.svg" alt="Call" width={20} height={20} className="w-5 h-5" />
+                              <Image src="/telephone.svg" alt="Call" width={24} height={24} className="w-6 h-6" />
                             </a>
                             <a href={generateWhatsAppLink(client.phoneNumber)} target="_blank" rel="noopener noreferrer" className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-all" title="WhatsApp">
-                              <Image src="/whatsapp.svg" alt="WhatsApp" width={20} height={20} className="w-5 h-5" />
+                              <Image src="/whatsapp.svg" alt="WhatsApp" width={24} height={24} className="w-6 h-6" />
                             </a>
                           </>
                         )}
                         <button onClick={() => { setEditingClient(client); setIsModalOpen(true); }} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all" title="Edit">
-                          <Image src="/edit.svg" alt="Edit" width={20} height={20} className="w-5 h-5" />
+                          <Image src="/edit.svg" alt="Edit" width={24} height={24} className="w-6 h-6" />
                         </button>
                         <button onClick={() => { setDeletingClientId(client.id); setShowDeleteConfirm(true); }} className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-lg transition-all" title="Delete">
-                          <Image src="/bin.svg" alt="Delete" width={20} height={20} className="w-5 h-5" />
+                          <Image src="/bin.svg" alt="Delete" width={24} height={24} className="w-6 h-6" />
                         </button>
                       </div>
                     </td>
