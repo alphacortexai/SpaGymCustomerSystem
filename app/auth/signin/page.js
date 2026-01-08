@@ -48,13 +48,13 @@ export default function SignIn() {
           className="object-cover"
           priority
         />
-        <div className="absolute inset-0 bg-black/50 backdrop-blur-[1px]" />
+        <div className="absolute inset-0 bg-black/60" />
       </div>
 
       {/* Content Container */}
       <div className="relative z-10 w-full max-w-md px-6">
         {/* Card: Transparent on mobile, blurred on desktop */}
-        <div className="sm:bg-white/10 sm:backdrop-blur-2xl sm:rounded-3xl sm:shadow-2xl sm:border sm:border-white/20 sm:p-10 text-center">
+        <div className="sm:bg-black/20 sm:backdrop-blur-md sm:rounded-3xl sm:shadow-2xl sm:border sm:border-white/10 sm:p-10 text-center">
           <div className="mb-10">
             {/* Dual Logo Icons */}
             <div className="flex justify-center -space-x-4 mb-8">
