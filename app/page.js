@@ -69,6 +69,7 @@ export default function Home() {
   const [searchResults, setSearchResults] = useState([]);
   const [todaysBirthdays, setTodaysBirthdays] = useState([]);
   const [allClients, setAllClients] = useState([]);
+  const [globalClients, setGlobalClients] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const [isFiltering, setIsFiltering] = useState(false);
   const [activeTab, setActiveTab] = useState('home');
@@ -148,20 +149,22 @@ export default function Home() {
 
   const loadData = useCallback(async (force = false) => {
     // Only load if data is empty or forced
-    if (!force && allClients.length > 0 && branches.length > 0) return;
+    if (!force && globalClients.length > 0 && branches.length > 0) return;
 
     const branch = selectedBranch || null;
-    const [birthdays, clients, allBranches, allBdays] = await Promise.all([
+    const [birthdays, clients, allBranches, allBdays, allGlobalClients] = await Promise.all([
       getTodaysBirthdays(branch),
       getAllClients(branch),
       getAllBranches(),
       getTodaysBirthdays(null), // Fetch all birthdays for the badge
+      getAllClients(null), // Fetch all clients for the badge
     ]);
     setTodaysBirthdays(birthdays);
     setAllClients(clients);
     setBranches(allBranches);
     setAllBirthdays(allBdays);
-  }, [selectedBranch, allClients.length, branches.length]);
+    setGlobalClients(allGlobalClients);
+  }, [selectedBranch, globalClients.length, branches.length]);
 
   // Initial load
   useEffect(() => {
@@ -260,16 +263,16 @@ export default function Home() {
   };
 
   const clientBadge = useMemo(() => {
-    if (!branches.length || !allClients.length) return allClients.length;
+    if (!branches.length || !globalClients.length) return globalClients.length;
     const counts = {};
     branches.forEach(b => { counts[b.name] = 0; });
-    allClients.forEach(c => {
+    globalClients.forEach(c => {
       if (c.branch && counts[c.branch] !== undefined) counts[c.branch]++;
     });
     return Object.entries(counts)
       .map(([name, count]) => `${getBranchInitials(name)}: ${count}`)
       .join(', ');
-  }, [allClients, branches]);
+  }, [globalClients, branches]);
 
   const birthdayBadge = useMemo(() => {
     if (!branches.length || !allBirthdays.length) return allBirthdays.length;
