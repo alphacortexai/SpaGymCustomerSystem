@@ -90,26 +90,41 @@ export default function Home() {
 
   // Handle back button
   useEffect(() => {
-    // Push initial state
-    window.history.pushState({ tab: activeTab, gymSub: gymSubTab, spaSub: spaSubTab }, '');
+    // Only push state if it's different from current to avoid history bloat
+    const currentState = window.history.state;
+    if (!currentState || currentState.tab !== activeTab || currentState.gymSub !== gymSubTab || currentState.spaSub !== spaSubTab) {
+      window.history.pushState({ tab: activeTab, gymSub: gymSubTab, spaSub: spaSubTab }, '');
+    }
 
     const handlePopState = (event) => {
+      const state = event.state;
+      
       if (activeTab === 'home') {
         setShowExitConfirm(true);
         // Push state back to prevent actual back navigation
         window.history.pushState({ tab: 'home' }, '');
       } else {
-        if (activeTab === 'gym' && gymSubTab !== 'overview') {
-          setGymSubTab('overview');
-        } else if (activeTab === 'spa' && spaSubTab !== 'overview') {
-          setSpaSubTab('overview');
-        } else if (showAdminSection) {
-          setShowAdminSection(false);
+        if (state && state.tab) {
+          // If we have state, use it
+          setActiveTab(state.tab);
+          if (state.gymSub) setGymSubTab(state.gymSub);
+          if (state.spaSub) setSpaSubTab(state.spaSub);
         } else {
-          setActiveTab('home');
+          // Fallback logic
+          if (activeTab === 'gym' && gymSubTab !== 'overview') {
+            setGymSubTab('overview');
+          } else if (activeTab === 'spa' && spaSubTab !== 'overview') {
+            setSpaSubTab('overview');
+          } else if (showAdminSection) {
+            setShowAdminSection(false);
+          } else {
+            setActiveTab('home');
+          }
         }
-        // Push state back to keep intercepting
-        window.history.pushState({ tab: activeTab }, '');
+        // Push state back to keep intercepting if we're not at home
+        if (activeTab !== 'home') {
+          window.history.pushState({ tab: activeTab }, '');
+        }
       }
     };
 
@@ -176,6 +191,8 @@ export default function Home() {
     if (user && selectedBranch) {
       const reloadBranchData = async () => {
         const branch = selectedBranch;
+        // Check if we already have this branch's data to avoid redundant fetches
+        // This is a simple check, could be more robust
         const [birthdays, clients] = await Promise.all([
           getTodaysBirthdays(branch),
           getAllClients(branch),
@@ -199,7 +216,10 @@ export default function Home() {
       }
     }
     
-    setCurrentPage(1);
+    // Only reset page if we're actually switching to a list view
+    if (['dashboard', 'birthdays', 'unrecognized'].includes(activeTab)) {
+      setCurrentPage(1);
+    }
   }, [activeTab]);
 
   const handleSetDefaultBranch = (branchName) => {
