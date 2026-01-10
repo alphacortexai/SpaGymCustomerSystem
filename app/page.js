@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
+import { useData } from '@/contexts/DataContext';
 import { signOut } from '@/lib/auth';
 import ClientForm from '@/components/ClientForm';
 import ClientList from '@/components/ClientList';
@@ -65,6 +66,15 @@ const NavCard = ({ onClick, icon, title, description, badge, isImage, fullBg }) 
 
 export default function Home() {
   const { user, profile } = useAuth();
+  const { 
+    allClients: cachedAllClients, 
+    globalClients: cachedGlobalClients, 
+    branches: cachedBranches, 
+    todaysBirthdays: cachedTodaysBirthdays, 
+    allBirthdays: cachedAllBirthdays,
+    loading: isDataLoading
+  } = useData();
+
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [todaysBirthdays, setTodaysBirthdays] = useState([]);
@@ -89,6 +99,22 @@ export default function Home() {
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [dataLoaded, setDataLoaded] = useState(false);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
+
+  // Sync with cached data
+  useEffect(() => {
+    if (!isDataLoading && cachedBranches.length > 0) {
+      setBranches(cachedBranches);
+      setAllBirthdays(cachedAllBirthdays);
+      setGlobalClients(cachedGlobalClients);
+      
+      if (!selectedBranch) {
+        setAllClients(cachedAllClients);
+        setTodaysBirthdays(cachedTodaysBirthdays);
+      }
+      setIsInitialLoading(false);
+      setDataLoaded(true);
+    }
+  }, [isDataLoading, cachedBranches, cachedAllBirthdays, cachedGlobalClients, cachedAllClients, cachedTodaysBirthdays, selectedBranch]);
 
   // Handle back button
   useEffect(() => {
@@ -165,9 +191,9 @@ export default function Home() {
   }, []);
 
   const loadData = useCallback(async (force = false) => {
-    // Only load if data is empty or forced
-    if (!force && globalClients.length > 0 && branches.length > 0) {
-      setIsInitialLoading(false);
+    // If we have cached data and not forcing, don't do anything here
+    // The useEffect above will handle syncing from DataContext
+    if (!force && cachedGlobalClients.length > 0) {
       return;
     }
 
@@ -178,8 +204,8 @@ export default function Home() {
         getTodaysBirthdays(branch),
         getAllClients(branch),
         getAllBranches(),
-        getTodaysBirthdays(null), // Fetch all birthdays for the badge
-        getAllClients(null), // Fetch all clients for the badge
+        getTodaysBirthdays(null),
+        getAllClients(null),
       ]);
       setTodaysBirthdays(birthdays);
       setAllClients(clients);
@@ -192,12 +218,14 @@ export default function Home() {
     } finally {
       setIsInitialLoading(false);
     }
-  }, [selectedBranch, globalClients.length, branches.length]);
+  }, [selectedBranch, cachedGlobalClients.length]);
 
-  // Initial load
+  // Initial load - only if cache is empty
   useEffect(() => {
-    if (user) loadData();
-  }, [user]); // Only run when user changes
+    if (user && cachedGlobalClients.length === 0) {
+      loadData();
+    }
+  }, [user, cachedGlobalClients.length, loadData]);
 
   // Handle branch changes separately to avoid reloading everything on tab switch
   useEffect(() => {
