@@ -28,7 +28,7 @@ import UserProfile from '@/components/UserProfile';
 import ActionsTimeline from '@/components/ActionsTimeline';
 import DuplicateSearch from '@/components/DuplicateSearch';
 
-const NavCard = ({ onClick, icon, title, description, badge, isImage, fullBg }) => {
+const NavCard = ({ onClick, icon, title, description, badge, isImage, fullBg, centerBadge }) => {
   return (
     <button
       onClick={onClick}
@@ -41,8 +41,16 @@ const NavCard = ({ onClick, icon, title, description, badge, isImage, fullBg }) 
         </div>
       )}
       {badge !== undefined && (
-        <div className="absolute top-3 right-3 min-w-[20px] h-5 px-1.5 flex items-center justify-center bg-blue-600 text-white text-[10px] font-bold rounded-full shadow-lg shadow-blue-500/30 z-10">
-          {badge}
+        <div className={centerBadge 
+          ? "absolute inset-0 flex items-center justify-center z-10" 
+          : "absolute top-3 right-3 min-w-[20px] h-5 px-1.5 flex items-center justify-center bg-blue-600 text-white text-[10px] font-bold rounded-full shadow-lg shadow-blue-500/30 z-10"
+        }>
+          <div className={centerBadge 
+            ? "text-white text-4xl md:text-5xl font-black drop-shadow-lg" 
+            : ""
+          }>
+            {badge}
+          </div>
         </div>
       )}
       {!fullBg && (
@@ -72,6 +80,8 @@ export default function Home() {
     branches: cachedBranches, 
     todaysBirthdays: cachedTodaysBirthdays, 
     allBirthdays: cachedAllBirthdays,
+    gymEnrollments: cachedGymEnrollments,
+    spaEnrollments: cachedSpaEnrollments,
     loading: isDataLoading
   } = useData();
 
@@ -504,10 +514,28 @@ export default function Home() {
                     <NavCard onClick={() => setActiveTab('branches')} icon="🏢" title="Branches" description="Manage locations." badge={dataLoaded ? branches.length : undefined} />
                   )}
                   {profile?.permissions?.gym?.view !== false && (
-                    <NavCard onClick={() => setActiveTab('gym')} icon="/gym_bg.jpg" title="GYM" description="Memberships." isImage={true} fullBg={true} />
+                    <NavCard 
+                      onClick={() => setActiveTab('gym')} 
+                      icon="/gym_bg.jpg" 
+                      title="GYM" 
+                      description="Memberships." 
+                      isImage={true} 
+                      fullBg={true} 
+                      badge={dataLoaded ? cachedGymEnrollments.filter(e => e.status === 'active' && new Date() <= e.expiryDate).length : undefined}
+                      centerBadge={true}
+                    />
                   )}
                   {profile?.permissions?.spa?.view !== false && (
-                    <NavCard onClick={() => setActiveTab('spa')} icon="/spa_bg.jpg" title="SPA" description="Memberships." isImage={true} fullBg={true} />
+                    <NavCard 
+                      onClick={() => setActiveTab('spa')} 
+                      icon="/spa_bg.jpg" 
+                      title="SPA" 
+                      description="Memberships." 
+                      isImage={true} 
+                      fullBg={true} 
+                      badge={dataLoaded ? cachedSpaEnrollments.filter(e => e.status === 'active' && new Date() <= e.expiryDate).length : undefined}
+                      centerBadge={true}
+                    />
                   )}
                   {profile?.role === 'Admin' && (
                     <NavCard onClick={() => setShowAdminSection(true)} icon="⚙️" title="Admin" description="System tools." />

@@ -3,6 +3,7 @@
 import { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { useAuth } from './AuthContext';
 import { getAllClients, getTodaysBirthdays } from '@/lib/clients';
+import { getAllEnrollments } from '@/lib/memberships';
 import { getAllBranches } from '@/lib/branches';
 
 const DataContext = createContext({});
@@ -15,6 +16,8 @@ export function DataProvider({ children }) {
     branches: [],
     todaysBirthdays: [],
     allBirthdays: [],
+    gymEnrollments: [],
+    spaEnrollments: [],
     lastFetched: null
   });
   const [loading, setLoading] = useState(false);
@@ -29,12 +32,14 @@ export function DataProvider({ children }) {
 
     setLoading(true);
     try {
-      const [birthdays, clients, allBranches, allBdays, allGlobalClients] = await Promise.all([
+      const [birthdays, clients, allBranches, allBdays, allGlobalClients, gymEnrollments, spaEnrollments] = await Promise.all([
         getTodaysBirthdays(null),
         getAllClients(null),
         getAllBranches(),
         getTodaysBirthdays(null),
         getAllClients(null),
+        getAllEnrollments(false),
+        getAllEnrollments(true),
       ]);
 
       setData({
@@ -43,6 +48,8 @@ export function DataProvider({ children }) {
         branches: allBranches,
         allBirthdays: allBdays,
         globalClients: allGlobalClients,
+        gymEnrollments: gymEnrollments,
+        spaEnrollments: spaEnrollments,
         lastFetched: now
       });
     } catch (error) {

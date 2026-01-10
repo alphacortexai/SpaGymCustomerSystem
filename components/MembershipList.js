@@ -196,7 +196,7 @@ export default function MembershipList() {
             <div key={enrollment.id} className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 hover:shadow-md transition-all">
               <div className="flex justify-between items-start mb-3">
                 <div>
-                  <div className="font-bold text-slate-900 dark:text-white text-lg">{enrollment.clientName}</div>
+                  <div className="font-bold text-slate-900 dark:text-white text-lg truncate" title={enrollment.clientName}>{enrollment.clientName}</div>
                   <div className="text-xs text-blue-600 font-medium uppercase tracking-wider">{enrollment.membershipType}</div>
                 </div>
                 <StatusBadge enrollment={enrollment} />
