@@ -88,6 +88,7 @@ export default function Home() {
   const [currentAffirmation, setCurrentAffirmation] = useState('');
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [dataLoaded, setDataLoaded] = useState(false);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
 
   // Handle back button
   useEffect(() => {
@@ -165,22 +166,32 @@ export default function Home() {
 
   const loadData = useCallback(async (force = false) => {
     // Only load if data is empty or forced
-    if (!force && globalClients.length > 0 && branches.length > 0) return;
+    if (!force && globalClients.length > 0 && branches.length > 0) {
+      setIsInitialLoading(false);
+      return;
+    }
 
-    const branch = selectedBranch || null;
-    const [birthdays, clients, allBranches, allBdays, allGlobalClients] = await Promise.all([
-      getTodaysBirthdays(branch),
-      getAllClients(branch),
-      getAllBranches(),
-      getTodaysBirthdays(null), // Fetch all birthdays for the badge
-      getAllClients(null), // Fetch all clients for the badge
-    ]);
-    setTodaysBirthdays(birthdays);
-    setAllClients(clients);
-    setBranches(allBranches);
-    setAllBirthdays(allBdays);
-    setGlobalClients(allGlobalClients);
-    setDataLoaded(true);
+    setIsInitialLoading(true);
+    try {
+      const branch = selectedBranch || null;
+      const [birthdays, clients, allBranches, allBdays, allGlobalClients] = await Promise.all([
+        getTodaysBirthdays(branch),
+        getAllClients(branch),
+        getAllBranches(),
+        getTodaysBirthdays(null), // Fetch all birthdays for the badge
+        getAllClients(null), // Fetch all clients for the badge
+      ]);
+      setTodaysBirthdays(birthdays);
+      setAllClients(clients);
+      setBranches(allBranches);
+      setAllBirthdays(allBdays);
+      setGlobalClients(allGlobalClients);
+      setDataLoaded(true);
+    } catch (error) {
+      console.error('Error loading data:', error);
+    } finally {
+      setIsInitialLoading(false);
+    }
   }, [selectedBranch, globalClients.length, branches.length]);
 
   // Initial load
@@ -549,6 +560,7 @@ export default function Home() {
                 totalCount={searchTerm ? searchResults.length : allClients.length}
                 title={searchTerm ? `Search Results for "${searchTerm}"` : "All Clients"}
                 onClientUpdated={loadData}
+                isLoading={isInitialLoading}
               />
 
               {(searchTerm ? searchResults.length : allClients.length) > clientsPerPage && (
@@ -661,6 +673,7 @@ export default function Home() {
                 totalCount={filteredBirthdays.length}
                 title={selectedMonth || selectedDay ? "Filtered Birthdays" : "Today's Birthdays"}
                 onClientUpdated={loadData}
+                isLoading={isInitialLoading}
               />
 
               {filteredBirthdays.length > clientsPerPage && (

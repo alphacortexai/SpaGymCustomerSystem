@@ -55,7 +55,29 @@ export default function SpaMembershipList() {
     loadEnrollments();
   }, [selectedBranch]);
 
-  if (loading && enrollments.length === 0) return <div className="text-center py-10">Loading spa memberships...</div>;
+  if (loading && enrollments.length === 0) {
+    return (
+      <div className="bg-white dark:bg-slate-900 p-12 rounded-2xl border border-slate-200 dark:border-slate-800 text-center">
+        <div className="flex flex-col items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mb-4"></div>
+          <h3 className="text-lg font-medium text-slate-900 dark:text-white">Loading spa memberships...</h3>
+          <p className="text-slate-500 mt-1">Please wait while we fetch the records.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!loading && enrollments.length === 0) {
+    return (
+      <div className="bg-white dark:bg-slate-900 p-12 rounded-2xl border border-slate-200 dark:border-slate-800 text-center">
+        <div className="w-16 h-16 bg-slate-50 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
+          <svg className="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+        </div>
+        <h3 className="text-lg font-medium text-slate-900 dark:text-white">No spa memberships found</h3>
+        <p className="text-slate-500 mt-1">There are no active spa memberships to display.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -90,12 +112,7 @@ export default function SpaMembershipList() {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-200 dark:divide-slate-800 bg-white dark:bg-slate-900">
-            {enrollments.length === 0 ? (
-              <tr>
-                <td colSpan="6" className="px-6 py-10 text-center text-slate-500">No spa memberships found.</td>
-              </tr>
-            ) : (
-              enrollments.map((enrollment) => (
+            {enrollments.map((enrollment) => (
                 <tr key={enrollment.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                   <td className="px-6 py-4">
                     <div className="font-bold text-slate-900 dark:text-white">{enrollment.clientName}</div>
@@ -131,8 +148,7 @@ export default function SpaMembershipList() {
                     </button>
                   </td>
                 </tr>
-              ))
-            )}
+              ))}
           </tbody>
         </table>
       </div>

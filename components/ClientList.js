@@ -9,7 +9,7 @@ import { normalizePhoneNumber } from '@/lib/phoneUtils';
 
 import { useAuth } from '@/contexts/AuthContext';
 
-export default function ClientList({ clients = [], totalCount, title = 'Clients', onClientUpdated }) {
+export default function ClientList({ clients = [], totalCount, title = 'Clients', onClientUpdated, isLoading = false }) {
   const { user, profile } = useAuth();
   const canEdit = profile?.permissions?.clients?.edit !== false;
   const canDelete = profile?.permissions?.clients?.delete !== false;
@@ -71,6 +71,18 @@ export default function ClientList({ clients = [], totalCount, title = 'Clients'
       return nameMatch || phoneMatch || branchMatch;
     });
   }, [clients, searchQuery]);
+
+  if (isLoading) {
+    return (
+      <div className="bg-white dark:bg-slate-900 p-12 rounded-2xl border border-slate-200 dark:border-slate-800 text-center">
+        <div className="flex flex-col items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+          <h3 className="text-lg font-medium text-slate-900 dark:text-white">Loading data...</h3>
+          <p className="text-slate-500 mt-1">Please wait while we fetch the records.</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!clients || clients.length === 0) {
     return (
