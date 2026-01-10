@@ -87,6 +87,7 @@ export default function Home() {
   const [allBirthdays, setAllBirthdays] = useState([]);
   const [currentAffirmation, setCurrentAffirmation] = useState('');
   const [showExitConfirm, setShowExitConfirm] = useState(false);
+  const [dataLoaded, setDataLoaded] = useState(false);
 
   // Handle back button
   useEffect(() => {
@@ -179,6 +180,7 @@ export default function Home() {
     setBranches(allBranches);
     setAllBirthdays(allBdays);
     setGlobalClients(allGlobalClients);
+    setDataLoaded(true);
   }, [selectedBranch, globalClients.length, branches.length]);
 
   // Initial load
@@ -451,16 +453,16 @@ export default function Home() {
                   {!showAdminSection ? (
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
                   {profile?.permissions?.clients?.view !== false && (
-                    <NavCard onClick={() => setActiveTab('dashboard')} icon="/clients_bg.png" title="Clients" description="Manage customer list." badge={clientBadge} isImage={true} fullBg={true} />
+                    <NavCard onClick={() => setActiveTab('dashboard')} icon="/clients_bg.png" title="Clients" description="Manage customer list." badge={dataLoaded ? clientBadge : undefined} isImage={true} fullBg={true} />
                   )}
                   {profile?.role === 'Admin' && (
                     <NavCard onClick={() => setActiveTab('duplicates')} icon="🔍" title="Duplicates" description="Find duplicate phones." />
                   )}
                   {profile?.permissions?.birthdays?.view !== false && (
-                    <NavCard onClick={() => setActiveTab('birthdays')} icon="/birthday.png" title="Birthdays" description="Today's celebrations." badge={birthdayBadge} isImage={true} fullBg={true} />
+                    <NavCard onClick={() => setActiveTab('birthdays')} icon="/birthday.png" title="Birthdays" description="Today's celebrations." badge={dataLoaded ? birthdayBadge : undefined} isImage={true} fullBg={true} />
                   )}
                   {profile?.permissions?.branches?.view !== false && (
-                    <NavCard onClick={() => setActiveTab('branches')} icon="🏢" title="Branches" description="Manage locations." badge={branches.length} />
+                    <NavCard onClick={() => setActiveTab('branches')} icon="🏢" title="Branches" description="Manage locations." badge={dataLoaded ? branches.length : undefined} />
                   )}
                   {profile?.permissions?.gym?.view !== false && (
                     <NavCard onClick={() => setActiveTab('gym')} icon="/gym_bg.jpg" title="GYM" description="Memberships." isImage={true} fullBg={true} />

@@ -30,14 +30,6 @@ export default function MembershipDetailsModal({ enrollment, onClose, onUpdate, 
     }
   };
 
-  const handleLogAccess = async () => {
-    setLoading(true);
-    await logAccess(enrollment.clientId, enrollment.id, new Date(), profile ? { uid: profile.uid, displayName: profile.name, email: profile.email } : null, isSpa);
-    const logs = await getAccessLogs(enrollment.clientId, new Date().getFullYear(), isSpa);
-    setAccessLogs(logs);
-    setLoading(false);
-  };
-
   const handleLogTreatment = async (e) => {
     e.preventDefault();
     if (!treatmentForm.service || !treatmentForm.amount) return;
@@ -110,45 +102,6 @@ export default function MembershipDetailsModal({ enrollment, onClose, onUpdate, 
     } finally {
       setUploading(false);
     }
-  };
-
-  // Enhanced calendar view logic
-  const renderCalendar = () => {
-    const days = [];
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = today.getMonth();
-    
-    const firstDayOfMonth = new Date(year, month, 1).getDay();
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    
-    // Add empty slots for days before the first of the month
-    for (let i = 0; i < firstDayOfMonth; i++) {
-      days.push(<div key={`empty-${i}`} className="h-8 w-8"></div>);
-    }
-    
-    for (let i = 1; i <= daysInMonth; i++) {
-      const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
-      const accessed = accessLogs.includes(dateStr);
-      const isToday = i === today.getDate();
-      
-      days.push(
-        <div 
-          key={i} 
-          className={`h-8 w-8 flex items-center justify-center rounded-lg text-xs border transition-all ${
-            accessed 
-              ? 'bg-green-500 text-white border-green-600 shadow-sm' 
-              : isToday
-                ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 text-blue-600 font-bold'
-                : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400'
-          }`}
-          title={dateStr}
-        >
-          {i}
-        </div>
-      );
-    }
-    return days;
   };
 
   return (
@@ -259,69 +212,41 @@ export default function MembershipDetailsModal({ enrollment, onClose, onUpdate, 
           )}
 
           {enrollment.isReducingBalance && (
-            <div className="space-y-4">
-              <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-700">
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-3">Log Treatment / Service</h3>
-                <form onSubmit={handleLogTreatment} className="flex flex-col sm:flex-row gap-3">
-                  <input
-                    type="text"
-                    required
-                    placeholder="Service name (e.g. Massage)"
-                    value={treatmentForm.service}
-                    onChange={(e) => setTreatmentForm({ ...treatmentForm, service: e.target.value })}
-                    className="flex-1 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                  <input
-                    type="number"
-                    required
-                    placeholder="Amount"
-                    value={treatmentForm.amount}
-                    onChange={(e) => setTreatmentForm({ ...treatmentForm, amount: e.target.value })}
-                    className="sm:w-32 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                  <button
-                    type="submit"
-                    disabled={loading || !canEdit}
-                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl transition-all disabled:opacity-50"
-                  >
-                    Log
-                  </button>
-                </form>
-              </div>
-
-              <div>
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-3">Treatment History</h3>
-                <div className="space-y-2">
-                  {enrollment.treatments && enrollment.treatments.length > 0 ? (
-                    [...enrollment.treatments].reverse().map((t, idx) => (
-                      <div key={idx} className="flex justify-between items-center p-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 text-sm">
-                        <div>
-                          <div className="font-bold text-slate-900 dark:text-white">{t.service}</div>
-                          <div className="text-[10px] text-slate-500">
-                            {t.date?.toDate ? format(t.date.toDate(), 'MMM d, HH:mm') : 'N/A'} by {t.loggedBy?.name || 'System'}
-                          </div>
-                        </div>
-                        <div className="font-bold text-rose-600">-${t.amount}</div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="text-center py-4 text-slate-500 text-xs bg-slate-50 dark:bg-slate-800/30 rounded-xl border border-dashed border-slate-200 dark:border-slate-700">
-                      No treatments logged yet.
-                    </div>
-                  )}
-                </div>
-              </div>
+            <div>
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-3">Log Treatment</h3>
+              <form onSubmit={handleLogTreatment} className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Service name..."
+                  value={treatmentForm.service}
+                  onChange={(e) => setTreatmentForm({ ...treatmentForm, service: e.target.value })}
+                  className="flex-1 px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500/20"
+                />
+                <input
+                  type="number"
+                  placeholder="Amount"
+                  value={treatmentForm.amount}
+                  onChange={(e) => setTreatmentForm({ ...treatmentForm, amount: e.target.value })}
+                  className="w-24 px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500/20"
+                />
+                <button
+                  type="submit"
+                  disabled={loading || !canEdit}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 disabled:opacity-50 transition-all"
+                >
+                  Log
+                </button>
+              </form>
             </div>
           )}
 
-          {/* Documents Section */}
-          <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-700">
-            <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-3">Membership Documents</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-3">Documents</h3>
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                {enrollment.documents?.invoice ? (
+                {enrollment.documents?.contract ? (
                   <a 
-                    href={enrollment.documents.invoice.url} 
+                    href={enrollment.documents.contract.url} 
                     target="_blank" 
                     rel="noopener noreferrer"
                     className="flex items-center justify-between p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800 hover:border-blue-500 transition-all group"
@@ -331,21 +256,21 @@ export default function MembershipDetailsModal({ enrollment, onClose, onUpdate, 
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                       </div>
                       <div className="text-xs">
-                        <div className="font-bold text-slate-900 dark:text-white">Invoice</div>
-                        <div className="text-slate-500 truncate max-w-[120px]">{enrollment.documents.invoice.name}</div>
+                        <div className="font-bold text-slate-900 dark:text-white">Contract</div>
+                        <div className="text-slate-500 truncate max-w-[120px]">{enrollment.documents.contract.name}</div>
                       </div>
                     </div>
                     <svg className="w-4 h-4 text-slate-400 group-hover:text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
                   </a>
                 ) : (
                   <div className="p-3 bg-slate-100/50 dark:bg-slate-900/50 rounded-xl border border-dashed border-slate-200 dark:border-slate-800 text-[10px] text-slate-400 flex items-center justify-center">
-                    No Invoice Uploaded
+                    No Contract Uploaded
                   </div>
                 )}
                 <div className="flex items-center gap-2">
                   <label className="text-[10px] font-medium text-slate-500 cursor-pointer hover:text-blue-600 transition-colors">
-                    {uploading ? 'Uploading...' : enrollment.documents?.invoice ? 'Replace Invoice' : 'Upload Invoice'}
-                    <input type="file" className="hidden" accept="application/pdf,image/*" onChange={(e) => handleFileUpload(e, 'invoice')} disabled={uploading} />
+                    {uploading ? 'Uploading...' : enrollment.documents?.contract ? 'Replace Contract' : 'Upload Contract'}
+                    <input type="file" className="hidden" accept="application/pdf,image/*" onChange={(e) => handleFileUpload(e, 'contract')} disabled={uploading} />
                   </label>
                 </div>
               </div>
@@ -381,24 +306,6 @@ export default function MembershipDetailsModal({ enrollment, onClose, onUpdate, 
                   </label>
                 </div>
               </div>
-            </div>
-          </div>
-
-          <div>
-            <div className="flex justify-between items-center mb-3">
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white">Access Calendar ({format(new Date(), 'MMMM yyyy')})</h3>
-              {canEdit && (
-                <button 
-                  onClick={handleLogAccess}
-                  disabled={loading}
-                  className="text-xs bg-green-600 text-white px-3 py-1.5 rounded-lg hover:bg-green-700 transition-colors"
-                >
-                  Log Today&apos;s Access
-                </button>
-              )}
-            </div>
-            <div className="grid grid-cols-7 gap-2 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl">
-              {renderCalendar()}
             </div>
           </div>
         </div>
