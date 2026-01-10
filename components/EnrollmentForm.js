@@ -17,6 +17,10 @@ export default function EnrollmentForm({ onEnrolled }) {
     membershipTypeId: '',
     startDate: new Date().toISOString().split('T')[0],
     price: '',
+    companyName: '',
+    companyAddress: '',
+    companyPhoneNumber: '',
+    clientAddress: '',
   });
   const [invoiceFile, setInvoiceFile] = useState(null);
   const [popFile, setPopFile] = useState(null);
@@ -86,6 +90,10 @@ export default function EnrollmentForm({ onEnrolled }) {
         isReducingBalance: isReducingBalance,
         balance: isReducingBalance ? enrollmentPrice : 0,
         startDate: formData.startDate,
+        companyName: formData.companyName,
+        companyAddress: formData.companyAddress,
+        companyPhoneNumber: formData.companyPhoneNumber,
+        clientAddress: formData.clientAddress,
         documents: {
           invoice: invoiceDoc,
           pop: popDoc
@@ -95,7 +103,15 @@ export default function EnrollmentForm({ onEnrolled }) {
       if (result.success) {
         setSelectedClient(null);
         setSearchTerm('');
-        setFormData({ ...formData, membershipTypeId: '', price: '' });
+        setFormData({ 
+          ...formData, 
+          membershipTypeId: '', 
+          price: '',
+          companyName: '',
+          companyAddress: '',
+          companyPhoneNumber: '',
+          clientAddress: '',
+        });
         setInvoiceFile(null);
         setPopFile(null);
         if (onEnrolled) onEnrolled();
@@ -204,6 +220,52 @@ export default function EnrollmentForm({ onEnrolled }) {
             value={formData.startDate}
             onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
             className="w-full px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-700">
+        <div className="md:col-span-2">
+          <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Company & Address Details (Optional)</h3>
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Company Name</label>
+          <input
+            type="text"
+            value={formData.companyName}
+            onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
+            className="w-full px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm"
+            placeholder="Enter company name"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Company Phone</label>
+          <input
+            type="tel"
+            value={formData.companyPhoneNumber}
+            onChange={(e) => setFormData({ ...formData, companyPhoneNumber: e.target.value })}
+            className="w-full px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm"
+            placeholder="Enter company phone"
+          />
+        </div>
+        <div className="md:col-span-2">
+          <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Company Address</label>
+          <input
+            type="text"
+            value={formData.companyAddress}
+            onChange={(e) => setFormData({ ...formData, companyAddress: e.target.value })}
+            className="w-full px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm"
+            placeholder="Enter company address"
+          />
+        </div>
+        <div className="md:col-span-2">
+          <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Client Address</label>
+          <input
+            type="text"
+            value={formData.clientAddress}
+            onChange={(e) => setFormData({ ...formData, clientAddress: e.target.value })}
+            className="w-full px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm"
+            placeholder="Enter client address"
           />
         </div>
       </div>
