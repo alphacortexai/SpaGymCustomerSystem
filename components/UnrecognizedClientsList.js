@@ -62,11 +62,6 @@ export default function UnrecognizedClientsList({ onClientUpdated }) {
       return;
     }
     
-    if (!editForm.birthMonth || !editForm.birthDay) {
-      setError('Date of birth (month and day) is required');
-      return;
-    }
-    
     if (!editForm.branch.trim()) {
       setError('Branch is required');
       return;
@@ -208,7 +203,7 @@ export default function UnrecognizedClientsList({ onClientUpdated }) {
                     />
                   </div>
                   <div>
-                    <label className="text-xs text-gray-600">Date of Birth</label>
+                    <label className="text-xs text-gray-600">Date of Birth (Optional)</label>
                     <div className="flex gap-2 mt-1">
                       <select
                         value={editForm.birthMonth}

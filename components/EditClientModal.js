@@ -12,6 +12,7 @@ export default function EditClientModal({ client, isOpen, onClose, onClientUpdat
   const [formData, setFormData] = useState({
     name: '',
     phoneNumber: '',
+    phoneNumber2: '',
     birthMonth: '',
     birthDay: '',
     branch: '',
@@ -25,10 +26,14 @@ export default function EditClientModal({ client, isOpen, onClose, onClientUpdat
 
   useEffect(() => {
     if (isOpen && client) {
+      // Split phone numbers if multiple exist
+      const phoneNumbers = extractAllPhoneNumbers(client.phoneNumber || '');
+      
       // Populate form with client data
       setFormData({
         name: client.name || '',
-        phoneNumber: client.phoneNumber || '',
+        phoneNumber: phoneNumbers[0] || '',
+        phoneNumber2: phoneNumbers[1] || '',
         birthMonth: client.birthMonth || '',
         birthDay: client.birthDay || '',
         branch: client.branch || '',
@@ -89,21 +94,19 @@ export default function EditClientModal({ client, isOpen, onClose, onClientUpdat
       return;
     }
 
-    if (!formData.birthMonth || !formData.birthDay) {
-      setError('Date of birth (month and day) is required');
-      setLoading(false);
-      return;
-    }
+    // Combine phone numbers for processing
+    const combinedPhone = formData.phoneNumber2.trim() 
+      ? `${formData.phoneNumber}, ${formData.phoneNumber2}` 
+      : formData.phoneNumber;
 
     // Normalize phone number before checking duplicates and storing
-    const normalizedPhone = normalizePhoneNumber(formData.phoneNumber);
+    const normalizedPhone = normalizePhoneNumber(combinedPhone);
 
     // Check for duplicate phone number (excluding current client)
-    // This checks ALL numbers if multiple are provided (e.g., "0776961331/ 0758583813")
-    if (formData.phoneNumber !== client.phoneNumber || formData.branch !== client.branch) {
-      const exists = await checkDuplicatePhone(formData.phoneNumber, formData.branch, client.id);
+    if (combinedPhone !== client.phoneNumber || formData.branch !== client.branch) {
+      const exists = await checkDuplicatePhone(combinedPhone, formData.branch, client.id);
       if (exists) {
-        const allNumbers = extractAllPhoneNumbers(formData.phoneNumber);
+        const allNumbers = extractAllPhoneNumbers(combinedPhone);
         if (allNumbers.length > 1) {
           setError(`One or more of these phone numbers already exist in the same branch: ${allNumbers.join(', ')}. Please use different phone numbers.`);
         } else {
@@ -114,17 +117,24 @@ export default function EditClientModal({ client, isOpen, onClose, onClientUpdat
       }
     }
 
-    // Convert month/day to a date string (using current year for storage)
-    const currentYear = new Date().getFullYear();
-    const month = parseInt(formData.birthMonth);
-    const day = parseInt(formData.birthDay);
-    
-    // Validate date
-    const date = new Date(currentYear, month - 1, day);
-    if (date.getMonth() !== month - 1 || date.getDate() !== day) {
-      setError('Invalid date. Please check month and day.');
-      setLoading(false);
-      return;
+    let month = null;
+    let day = null;
+    let dateOfBirth = null;
+
+    if (formData.birthMonth && formData.birthDay) {
+      // Convert month/day to a date string (using current year for storage)
+      const currentYear = new Date().getFullYear();
+      month = parseInt(formData.birthMonth);
+      day = parseInt(formData.birthDay);
+      
+      // Validate date
+      const date = new Date(currentYear, month - 1, day);
+      if (date.getMonth() !== month - 1 || date.getDate() !== day) {
+        setError('Invalid date. Please check month and day.');
+        setLoading(false);
+        return;
+      }
+      dateOfBirth = `${currentYear}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     }
 
     try {
@@ -133,6 +143,7 @@ export default function EditClientModal({ client, isOpen, onClose, onClientUpdat
         phoneNumber: normalizedPhone, // Use normalized phone number
         birthMonth: month,
         birthDay: day,
+        dateOfBirth: dateOfBirth,
         nextOfKin: formData.nextOfKin,
       }, user);
       
@@ -200,31 +211,47 @@ export default function EditClientModal({ client, isOpen, onClose, onClientUpdat
               />
             </div>
 
-            <div>
-              <label htmlFor="edit-phoneNumber" className="block text-sm font-medium text-gray-700 mb-1">
-                Phone Number *
-              </label>
-              <input
-                type="tel"
-                id="edit-phoneNumber"
-                name="phoneNumber"
-                value={formData.phoneNumber}
-                onChange={handleChange}
-                onBlur={handlePhoneBlur}
-                required
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Enter phone number"
-              />
-              {duplicateWarning && (
-                <p className="mt-1 text-sm text-yellow-600">
-                  ⚠️ A client with this phone number already exists
-                </p>
-              )}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="edit-phoneNumber" className="block text-sm font-medium text-gray-700 mb-1">
+                  Phone Number *
+                </label>
+                <input
+                  type="tel"
+                  id="edit-phoneNumber"
+                  name="phoneNumber"
+                  value={formData.phoneNumber}
+                  onChange={handleChange}
+                  onBlur={handlePhoneBlur}
+                  required
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter phone number"
+                />
+                {duplicateWarning && (
+                  <p className="mt-1 text-sm text-yellow-600">
+                    ⚠️ A client with this phone number already exists
+                  </p>
+                )}
+              </div>
+              <div>
+                <label htmlFor="edit-phoneNumber2" className="block text-sm font-medium text-gray-700 mb-1">
+                  Second Phone Number (Optional)
+                </label>
+                <input
+                  type="tel"
+                  id="edit-phoneNumber2"
+                  name="phoneNumber2"
+                  value={formData.phoneNumber2}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter second phone number"
+                />
+              </div>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Date of Birth (Month & Day) *
+                Date of Birth (Optional)
               </label>
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -236,7 +263,6 @@ export default function EditClientModal({ client, isOpen, onClose, onClientUpdat
                     name="birthMonth"
                     value={formData.birthMonth}
                     onChange={handleChange}
-                    required
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="">Select Month</option>
@@ -263,7 +289,6 @@ export default function EditClientModal({ client, isOpen, onClose, onClientUpdat
                     name="birthDay"
                     value={formData.birthDay}
                     onChange={handleChange}
-                    required
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="">Select Day</option>

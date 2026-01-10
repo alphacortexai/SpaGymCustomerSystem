@@ -12,6 +12,7 @@ export default function ClientForm({ onClientAdded }) {
   const [formData, setFormData] = useState({
     name: '',
     phoneNumber: '',
+    phoneNumber2: '',
     birthMonth: '',
     birthDay: '',
     branch: '',
@@ -62,26 +63,37 @@ export default function ClientForm({ onClientAdded }) {
     setSuccess('');
     setLoading(true);
 
-    if (!formData.name.trim() || !formData.phoneNumber.trim() || !formData.birthMonth || !formData.birthDay || !formData.branch.trim()) {
+    if (!formData.name.trim() || !formData.phoneNumber.trim() || !formData.branch.trim()) {
       setError('All fields marked with * are required');
       setLoading(false);
       return;
     }
 
-    const currentYear = new Date().getFullYear();
-    const month = parseInt(formData.birthMonth);
-    const day = parseInt(formData.birthDay);
-    const date = new Date(currentYear, month - 1, day);
-    
-    if (date.getMonth() !== month - 1 || date.getDate() !== day) {
-      setError('Invalid date. Please check month and day.');
-      setLoading(false);
-      return;
+    let dateOfBirth = null;
+    let month = null;
+    let day = null;
+
+    if (formData.birthMonth && formData.birthDay) {
+      const currentYear = new Date().getFullYear();
+      month = parseInt(formData.birthMonth);
+      day = parseInt(formData.birthDay);
+      const date = new Date(currentYear, month - 1, day);
+      
+      if (date.getMonth() !== month - 1 || date.getDate() !== day) {
+        setError('Invalid date. Please check month and day.');
+        setLoading(false);
+        return;
+      }
+      dateOfBirth = `${currentYear}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     }
 
-    const dateOfBirth = `${currentYear}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    const phoneData = normalizePhoneNumberWithAll(formData.phoneNumber);
-    const exists = await checkDuplicatePhone(formData.phoneNumber, formData.branch);
+    // Combine phone numbers for processing
+    const combinedPhone = formData.phoneNumber2.trim() 
+      ? `${formData.phoneNumber}, ${formData.phoneNumber2}` 
+      : formData.phoneNumber;
+
+    const phoneData = normalizePhoneNumberWithAll(combinedPhone);
+    const exists = await checkDuplicatePhone(combinedPhone, formData.branch);
     
     if (exists) {
       setError('A client with this phone number already exists in this branch.');
@@ -98,7 +110,7 @@ export default function ClientForm({ onClientAdded }) {
     try {
       const result = await addClient({
         ...formData,
-        phoneNumber: formData.phoneNumber,
+        phoneNumber: combinedPhone,
         dateOfBirth,
         birthMonth: month,
         birthDay: day,
@@ -106,7 +118,7 @@ export default function ClientForm({ onClientAdded }) {
       
       if (result.success) {
         setSuccess('Client added successfully!');
-        setFormData({ name: '', phoneNumber: '', birthMonth: '', birthDay: '', branch: '', nextOfKin: '' });
+        setFormData({ name: '', phoneNumber: '', phoneNumber2: '', birthMonth: '', birthDay: '', branch: '', nextOfKin: '' });
         setDuplicateWarning(false);
         if (onClientAdded) onClientAdded();
       } else {
@@ -179,33 +191,46 @@ export default function ClientForm({ onClientAdded }) {
             </div>
           </div>
 
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Date of Birth *</label>
-            <div className="grid grid-cols-2 gap-4">
-              <select
-                name="birthMonth"
-                value={formData.birthMonth}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label htmlFor="phoneNumber2" className="text-sm font-medium text-slate-700 dark:text-slate-300">Second Phone Number (Optional)</label>
+              <input
+                type="tel"
+                id="phoneNumber2"
+                name="phoneNumber2"
+                value={formData.phoneNumber2}
                 onChange={handleChange}
-                required
                 className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
-              >
-                <option value="">Month</option>
-                {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map((m, i) => (
-                  <option key={m} value={i + 1}>{m}</option>
-                ))}
-              </select>
-              <select
-                name="birthDay"
-                value={formData.birthDay}
-                onChange={handleChange}
-                required
-                className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
-              >
-                <option value="">Day</option>
-                {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
-                  <option key={day} value={day}>{day}</option>
-                ))}
-              </select>
+                placeholder="07..."
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Date of Birth (Optional)</label>
+              <div className="grid grid-cols-2 gap-4">
+                <select
+                  name="birthMonth"
+                  value={formData.birthMonth}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
+                >
+                  <option value="">Month</option>
+                  {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map((m, i) => (
+                    <option key={m} value={i + 1}>{m}</option>
+                  ))}
+                </select>
+                <select
+                  name="birthDay"
+                  value={formData.birthDay}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
+                >
+                  <option value="">Day</option>
+                  {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
+                    <option key={day} value={day}>{day}</option>
+                  ))}
+                </select>
+              </div>
             </div>
           </div>
 
