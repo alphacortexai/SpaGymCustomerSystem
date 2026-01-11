@@ -882,7 +882,7 @@ export default function Home() {
                       onClick={() => setGymSubTab('enroll')} 
                       icon="✍️" 
                       title="Enroll Client" 
-                      description="Enroll a client in a membership." 
+                      description="Enroll a client in a Membership." 
                     />
                   )}
                   {profile?.permissions?.gym?.view !== false && (
