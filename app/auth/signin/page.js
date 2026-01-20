@@ -3,21 +3,21 @@
 import { signInWithGoogle } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
-import { getCurrentUser } from '@/lib/auth';
+import { useAuth } from '@/contexts/AuthContext';
 import Image from 'next/image';
 
 export default function SignIn() {
   const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // Redirect if already signed in
   useEffect(() => {
-    // Redirect if already signed in
-    const user = getCurrentUser();
-    if (user) {
+    if (!authLoading && user) {
       router.push('/');
     }
-  }, [router]);
+  }, [router, user, authLoading]);
 
   const handleGoogleSignIn = async () => {
     setLoading(true);
@@ -25,9 +25,16 @@ export default function SignIn() {
     try {
       const result = await signInWithGoogle();
       if (result.success) {
-        router.push('/');
+        // Auth state will update via AuthContext, which will trigger redirect
+        // Wait a moment for auth state to propagate
+        setTimeout(() => {
+          router.push('/');
+        }, 100);
       } else {
-        setError(result.error || 'Failed to sign in');
+        // Only show error if it's not a user cancellation
+        if (result.error && !result.cancelled) {
+          setError(result.error);
+        }
         setLoading(false);
       }
     } catch (error) {
@@ -36,6 +43,28 @@ export default function SignIn() {
       setLoading(false);
     }
   };
+
+  // Show loading while auth state is being checked
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center relative overflow-hidden">
+        <div className="absolute inset-0 z-0">
+          <Image 
+            src="/login_bg.jpg" 
+            alt="Background" 
+            fill 
+            className="object-cover"
+            priority
+          />
+          <div className="absolute inset-0 bg-black/60" />
+        </div>
+        <div className="relative z-10 flex flex-col items-center gap-4">
+          <div className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-white text-sm font-medium">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center relative overflow-hidden">
@@ -82,7 +111,7 @@ export default function SignIn() {
           )}
           
           <button
-            onClick={handleGoogleSignIn}
+            onClick={() => handleGoogleSignIn()}
             disabled={loading}
             className="w-full flex items-center justify-center gap-4 bg-white hover:bg-slate-50 text-slate-900 border-none rounded-2xl px-6 py-4 text-base font-bold transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed shadow-xl"
           >
