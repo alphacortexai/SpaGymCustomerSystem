@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { useAuth } from './AuthContext';
-import { getAllClients, getTodaysBirthdays } from '@/lib/clients';
+import { getAllClients, getTodaysBirthdays, getClientCountsByBranch, getBirthdayCountsByBranch } from '@/lib/clients';
 import { getAllEnrollments } from '@/lib/memberships';
 import { getAllBranches } from '@/lib/branches';
 
@@ -18,6 +18,8 @@ export function DataProvider({ children }) {
     allBirthdays: [],
     gymEnrollments: [],
     spaEnrollments: [],
+    clientCountsByBranch: {},
+    birthdayCountsByBranch: {},
     lastFetched: null
   });
   const [loading, setLoading] = useState(false);
@@ -32,10 +34,25 @@ export function DataProvider({ children }) {
 
     setLoading(true);
     try {
-      const [birthdays, clients, allBranches, allBdays, allGlobalClients, gymEnrollments, spaEnrollments] = await Promise.all([
+      // Load counts first (lightweight) for badges
+      const [clientCounts, birthdayCounts, allBranches] = await Promise.all([
+        getClientCountsByBranch(),
+        getBirthdayCountsByBranch(),
+        getAllBranches(),
+      ]);
+
+      // Update counts immediately for fast badge rendering
+      setData(prev => ({
+        ...prev,
+        clientCountsByBranch: clientCounts,
+        birthdayCountsByBranch: birthdayCounts,
+        branches: allBranches,
+      }));
+
+      // Load full data in parallel (can be slower)
+      const [birthdays, clients, allBdays, allGlobalClients, gymEnrollments, spaEnrollments] = await Promise.all([
         getTodaysBirthdays(null),
         getAllClients(null),
-        getAllBranches(),
         getTodaysBirthdays(null),
         getAllClients(null),
         getAllEnrollments(false),
@@ -50,6 +67,8 @@ export function DataProvider({ children }) {
         globalClients: allGlobalClients,
         gymEnrollments: gymEnrollments,
         spaEnrollments: spaEnrollments,
+        clientCountsByBranch: clientCounts,
+        birthdayCountsByBranch: birthdayCounts,
         lastFetched: now
       });
     } catch (error) {

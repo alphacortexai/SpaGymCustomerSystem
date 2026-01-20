@@ -27,6 +27,7 @@ import UserManagement from '@/components/UserManagement';
 import UserProfile from '@/components/UserProfile';
 import ActionsTimeline from '@/components/ActionsTimeline';
 import DuplicateSearch from '@/components/DuplicateSearch';
+import NviewDashboard from '@/components/NviewDashboard';
 
 const NavCard = ({ onClick, icon, title, description, badge, isImage, fullBg, centerBadge }) => {
   return (
@@ -42,11 +43,11 @@ const NavCard = ({ onClick, icon, title, description, badge, isImage, fullBg, ce
       )}
       {badge !== undefined && (
         <div className={centerBadge 
-          ? "absolute inset-0 flex items-center justify-center z-10" 
+          ? "absolute inset-0 flex items-center justify-center z-10 pointer-events-none" 
           : "absolute top-3 right-3 min-w-[20px] h-5 px-1.5 flex items-center justify-center bg-blue-600 text-white text-[10px] font-bold rounded-full shadow-lg shadow-blue-500/30 z-10"
         }>
           <div className={centerBadge 
-            ? "text-white text-4xl md:text-5xl font-black drop-shadow-lg" 
+            ? "text-white text-4xl md:text-5xl font-black drop-shadow-lg"
             : ""
           }>
             {badge}
@@ -64,7 +65,7 @@ const NavCard = ({ onClick, icon, title, description, badge, isImage, fullBg, ce
           )}
         </div>
       )}
-      <div className={`relative z-10 ${fullBg ? 'mt-auto' : ''}`}>
+      <div className={`relative z-20 ${fullBg ? 'mt-auto' : ''}`}>
         <h3 className={`text-lg font-bold ${fullBg ? 'text-white' : 'text-slate-900 dark:text-white'} mb-1`}>{title}</h3>
         <p className={`text-sm ${fullBg ? 'text-slate-200' : 'text-slate-500 dark:text-slate-400'} leading-tight line-clamp-2 px-1`}>{description}</p>
       </div>
@@ -82,6 +83,8 @@ export default function Home() {
     allBirthdays: cachedAllBirthdays,
     gymEnrollments: cachedGymEnrollments,
     spaEnrollments: cachedSpaEnrollments,
+    clientCountsByBranch: cachedClientCounts,
+    birthdayCountsByBranch: cachedBirthdayCounts,
     loading: isDataLoading
   } = useData();
 
@@ -333,29 +336,84 @@ export default function Home() {
     return (words[0][0] + words[1][0]).toUpperCase();
   };
 
+  // Optimized badge calculations using pre-computed counts
+  // For centerBadge (large display), show total count
+  // For regular badge (small corner), show branch breakdown
+  const clientBadgeTotal = useMemo(() => {
+    // Use cached counts if available (fast)
+    if (cachedClientCounts && Object.keys(cachedClientCounts).length > 0) {
+      return Object.values(cachedClientCounts).reduce((sum, count) => sum + count, 0).toString();
+    }
+    
+    // Fallback to counting from array
+    return globalClients.length.toString();
+  }, [cachedClientCounts, globalClients]);
+
   const clientBadge = useMemo(() => {
-    if (!branches.length || !globalClients.length) return globalClients.length;
+    // Use cached counts if available (fast)
+    if (cachedClientCounts && Object.keys(cachedClientCounts).length > 0 && branches.length > 0) {
+      return branches
+        .map(b => {
+          const count = cachedClientCounts[b.name] || 0;
+          return count > 0 ? `${getBranchInitials(b.name)}: ${count}` : null;
+        })
+        .filter(Boolean)
+        .join(', ') || '0';
+    }
+    
+    // Fallback to counting from array (slower, but works if counts not loaded)
+    if (!branches.length || !globalClients.length) {
+      return globalClients.length.toString();
+    }
+    
     const counts = {};
     branches.forEach(b => { counts[b.name] = 0; });
     globalClients.forEach(c => {
       if (c.branch && counts[c.branch] !== undefined) counts[c.branch]++;
     });
     return Object.entries(counts)
-      .map(([name, count]) => `${getBranchInitials(name)}: ${count}`)
-      .join(', ');
-  }, [globalClients, branches]);
+      .map(([name, count]) => count > 0 ? `${getBranchInitials(name)}: ${count}` : null)
+      .filter(Boolean)
+      .join(', ') || '0';
+  }, [cachedClientCounts, globalClients, branches]);
+
+  const birthdayBadgeTotal = useMemo(() => {
+    // Use cached counts if available (fast)
+    if (cachedBirthdayCounts && Object.keys(cachedBirthdayCounts).length > 0) {
+      return Object.values(cachedBirthdayCounts).reduce((sum, count) => sum + count, 0).toString();
+    }
+    
+    // Fallback to counting from array
+    return allBirthdays.length.toString();
+  }, [cachedBirthdayCounts, allBirthdays]);
 
   const birthdayBadge = useMemo(() => {
-    if (!branches.length || !allBirthdays.length) return allBirthdays.length;
+    // Use cached counts if available (fast)
+    if (cachedBirthdayCounts && Object.keys(cachedBirthdayCounts).length > 0 && branches.length > 0) {
+      return branches
+        .map(b => {
+          const count = cachedBirthdayCounts[b.name] || 0;
+          return count > 0 ? `${getBranchInitials(b.name)}: ${count}` : null;
+        })
+        .filter(Boolean)
+        .join(', ') || '0';
+    }
+    
+    // Fallback to counting from array (slower)
+    if (!branches.length || !allBirthdays.length) {
+      return allBirthdays.length.toString();
+    }
+    
     const counts = {};
     branches.forEach(b => { counts[b.name] = 0; });
     allBirthdays.forEach(c => {
       if (c.branch && counts[c.branch] !== undefined) counts[c.branch]++;
     });
     return Object.entries(counts)
-      .map(([name, count]) => `${getBranchInitials(name)}: ${count}`)
-      .join(', ');
-  }, [allBirthdays, branches]);
+      .map(([name, count]) => count > 0 ? `${getBranchInitials(name)}: ${count}` : null)
+      .filter(Boolean)
+      .join(', ') || '0';
+  }, [cachedBirthdayCounts, allBirthdays, branches]);
 
   const getPaginatedClients = (list) => {
     const startIndex = (currentPage - 1) * clientsPerPage;
@@ -485,7 +543,9 @@ export default function Home() {
         </header>
 
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-          {activeTab === 'home' && (
+          {activeTab === 'home' && profile?.preferences?.nviewEnabled && profile?.role === 'Admin' ? (
+            <NviewDashboard />
+          ) : activeTab === 'home' && (
             <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
               <div className="max-w-2xl">
                 <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white sm:text-3xl">
@@ -502,16 +562,10 @@ export default function Home() {
                   {!showAdminSection ? (
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
                   {profile?.permissions?.clients?.view !== false && (
-                    <NavCard onClick={() => setActiveTab('dashboard')} icon="/clients_bg.png" title="Clients" description="Manage customer list." badge={dataLoaded ? clientBadge : undefined} isImage={true} fullBg={true} />
-                  )}
-                  {profile?.role === 'Admin' && (
-                    <NavCard onClick={() => setActiveTab('duplicates')} icon="🔍" title="Duplicates" description="Find duplicate phones." />
+                    <NavCard onClick={() => setActiveTab('dashboard')} icon="/clients_bg.png" title="Clients" description="Manage" badge={cachedClientCounts ? clientBadgeTotal : (dataLoaded ? '...' : undefined)} isImage={true} fullBg={true} centerBadge={true} />
                   )}
                   {profile?.permissions?.birthdays?.view !== false && (
-                    <NavCard onClick={() => setActiveTab('birthdays')} icon="/birthday.png" title="Birthdays" description="Today's celebrations." badge={dataLoaded ? birthdayBadge : undefined} isImage={true} fullBg={true} />
-                  )}
-                  {profile?.permissions?.branches?.view !== false && (
-                    <NavCard onClick={() => setActiveTab('branches')} icon="🏢" title="Branches" description="Manage locations." badge={dataLoaded ? branches.length : undefined} />
+                    <NavCard onClick={() => setActiveTab('birthdays')} icon="/birthday.png" title="Birthdays" description="Celebrations" badge={cachedBirthdayCounts ? birthdayBadgeTotal : (dataLoaded ? '...' : undefined)} isImage={true} fullBg={true} centerBadge={true} />
                   )}
                   {profile?.permissions?.gym?.view !== false && (
                     <NavCard 
@@ -521,7 +575,7 @@ export default function Home() {
                       description="Memberships." 
                       isImage={true} 
                       fullBg={true} 
-                      badge={dataLoaded ? cachedGymEnrollments.filter(e => e.status === 'active' && new Date() <= e.expiryDate).length : undefined}
+                      badge={dataLoaded && cachedGymEnrollments ? cachedGymEnrollments.filter(e => e.status === 'active' && e.expiryDate && new Date(e.expiryDate) >= new Date()).length : (dataLoaded ? '...' : undefined)}
                       centerBadge={true}
                     />
                   )}
@@ -533,7 +587,7 @@ export default function Home() {
                       description="Memberships." 
                       isImage={true} 
                       fullBg={true} 
-                      badge={dataLoaded ? cachedSpaEnrollments.filter(e => e.status === 'active' && new Date() <= e.expiryDate).length : undefined}
+                      badge={dataLoaded && cachedSpaEnrollments ? cachedSpaEnrollments.filter(e => e.status === 'active' && e.expiryDate && new Date(e.expiryDate) >= new Date()).length : (dataLoaded ? '...' : undefined)}
                       centerBadge={true}
                     />
                   )}
@@ -559,6 +613,12 @@ export default function Home() {
                     )}
                     {profile?.permissions?.users?.view !== false && (
                       <NavCard onClick={() => setActiveTab('users')} icon="👥" title="Users" description="Manage roles." />
+                    )}
+                    {profile?.permissions?.branches?.view !== false && (
+                      <NavCard onClick={() => setActiveTab('branches')} icon="🏢" title="Branches" description="Manage locations." badge={dataLoaded ? branches.length : undefined} />
+                    )}
+                    {profile?.role === 'Admin' && (
+                      <NavCard onClick={() => setActiveTab('duplicates')} icon="🔍" title="Duplicates" description="Find duplicate phones." />
                     )}
                     {profile?.role === 'Admin' && (
                       <NavCard onClick={() => setActiveTab('timeline')} icon="🕒" title="Timeline" description="Activity logs." />

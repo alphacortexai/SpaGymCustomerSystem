@@ -1,8 +1,9 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { onAuthChange } from '@/lib/auth';
 import { syncUser, getUserData } from '@/lib/users';
+import { logUserLogin, logUserActivity } from '@/lib/userActivity';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
@@ -12,6 +13,7 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
+  const activityIntervalRef = useRef(null);
 
   useEffect(() => {
     let unsubscribeProfile = () => {};
@@ -24,6 +26,21 @@ export function AuthProvider({ children }) {
         const userProfile = await syncUser(firebaseUser);
         setProfile(userProfile);
         
+        // Log user login
+        await logUserLogin(
+          firebaseUser.uid,
+          firebaseUser.email,
+          firebaseUser.displayName || firebaseUser.email
+        );
+        
+        // Set up activity heartbeat (log activity every 5 minutes)
+        if (activityIntervalRef.current) {
+          clearInterval(activityIntervalRef.current);
+        }
+        activityIntervalRef.current = setInterval(() => {
+          logUserActivity(firebaseUser.uid, firebaseUser.email);
+        }, 5 * 60 * 1000); // 5 minutes
+        
         // Listen for real-time changes to the user profile
         unsubscribeProfile = onSnapshot(doc(db, 'users', firebaseUser.uid), (doc) => {
           if (doc.exists()) {
@@ -34,6 +51,10 @@ export function AuthProvider({ children }) {
       } else {
         setProfile(null);
         unsubscribeProfile();
+        if (activityIntervalRef.current) {
+          clearInterval(activityIntervalRef.current);
+          activityIntervalRef.current = null;
+        }
       }
       setLoading(false);
     });
@@ -41,6 +62,9 @@ export function AuthProvider({ children }) {
     return () => {
       unsubscribeAuth();
       unsubscribeProfile();
+      if (activityIntervalRef.current) {
+        clearInterval(activityIntervalRef.current);
+      }
     };
   }, []);
 

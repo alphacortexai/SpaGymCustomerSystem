@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { getTimeline, deleteTimelineEntry } from '@/lib/timeline';
+import { useState, useEffect, useMemo } from 'react';
+import { getTimeline, deleteTimelineEntry, getTimelineUserEmails } from '@/lib/timeline';
 import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
 
@@ -10,14 +10,54 @@ export default function ActionsTimeline() {
   const [timeline, setTimeline] = useState([]);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState(null);
+  const [timePeriod, setTimePeriod] = useState('all'); // 'all', 'week', 'month', 'year'
+  const [selectedUserEmail, setSelectedUserEmail] = useState('');
+  const [userEmails, setUserEmails] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [lastTimestamp, setLastTimestamp] = useState(null);
+  const [pageTimestamps, setPageTimestamps] = useState([]); // Store timestamps for each page
+  const itemsPerPage = 25;
 
   const isAdmin = profile?.role === 'Admin';
 
-  const loadTimeline = async () => {
+  const loadUserEmails = async () => {
+    const emails = await getTimelineUserEmails();
+    setUserEmails(emails);
+  };
+
+  const loadTimeline = async (page = 1) => {
     setLoading(true);
-    const data = await getTimeline(100);
-    setTimeline(data);
-    setLoading(false);
+    try {
+      // Get the timestamp for the previous page (for pagination)
+      const previousPageTimestamp = page > 1 && pageTimestamps[page - 2] ? pageTimestamps[page - 2] : null;
+      
+      const options = {
+        maxResults: itemsPerPage,
+        period: timePeriod === 'all' ? null : timePeriod,
+        userEmail: selectedUserEmail || null,
+        lastTimestamp: previousPageTimestamp
+      };
+
+      const result = await getTimeline(options);
+      
+      // Store the timeline for current page
+      setTimeline(result.timeline);
+      
+      // Store the last timestamp of this page for next page navigation
+      if (result.lastTimestamp) {
+        const newPageTimestamps = [...pageTimestamps];
+        newPageTimestamps[page - 1] = result.lastTimestamp;
+        setPageTimestamps(newPageTimestamps);
+      }
+      
+      setHasMore(result.hasMore);
+      setLastTimestamp(result.lastTimestamp);
+    } catch (error) {
+      console.error('Error loading timeline:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleDelete = async (id) => {
@@ -38,9 +78,36 @@ export default function ActionsTimeline() {
     }
   };
 
+  const handlePageChange = (newPage) => {
+    if (newPage < 1) return;
+    setCurrentPage(newPage);
+    loadTimeline(newPage);
+  };
+
+  const getTotalPages = () => {
+    // Estimate total pages based on whether there are more results
+    // Since Firestore doesn't give us total count, we estimate based on hasMore
+    if (!hasMore && currentPage === 1) {
+      return 1;
+    }
+    // If we have more results, we know there's at least one more page
+    return hasMore ? currentPage + 1 : currentPage;
+  };
+
   useEffect(() => {
-    loadTimeline();
+    loadUserEmails();
   }, []);
+
+  useEffect(() => {
+    setCurrentPage(1);
+    setPageTimestamps([]);
+    setLastTimestamp(null);
+    loadTimeline(1);
+  }, [timePeriod, selectedUserEmail]);
+
+  const paginatedTimeline = useMemo(() => {
+    return timeline;
+  }, [timeline]);
 
   const getActionColor = (action) => {
     switch (action) {
@@ -52,7 +119,7 @@ export default function ActionsTimeline() {
     }
   };
 
-  if (loading) {
+  if (loading && timeline.length === 0) {
     return (
       <div className="bg-white dark:bg-slate-900 p-12 rounded-2xl border border-slate-200 dark:border-slate-800 text-center">
         <div className="flex flex-col items-center justify-center">
@@ -66,9 +133,64 @@ export default function ActionsTimeline() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Actions Timeline</h2>
-        <button onClick={loadTimeline} className="text-sm text-blue-600 hover:underline">Refresh</button>
+        <button 
+          onClick={() => {
+            setCurrentPage(1);
+            setPageTimestamps([]);
+            loadTimeline(1);
+          }} 
+          className="text-sm text-blue-600 hover:underline px-3 py-1.5 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+        >
+          Refresh
+        </button>
+      </div>
+
+      {/* Filters */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+              Time Period
+            </label>
+            <select
+              value={timePeriod}
+              onChange={(e) => {
+                setTimePeriod(e.target.value);
+                setCurrentPage(1);
+                setPageTimestamps([]);
+                setLastTimestamp(null);
+              }}
+              className="w-full px-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
+            >
+              <option value="all">All Time</option>
+              <option value="week">Last Week</option>
+              <option value="month">Last Month</option>
+              <option value="year">Last Year</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+              Filter by User
+            </label>
+            <select
+              value={selectedUserEmail}
+              onChange={(e) => {
+                setSelectedUserEmail(e.target.value);
+                setCurrentPage(1);
+                setPageTimestamps([]);
+                setLastTimestamp(null);
+              }}
+              className="w-full px-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
+            >
+              <option value="">All Users</option>
+              {userEmails.map(email => (
+                <option key={email} value={email}>{email}</option>
+              ))}
+            </select>
+          </div>
+        </div>
       </div>
 
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
@@ -85,12 +207,14 @@ export default function ActionsTimeline() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
-              {timeline.length === 0 ? (
+              {paginatedTimeline.length === 0 ? (
                 <tr>
-                  <td colSpan="5" className="px-6 py-10 text-center text-slate-500">No actions recorded yet.</td>
+                  <td colSpan={isAdmin ? 6 : 5} className="px-6 py-10 text-center text-slate-500">
+                    {loading ? 'Loading...' : 'No actions found for the selected filters.'}
+                  </td>
                 </tr>
               ) : (
-                timeline.map((item) => (
+                paginatedTimeline.map((item) => (
                   <tr key={item.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                     <td className="px-6 py-4 text-sm text-slate-500 whitespace-nowrap">
                       {item.timestamp ? format(item.timestamp, 'MMM d, HH:mm:ss') : 'N/A'}
@@ -136,6 +260,42 @@ export default function ActionsTimeline() {
           </table>
         </div>
       </div>
+
+      {/* Pagination */}
+      {paginatedTimeline.length > 0 && (
+        <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+          <div className="text-sm text-slate-600 dark:text-slate-400">
+            Showing {paginatedTimeline.length} {paginatedTimeline.length === 1 ? 'entry' : 'entries'} on page {currentPage}
+            {timePeriod !== 'all' && ` (${timePeriod === 'week' ? 'Last Week' : timePeriod === 'month' ? 'Last Month' : 'Last Year'})`}
+            {selectedUserEmail && ` for ${selectedUserEmail}`}
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={currentPage === 1 || loading}
+              className="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+              Previous
+            </button>
+            <div className="text-sm font-medium text-slate-700 dark:text-slate-300">
+              Page {currentPage} {hasMore ? `of ${currentPage}+` : `of ${currentPage}`}
+            </div>
+            <button
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={!hasMore || loading}
+              className="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
+            >
+              Next
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

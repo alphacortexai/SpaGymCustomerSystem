@@ -1,12 +1,37 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { updateUserPreferences } from '@/lib/users';
 import { format } from 'date-fns';
 
 export default function UserProfile() {
   const { user, profile } = useAuth();
+  const [saving, setSaving] = useState(false);
+  const [nviewEnabled, setNviewEnabled] = useState(profile?.preferences?.nviewEnabled || false);
+
+  useEffect(() => {
+    if (profile?.preferences?.nviewEnabled !== undefined) {
+      setNviewEnabled(profile.preferences.nviewEnabled);
+    }
+  }, [profile]);
 
   if (!profile) return null;
+
+  const handleNviewToggle = async (enabled) => {
+    if (profile.role !== 'Admin') return;
+    
+    setSaving(true);
+    try {
+      await updateUserPreferences(user.uid, { nviewEnabled: enabled });
+      setNviewEnabled(enabled);
+    } catch (error) {
+      console.error('Error updating preferences:', error);
+      alert('Failed to update preferences');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in duration-300">
@@ -62,6 +87,31 @@ export default function UserProfile() {
 
             <div>
               <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">Your Access Permissions</h3>
+              
+              {profile.role === 'Admin' && (
+                <div className="mb-6 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
+                  <div className="flex items-center justify-between mb-2">
+                    <div>
+                      <div className="text-sm font-semibold text-slate-900 dark:text-white">Nview Dashboard</div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400">Modern analytics dashboard view</div>
+                    </div>
+                    <button
+                      onClick={() => handleNviewToggle(!nviewEnabled)}
+                      disabled={saving}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                        nviewEnabled ? 'bg-blue-600' : 'bg-slate-300 dark:bg-slate-600'
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          nviewEnabled ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                </div>
+              )}
+              
               <div className="grid grid-cols-2 gap-3">
                 {profile.permissions && Object.entries(profile.permissions)
                   .filter(([category, perms]) => {
