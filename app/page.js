@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
@@ -8,8 +8,7 @@ import { signOut } from '@/lib/auth';
 import ClientForm from '@/components/ClientForm';
 import ClientList from '@/components/ClientList';
 import ExcelUpload from '@/components/ExcelUpload';
-import { searchClients, getTodaysBirthdays, getAllClients } from '@/lib/clients';
-import { getAllBranches } from '@/lib/branches';
+import { searchClients } from '@/lib/clients';
 import { affirmations } from '@/lib/affirmations';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import BranchForm from '@/components/BranchForm';
@@ -88,7 +87,8 @@ export default function Home() {
     spaEnrollments: cachedSpaEnrollments,
     clientCountsByBranch: cachedClientCounts,
     birthdayCountsByBranch: cachedBirthdayCounts,
-    loading: isDataLoading
+    loading: isDataLoading,
+    refreshData
   } = useData();
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -97,7 +97,6 @@ export default function Home() {
   const [allClients, setAllClients] = useState([]);
   const [globalClients, setGlobalClients] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
-  const [isFiltering, setIsFiltering] = useState(false);
   const [activeTab, setActiveTab] = useState('home');
   const [gymSubTab, setGymSubTab] = useState('overview');
   const [spaSubTab, setSpaSubTab] = useState('overview');
@@ -116,17 +115,14 @@ export default function Home() {
   const [dataLoaded, setDataLoaded] = useState(false);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
 
-  // Sync with cached data
+  // Sync with cached data from DataContext (single source of truth). Branch filter applied client-side.
   useEffect(() => {
     if (!isDataLoading && cachedBranches.length > 0) {
       setBranches(cachedBranches);
       setAllBirthdays(cachedAllBirthdays);
       setGlobalClients(cachedGlobalClients);
-      
-      if (!selectedBranch) {
-        setAllClients(cachedAllClients);
-        setTodaysBirthdays(cachedTodaysBirthdays);
-      }
+      setAllClients(selectedBranch ? cachedAllClients.filter(c => c.branch === selectedBranch) : cachedAllClients);
+      setTodaysBirthdays(selectedBranch ? cachedTodaysBirthdays.filter(c => c.branch === selectedBranch) : cachedTodaysBirthdays);
       setIsInitialLoading(false);
       setDataLoaded(true);
     }
@@ -206,61 +202,6 @@ export default function Home() {
     return () => clearInterval(interval);
   }, []);
 
-  const loadData = useCallback(async (force = false) => {
-    // If we have cached data and not forcing, don't do anything here
-    // The useEffect above will handle syncing from DataContext
-    if (!force && cachedGlobalClients.length > 0) {
-      return;
-    }
-
-    setIsInitialLoading(true);
-    try {
-      const branch = selectedBranch || null;
-      const [birthdays, clients, allBranches, allBdays, allGlobalClients] = await Promise.all([
-        getTodaysBirthdays(branch),
-        getAllClients(branch),
-        getAllBranches(),
-        getTodaysBirthdays(null),
-        getAllClients(null),
-      ]);
-      setTodaysBirthdays(birthdays);
-      setAllClients(clients);
-      setBranches(allBranches);
-      setAllBirthdays(allBdays);
-      setGlobalClients(allGlobalClients);
-      setDataLoaded(true);
-    } catch (error) {
-      console.error('Error loading data:', error);
-    } finally {
-      setIsInitialLoading(false);
-    }
-  }, [selectedBranch, cachedGlobalClients.length]);
-
-  // Initial load - only if cache is empty
-  useEffect(() => {
-    if (user && cachedGlobalClients.length === 0) {
-      loadData();
-    }
-  }, [user, cachedGlobalClients.length, loadData]);
-
-  // Handle branch changes separately to avoid reloading everything on tab switch
-  useEffect(() => {
-    if (user && selectedBranch) {
-      const reloadBranchData = async () => {
-        const branch = selectedBranch;
-        // Check if we already have this branch's data to avoid redundant fetches
-        // This is a simple check, could be more robust
-        const [birthdays, clients] = await Promise.all([
-          getTodaysBirthdays(branch),
-          getAllClients(branch),
-        ]);
-        setTodaysBirthdays(birthdays);
-        setAllClients(clients);
-      };
-      reloadBranchData();
-    }
-  }, [selectedBranch, user]);
-
   useEffect(() => {
     if (activeTab !== 'home') setShowAdminSection(false);
     
@@ -313,23 +254,15 @@ export default function Home() {
   }, [searchTerm, selectedBranch]);
 
   const filteredBirthdays = useMemo(() => {
-    setIsFiltering(true);
-    
-    // If a specific month or day is selected, we search through all clients.
-    // If only a branch is selected (or nothing), we use todaysBirthdays (which are already filtered by branch in loadData).
+    // If a specific month or day is selected, search through all clients; otherwise use todaysBirthdays (already filtered by branch in sync).
     const useAllClients = selectedMonth || selectedDay;
     const baseClients = useAllClients ? allClients : todaysBirthdays;
-    
-    const filtered = baseClients.filter((client) => {
+    return baseClients.filter((client) => {
       const monthMatch = !selectedMonth || (client.birthMonth && parseInt(client.birthMonth) === parseInt(selectedMonth));
       const dayMatch = !selectedDay || (client.birthDay && parseInt(client.birthDay) === parseInt(selectedDay));
       const branchMatch = !selectedBranch || (client.branch === selectedBranch);
       return monthMatch && dayMatch && branchMatch;
     });
-    
-    // Simulate a small delay for "processing" feel if needed, or just set it back
-    setTimeout(() => setIsFiltering(false), 100);
-    return filtered;
   }, [todaysBirthdays, allClients, selectedMonth, selectedDay, selectedBranch]);
 
   const getBranchInitials = (name) => {
@@ -723,7 +656,7 @@ export default function Home() {
                 clients={getPaginatedClients(searchTerm ? searchResults : allClients)}
                 totalCount={searchTerm ? searchResults.length : allClients.length}
                 title={searchTerm ? `Search Results for "${searchTerm}"` : "All Clients"}
-                onClientUpdated={loadData}
+                onClientUpdated={refreshData}
                 isLoading={isInitialLoading}
               />
 
@@ -794,15 +727,6 @@ export default function Home() {
                   <p className="text-slate-500 mt-1">Celebrate with your customers.</p>
                 </div>
                 <div className="flex flex-col md:flex-row md:items-center gap-3 w-full md:w-auto">
-                  {isFiltering && (
-                    <div className="flex items-center gap-2 text-blue-600 text-sm font-medium animate-pulse mb-2 md:mb-0">
-                      <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      Processing...
-                    </div>
-                  )}
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full md:w-auto">
                     <select
                       value={selectedBranch}
@@ -836,7 +760,7 @@ export default function Home() {
                 clients={getPaginatedClients(filteredBirthdays)}
                 totalCount={filteredBirthdays.length}
                 title={selectedMonth || selectedDay ? "Filtered Birthdays" : "Today's Birthdays"}
-                onClientUpdated={loadData}
+                onClientUpdated={refreshData}
                 isLoading={isInitialLoading}
               />
 
@@ -868,7 +792,7 @@ export default function Home() {
                 <h2 className="text-3xl font-bold text-slate-900 dark:text-white">Bulk Upload</h2>
                 <p className="text-slate-500 mt-1">Import clients from Excel files.</p>
               </div>
-              <ExcelUpload onUploadComplete={loadData} />
+              <ExcelUpload onUploadComplete={refreshData} />
             </div>
           )}
 
@@ -878,7 +802,7 @@ export default function Home() {
                 <h2 className="text-3xl font-bold text-slate-900 dark:text-white">Data Issues</h2>
                 <p className="text-slate-500 mt-1">Fix clients with unrecognized phone numbers.</p>
               </div>
-              <UnrecognizedClientsList onApproved={loadData} />
+              <UnrecognizedClientsList onApproved={refreshData} />
             </div>
           )}
 
@@ -898,7 +822,7 @@ export default function Home() {
                 <h2 className="text-3xl font-bold text-slate-900 dark:text-white">Add New Client</h2>
                 <p className="text-slate-500 mt-1">Register a new customer to the system.</p>
               </div>
-              <ClientForm onClientAdded={() => { loadData(true); setActiveTab('dashboard'); }} />
+              <ClientForm onClientAdded={() => { refreshData(); setActiveTab('dashboard'); }} />
             </div>
           )}
 
@@ -908,7 +832,7 @@ export default function Home() {
                 <h2 className="text-3xl font-bold text-slate-900 dark:text-white">Branch Management</h2>
                 <p className="text-slate-500 mt-1">Manage your business locations.</p>
               </div>
-              <BranchForm onBranchAdded={loadData} />
+              <BranchForm onBranchAdded={refreshData} />
             </div>
           )}
 
@@ -934,7 +858,7 @@ export default function Home() {
                 <h2 className="text-3xl font-bold text-slate-900 dark:text-white">Duplicate Search</h2>
                 <p className="text-slate-500 mt-1">Find and resolve duplicate client records.</p>
               </div>
-              <DuplicateSearch onMerged={loadData} />
+              <DuplicateSearch onMerged={refreshData} />
             </div>
           )}
 

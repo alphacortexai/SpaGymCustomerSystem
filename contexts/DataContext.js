@@ -49,28 +49,27 @@ export function DataProvider({ children }) {
         branches: allBranches,
       }));
 
-      // Load full data in parallel (can be slower)
-      const [birthdays, clients, allBdays, allGlobalClients, gymEnrollments, spaEnrollments] = await Promise.all([
-        getTodaysBirthdays(null),
-        getAllClients(null),
+      // Load full data in parallel (no duplicate fetches)
+      const [birthdays, clients, gymEnrollments, spaEnrollments] = await Promise.all([
         getTodaysBirthdays(null),
         getAllClients(null),
         getAllEnrollments(false),
         getAllEnrollments(true),
       ]);
 
-      setData({
+      setData(prev => ({
+        ...prev,
         todaysBirthdays: birthdays,
         allClients: clients,
+        allBirthdays: birthdays,
+        globalClients: clients,
+        gymEnrollments,
+        spaEnrollments,
         branches: allBranches,
-        allBirthdays: allBdays,
-        globalClients: allGlobalClients,
-        gymEnrollments: gymEnrollments,
-        spaEnrollments: spaEnrollments,
         clientCountsByBranch: clientCounts,
         birthdayCountsByBranch: birthdayCounts,
         lastFetched: now
-      });
+      }));
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
