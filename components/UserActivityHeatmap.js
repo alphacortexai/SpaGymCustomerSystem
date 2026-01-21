@@ -88,7 +88,7 @@ export default function UserActivityHeatmap() {
 
   if (loading) {
     return (
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-8">
+      <div className="card-bg-doc rounded-2xl border border-slate-200 dark:border-slate-800 p-8">
         <div className="flex items-center justify-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
         </div>
@@ -100,7 +100,7 @@ export default function UserActivityHeatmap() {
   const maxActivity = getMaxActivity();
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-6">
+    <div className="card-bg-doc rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-6">
       <div className="mb-6">
         <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">User Activity Heatmap</h3>
         <p className="text-sm text-slate-500 dark:text-slate-400">Login and activity patterns over the last 30 days</p>

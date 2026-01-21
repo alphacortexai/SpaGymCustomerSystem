@@ -36,7 +36,7 @@ const NavCard = ({ onClick, icon, title, description, badge, isImage, fullBg, ce
   return (
     <button
       onClick={onClick}
-      className={`group relative flex flex-col items-center justify-center p-4 ${fullBg ? 'bg-transparent' : 'bg-white dark:bg-slate-900'} border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm transition-all duration-300 hover:shadow-md hover:-translate-y-1 text-center w-full aspect-square overflow-hidden`}
+      className={`group relative flex flex-col items-center justify-center p-4 ${fullBg ? 'bg-transparent' : 'card-bg-doc'} border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm transition-all duration-300 hover:shadow-md hover:-translate-y-1 text-center w-full aspect-square overflow-hidden`}
     >
       {fullBg && isImage && (
         <div className="absolute inset-0 z-0">
@@ -554,7 +554,7 @@ export default function Home() {
                 <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white sm:text-3xl">
                   Hi, <span className="text-blue-600">{user?.displayName?.split(' ')[0] || 'User'}</span>
                 </h1>
-                <div className="mt-4 p-4 bg-white/50 dark:bg-slate-900/50 rounded-2xl border border-slate-200/50 dark:border-slate-800/50 backdrop-blur-sm">
+                <div className="mt-4 p-4 card-bg-doc rounded-2xl border border-slate-200/50 dark:border-slate-800/50 backdrop-blur-sm">
                   <h2 className="text-xs font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 mb-1">Power Quotes</h2>
                   <p className="text-base text-slate-600 dark:text-slate-300 leading-relaxed italic font-medium">
                     "{currentAffirmation}"

@@ -306,7 +306,7 @@ export default function NviewDashboard() {
   return (
     <div className="space-y-8 pb-8">
       {/* Enhanced Header with Gradient */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 border border-slate-200/50 dark:border-slate-700/50 shadow-xl">
+      <div className="relative overflow-hidden rounded-3xl card-bg-doc border border-slate-200/50 dark:border-slate-700/50 shadow-xl">
         {/* Decorative pattern overlay */}
         <div className="absolute inset-0 opacity-30 dark:opacity-10">
           <div className="absolute inset-0" style={{
@@ -466,7 +466,7 @@ export default function NviewDashboard() {
       </div>
 
       {/* Enhanced Monthly Birthday Chart */}
-      <div className="relative overflow-hidden rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-700/60 shadow-xl">
+      <div className="relative overflow-hidden rounded-3xl card-bg-doc border border-slate-200/60 dark:border-slate-700/60 shadow-xl">
         {/* Decorative gradient overlay */}
         <div className="absolute top-0 right-0 w-96 h-96 rounded-full blur-3xl -mr-48 -mt-48" style={{ 
           background: `radial-gradient(circle, ${FACEBOOK_BLUE}15 0%, ${PURPLE}10 50%, transparent 100%)` 

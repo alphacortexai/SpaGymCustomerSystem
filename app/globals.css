@@ -80,6 +80,17 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
+/* Card background using docbg.jpeg for cards without their own background images */
+.card-bg-doc {
+  background-image: linear-gradient(rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.9)), url('/docbg.jpeg');
+  background-size: cover;
+  background-position: center;
+}
+
+.dark .card-bg-doc {
+  background-image: linear-gradient(rgba(15, 23, 42, 0.9), rgba(15, 23, 42, 0.9)), url('/docbg.jpeg');
+}
+
 input, select, textarea {
   @apply transition-all duration-200;
 }
