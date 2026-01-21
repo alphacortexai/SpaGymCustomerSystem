@@ -2,9 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { getAllUsers, updateUserRole, updateUserStatus, updateUserPermissions, ROLES, ROLE_PERMISSIONS } from '@/lib/users';
+import { useNotifications } from '@/contexts/NotificationContext';
 import { format } from 'date-fns';
 
 export default function UserManagement() {
+  const { toast } = useNotifications();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(null);
@@ -26,7 +28,7 @@ export default function UserManagement() {
     if (result.success) {
       await loadUsers();
     } else {
-      alert('Error updating role: ' + result.error);
+      toast('Error updating role: ' + result.error, 'error');
     }
     setUpdating(null);
   };
@@ -37,7 +39,7 @@ export default function UserManagement() {
     if (result.success) {
       await loadUsers();
     } else {
-      alert('Error updating status: ' + result.error);
+      toast('Error updating status: ' + result.error, 'error');
     }
     setUpdating(null);
   };

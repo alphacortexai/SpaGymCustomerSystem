@@ -3,9 +3,11 @@
 import { useState, useEffect } from 'react';
 import { getMembershipTypes, updateMembershipType, deleteMembershipType } from '@/lib/memberships';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNotifications } from '@/contexts/NotificationContext';
 
 export default function SpaMembershipTypeManager() {
   const { user, profile } = useAuth();
+  const { toast, showConfirm } = useNotifications();
   const isAdmin = profile?.role === 'Admin';
   const [types, setTypes] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -48,7 +50,7 @@ export default function SpaMembershipTypeManager() {
 
   const handleUpdate = async (e) => {
     e.preventDefault();
-    if (!isAdmin) return alert('Only admins can edit membership types.');
+    if (!isAdmin) { toast('Only admins can edit membership types.', 'error'); return; }
 
     setLoading(true);
     const formattedEntitlements = editForm.isReducingBalance ? [] : editForm.entitlements.split(',').map(e => {
@@ -71,21 +73,25 @@ export default function SpaMembershipTypeManager() {
       setEditingId(null);
       loadTypes();
     } else {
-      alert('Error: ' + result.error);
+      toast('Error: ' + result.error, 'error');
     }
     setLoading(false);
   };
 
   const handleDelete = async (id, name) => {
-    if (!isAdmin) return alert('Only admins can delete membership types.');
-    if (!confirm(`Are you sure you want to delete "${name}"? This will not affect existing enrollments but new clients cannot use this type.`)) return;
+    if (!isAdmin) { toast('Only admins can delete membership types.', 'error'); return; }
+    const ok = await showConfirm({
+      message: `Are you sure you want to delete "${name}"? This will not affect existing enrollments but new clients cannot use this type.`,
+      confirmLabel: 'Delete',
+    });
+    if (!ok) return;
 
     setLoading(true);
     const result = await deleteMembershipType(id, user, true);
     if (result.success) {
       loadTypes();
     } else {
-      alert('Error: ' + result.error);
+      toast('Error: ' + result.error, 'error');
     }
     setLoading(false);
   };

@@ -3,9 +3,11 @@
 import { useState } from 'react';
 import { addMembershipType } from '@/lib/memberships';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNotifications } from '@/contexts/NotificationContext';
 
 export default function SpaMembershipForm({ onMembershipAdded }) {
   const { user, profile } = useAuth();
+  const { toast } = useNotifications();
   const canAdd = profile?.permissions?.spa?.add !== false;
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -47,7 +49,7 @@ export default function SpaMembershipForm({ onMembershipAdded }) {
       setFormData({ type: '', price: '', description: '', duration: '', entitlements: '', isReducingBalance: false });
       if (onMembershipAdded) onMembershipAdded();
     } else {
-      alert('Error: ' + result.error);
+      toast('Error: ' + result.error, 'error');
     }
     setLoading(false);
   };

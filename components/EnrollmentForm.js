@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { getMembershipTypes, enrollClient } from '@/lib/memberships';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNotifications } from '@/contexts/NotificationContext';
 import { searchClients } from '@/lib/clients';
 
 export default function EnrollmentForm({ onEnrolled }) {
@@ -117,10 +118,10 @@ export default function EnrollmentForm({ onEnrolled }) {
         setPopFile(null);
         if (onEnrolled) onEnrolled();
       } else {
-        alert('Error: ' + result.error);
+        toast('Error: ' + result.error, 'error');
       }
     } catch (error) {
-      alert('Upload Error: ' + error.message);
+      toast('Upload Error: ' + error.message, 'error');
     } finally {
       setLoading(false);
       setUploading(false);

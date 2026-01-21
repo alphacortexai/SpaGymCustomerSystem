@@ -7,9 +7,11 @@ import { getAllBranches } from '@/lib/branches';
 import { format } from 'date-fns';
 import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNotifications } from '@/contexts/NotificationContext';
 
 export default function UnrecognizedClientsList({ onClientUpdated }) {
   const { profile } = useAuth();
+  const { showConfirm } = useNotifications();
   const canEdit = profile?.permissions?.clients?.edit !== false;
   const canDelete = profile?.permissions?.clients?.delete !== false;
   const [clients, setClients] = useState([]);
@@ -81,9 +83,8 @@ export default function UnrecognizedClientsList({ onClientUpdated }) {
   };
 
   const handleApprove = async (client) => {
-    if (!confirm(`Approve this client and add to regular clients?`)) {
-      return;
-    }
+    const ok = await showConfirm({ message: 'Approve this client and add to regular clients?', confirmLabel: 'Approve' });
+    if (!ok) return;
 
     setError('');
     setSuccess('');
@@ -110,9 +111,8 @@ export default function UnrecognizedClientsList({ onClientUpdated }) {
   };
 
   const handleDelete = async (clientId) => {
-    if (!confirm('Are you sure you want to delete this unrecognized client?')) {
-      return;
-    }
+    const ok = await showConfirm({ message: 'Are you sure you want to delete this unrecognized client?', confirmLabel: 'Delete' });
+    if (!ok) return;
 
     const result = await deleteUnrecognizedClient(clientId);
     if (result.success) {

@@ -2,11 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNotifications } from '@/contexts/NotificationContext';
 import { updateUserPreferences } from '@/lib/users';
 import { format } from 'date-fns';
 
 export default function UserProfile() {
   const { user, profile } = useAuth();
+  const { toast } = useNotifications();
   const [saving, setSaving] = useState(false);
   const [nviewEnabled, setNviewEnabled] = useState(profile?.preferences?.nviewEnabled || false);
 
@@ -27,7 +29,7 @@ export default function UserProfile() {
       setNviewEnabled(enabled);
     } catch (error) {
       console.error('Error updating preferences:', error);
-      alert('Failed to update preferences');
+      toast('Failed to update preferences', 'error');
     } finally {
       setSaving(false);
     }

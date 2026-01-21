@@ -5,6 +5,7 @@ import { collection, getDocs, doc, updateDoc, Timestamp } from 'firebase/firesto
 import { db } from '@/lib/firebase';
 import { normalizePhoneNumber } from '@/lib/phoneUtils';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNotifications } from '@/contexts/NotificationContext';
 import ProtectedRoute from '@/components/ProtectedRoute';
 
 export default function MigratePhones() {
@@ -51,9 +52,12 @@ export default function MigratePhones() {
   };
 
   const handleMigration = async () => {
-    if (!confirm('This will update all phone numbers in the database. This action cannot be undone. Continue?')) {
-      return;
-    }
+    const ok = await showConfirm({
+      title: 'Confirm migration',
+      message: 'This will update all phone numbers in the database. This action cannot be undone. Continue?',
+      confirmLabel: 'Continue',
+    });
+    if (!ok) return;
 
     setLoading(true);
     setProgress('Fetching clients...');

@@ -3,10 +3,12 @@
 import { useState, useEffect, useMemo } from 'react';
 import { getTimeline, deleteTimelineEntry, getTimelineUserEmails } from '@/lib/timeline';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNotifications } from '@/contexts/NotificationContext';
 import { format } from 'date-fns';
 
 export default function ActionsTimeline() {
   const { profile } = useAuth();
+  const { toast, showConfirm } = useNotifications();
   const [timeline, setTimeline] = useState([]);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState(null);
@@ -61,18 +63,19 @@ export default function ActionsTimeline() {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this timeline entry?')) return;
+    const ok = await showConfirm({ message: 'Are you sure you want to delete this timeline entry?', confirmLabel: 'Delete' });
+    if (!ok) return;
     setDeletingId(id);
     try {
       const result = await deleteTimelineEntry(id);
       if (result.success) {
         setTimeline(prev => prev.filter(item => item.id !== id));
       } else {
-        alert('Failed to delete entry: ' + result.error);
+        toast('Failed to delete entry: ' + result.error, 'error');
       }
     } catch (error) {
       console.error('Error deleting timeline entry:', error);
-      alert('An error occurred while deleting.');
+      toast('An error occurred while deleting.', 'error');
     } finally {
       setDeletingId(null);
     }

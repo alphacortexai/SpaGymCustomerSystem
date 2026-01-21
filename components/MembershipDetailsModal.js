@@ -6,11 +6,13 @@ import { collection, getDocs, query, where, limit, doc, getDoc } from 'firebase/
 import { db } from '@/lib/firebase';
 import { redeemEntitlement, getAccessLogs, logAccess, cancelEnrollment, deleteEnrollment, logTreatment, updateEnrollmentDocuments, updateEnrollment } from '@/lib/memberships';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNotifications } from '@/contexts/NotificationContext';
 import ViewInvoiceModal from '@/components/ViewInvoiceModal';
 import LinkInvoiceModal from '@/components/LinkInvoiceModal';
 
 export default function MembershipDetailsModal({ enrollment, onClose, onUpdate, isSpa = false }) {
   const { user, profile } = useAuth();
+  const { toast, showConfirm } = useNotifications();
   const canEdit = isSpa ? profile?.permissions?.spa?.edit !== false : profile?.permissions?.gym?.edit !== false;
   const isAdmin = profile?.role === 'Admin';
   
@@ -65,12 +67,12 @@ export default function MembershipDetailsModal({ enrollment, onClose, onUpdate, 
   }, [enrollment.currency, enrollment.membershipTypeId, isSpa]);
 
   const handleRedeem = async (entitlementName) => {
-    if (confirm(`Redeem "${entitlementName}"?`)) {
-      setLoading(true);
-      await redeemEntitlement(enrollment.id, entitlementName, isSpa);
-      onUpdate();
-      setLoading(false);
-    }
+    const ok = await showConfirm({ message: `Redeem "${entitlementName}"?`, confirmLabel: 'Redeem' });
+    if (!ok) return;
+    setLoading(true);
+    await redeemEntitlement(enrollment.id, entitlementName, isSpa);
+    onUpdate();
+    setLoading(false);
   };
 
   const handleLogTreatment = async (e) => {
@@ -83,37 +85,37 @@ export default function MembershipDetailsModal({ enrollment, onClose, onUpdate, 
       setTreatmentForm({ service: '', amount: '' });
       onUpdate();
     } else {
-      alert('Error: ' + result.error);
+      toast('Error: ' + result.error, 'error');
     }
     setLoading(false);
   };
 
   const handleCancel = async () => {
-    if (confirm('Are you sure you want to cancel this membership?')) {
-      setLoading(true);
-      const result = await cancelEnrollment(enrollment.id, profile ? { uid: profile.uid, displayName: profile.name, email: profile.email } : null, isSpa);
-      if (result.success) {
-        onUpdate();
-        onClose();
-      } else {
-        alert('Error: ' + result.error);
-      }
-      setLoading(false);
+    const ok = await showConfirm({ message: 'Are you sure you want to cancel this membership?', confirmLabel: 'Cancel Membership' });
+    if (!ok) return;
+    setLoading(true);
+    const result = await cancelEnrollment(enrollment.id, profile ? { uid: profile.uid, displayName: profile.name, email: profile.email } : null, isSpa);
+    if (result.success) {
+      onUpdate();
+      onClose();
+    } else {
+      toast('Error: ' + result.error, 'error');
     }
+    setLoading(false);
   };
 
   const handleDelete = async () => {
-    if (confirm('Are you sure you want to PERMANENTLY DELETE this membership record? This cannot be undone.')) {
-      setLoading(true);
-      const result = await deleteEnrollment(enrollment.id, profile ? { uid: profile.uid, displayName: profile.name, email: profile.email } : null, isSpa);
-      if (result.success) {
-        onUpdate();
-        onClose();
-      } else {
-        alert('Error: ' + result.error);
-      }
-      setLoading(false);
+    const ok = await showConfirm({ message: 'Are you sure you want to PERMANENTLY DELETE this membership record? This cannot be undone.', confirmLabel: 'Delete' });
+    if (!ok) return;
+    setLoading(true);
+    const result = await deleteEnrollment(enrollment.id, profile ? { uid: profile.uid, displayName: profile.name, email: profile.email } : null, isSpa);
+    if (result.success) {
+      onUpdate();
+      onClose();
+    } else {
+      toast('Error: ' + result.error, 'error');
     }
+    setLoading(false);
   };
 
   const handleAdminUpdate = async (e) => {
@@ -123,9 +125,9 @@ export default function MembershipDetailsModal({ enrollment, onClose, onUpdate, 
     if (result.success) {
       setIsEditing(false);
       onUpdate();
-      alert('Membership updated successfully');
+      toast('Membership updated successfully', 'success');
     } else {
-      alert('Error: ' + result.error);
+      toast('Error: ' + result.error, 'error');
     }
     setLoading(false);
   };
@@ -152,10 +154,10 @@ export default function MembershipDetailsModal({ enrollment, onClose, onUpdate, 
         await updateEnrollmentDocuments(enrollment.id, docData, profile ? { uid: profile.uid, displayName: profile.name, email: profile.email } : null, isSpa);
         onUpdate();
       } else {
-        alert('Upload Error: ' + result.error);
+        toast('Upload Error: ' + result.error, 'error');
       }
     } catch (error) {
-      alert('Error: ' + error.message);
+      toast('Error: ' + error.message, 'error');
     } finally {
       setUploading(false);
     }
@@ -167,9 +169,9 @@ export default function MembershipDetailsModal({ enrollment, onClose, onUpdate, 
     try {
       const snap = await getDocs(query(collection(db, 'invoices'), where('invoiceNumber', '==', enrollment.invoiceNumber), limit(1)));
       if (!snap.empty) setViewInvoice({ id: snap.docs[0].id, ...snap.docs[0].data() });
-      else alert('Invoice not found.');
+      else toast('Invoice not found.', 'error');
     } catch (e) {
-      alert('Error loading invoice: ' + (e?.message || 'Unknown'));
+      toast('Error loading invoice: ' + (e?.message || 'Unknown'), 'error');
     } finally {
       setViewInvoiceLoading(false);
     }
@@ -180,23 +182,24 @@ export default function MembershipDetailsModal({ enrollment, onClose, onUpdate, 
     try {
       const res = await updateEnrollment(enrollment.id, { invoiceNumber: inv.invoiceNumber }, user ? { uid: user.uid, displayName: user.displayName || user.email, email: user.email } : null, isSpa);
       if (res.success) onUpdate();
-      else alert('Error: ' + (res.error || 'Could not link.'));
+      else toast('Error: ' + (res.error || 'Could not link.'), 'error');
     } catch (e) {
-      alert('Error: ' + (e?.message || 'Unknown'));
+      toast('Error: ' + (e?.message || 'Unknown'), 'error');
     } finally {
       setViewInvoiceLoading(false);
     }
   };
 
   const handleUnlinkInvoice = async () => {
-    if (!confirm('Unlink this invoice from the membership?')) return;
+    const ok = await showConfirm({ message: 'Unlink this invoice from the membership?', confirmLabel: 'Unlink' });
+    if (!ok) return;
     setViewInvoiceLoading(true);
     try {
       const res = await updateEnrollment(enrollment.id, { invoiceNumber: null }, user ? { uid: user.uid, displayName: user.displayName || user.email, email: user.email } : null, isSpa);
       if (res.success) onUpdate();
-      else alert('Error: ' + (res.error || 'Could not unlink.'));
+      else toast('Error: ' + (res.error || 'Could not unlink.'), 'error');
     } catch (e) {
-      alert('Error: ' + (e?.message || 'Unknown'));
+      toast('Error: ' + (e?.message || 'Unknown'), 'error');
     } finally {
       setViewInvoiceLoading(false);
     }

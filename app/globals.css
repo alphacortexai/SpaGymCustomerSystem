@@ -1,6 +1,10 @@
 @import "tailwindcss";
 
+/* Force light mode only: dark: variants only apply when .dark is on html (we never add it) */
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
+  color-scheme: light;
   --background: #ffffff;
   --foreground: #0f172a;
   --primary: #2563eb;
@@ -38,26 +42,6 @@
   --radius-lg: var(--radius);
   --radius-md: calc(var(--radius) - 2px);
   --radius-sm: calc(var(--radius) - 4px);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #020617;
-    --foreground: #f8fafc;
-    --primary: #3b82f6;
-    --primary-foreground: #ffffff;
-    --secondary: #1e293b;
-    --secondary-foreground: #f8fafc;
-    --accent: #0f172a;
-    --accent-foreground: #f8fafc;
-    --destructive: #ef4444;
-    --destructive-foreground: #ffffff;
-    --muted: #94a3b8;
-    --muted-foreground: #64748b;
-    --border: #1e293b;
-    --input: #1e293b;
-    --ring: #3b82f6;
-  }
 }
 
 body {

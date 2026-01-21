@@ -2,12 +2,14 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNotifications } from '@/contexts/NotificationContext';
 import { db, storage } from '@/lib/firebase';
 import {
   collection,
   getDocs,
   addDoc,
   updateDoc,
+  deleteDoc,
   doc,
   query,
   orderBy,
@@ -26,6 +28,7 @@ const STATUS_LABELS = {
 
 export default function InvoiceTracking() {
   const { user, profile } = useAuth();
+  const { toast, showConfirm } = useNotifications();
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -45,6 +48,8 @@ export default function InvoiceTracking() {
   const [viewLoading, setViewLoading] = useState(false);
 
   const isAllowed = profile?.role === 'Admin' || profile?.role === 'Manager';
+  const isAdmin = profile?.role === 'Admin';
+  const [removingId, setRemovingId] = useState(null);
 
   const fetchTracking = async () => {
     setLoading(true);
@@ -200,6 +205,26 @@ export default function InvoiceTracking() {
     }
   };
 
+  const doRemove = async (t) => {
+    if (!isAdmin) return;
+    const ok = await showConfirm({
+      title: 'Remove from tracking',
+      message: `Remove invoice #${t.invoiceNumber} (${t.clientName || '—'}) from tracking? This does not delete the invoice itself, only the tracking record.`,
+      confirmLabel: 'Remove',
+      cancelLabel: 'Cancel',
+    });
+    if (!ok) return;
+    setRemovingId(t.id);
+    try {
+      await deleteDoc(doc(db, 'invoiceTracking', t.id));
+      fetchTracking();
+    } catch (e) {
+      toast('Failed to remove: ' + (e?.message || 'Unknown error'), 'error');
+    } finally {
+      setRemovingId(null);
+    }
+  };
+
   const openView = async (t) => {
     setViewRecord({ tracking: t, invoice: null });
     setViewLoading(true);
@@ -329,6 +354,16 @@ export default function InvoiceTracking() {
                         <div className="flex items-center justify-end gap-1.5">
                           <button onClick={() => openView(t)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-medium">View</button>
                           <button onClick={() => openStatus(t)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium">Status</button>
+                          {isAdmin && (
+                            <button
+                              onClick={() => doRemove(t)}
+                              disabled={removingId === t.id}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-rose-200 dark:border-rose-800 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/20 disabled:opacity-50 text-xs font-medium"
+                              title="Remove from tracking (Admin only)"
+                            >
+                              {removingId === t.id ? 'Removing…' : 'Remove'}
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
