@@ -138,33 +138,32 @@ export default function Home() {
 
     const handlePopState = (event) => {
       const state = event.state;
-      
+
       if (activeTab === 'home') {
         setShowExitConfirm(true);
-        // Push state back to prevent actual back navigation
-        window.history.pushState({ tab: 'home' }, '');
+        window.history.pushState({ tab: 'home', gymSub: 'overview', spaSub: 'overview' }, '');
+        return;
+      }
+
+      if (state && state.tab) {
+        setActiveTab(state.tab);
+        setGymSubTab(state.gymSub ?? 'overview');
+        setSpaSubTab(state.spaSub ?? 'overview');
+        if (state.tab === 'home') setShowAdminSection(false);
+        return;
+      }
+
+      // Fallback when state is null or missing (e.g. initial load or external back)
+      if (activeTab === 'gym' && gymSubTab !== 'overview') {
+        setGymSubTab('overview');
+      } else if (activeTab === 'spa' && spaSubTab !== 'overview') {
+        setSpaSubTab('overview');
+      } else if (showAdminSection) {
+        setShowAdminSection(false);
       } else {
-        if (state && state.tab) {
-          // If we have state, use it
-          setActiveTab(state.tab);
-          if (state.gymSub) setGymSubTab(state.gymSub);
-          if (state.spaSub) setSpaSubTab(state.spaSub);
-        } else {
-          // Fallback logic
-          if (activeTab === 'gym' && gymSubTab !== 'overview') {
-            setGymSubTab('overview');
-          } else if (activeTab === 'spa' && spaSubTab !== 'overview') {
-            setSpaSubTab('overview');
-          } else if (showAdminSection) {
-            setShowAdminSection(false);
-          } else {
-            setActiveTab('home');
-          }
-        }
-        // Push state back to keep intercepting if we're not at home
-        if (activeTab !== 'home') {
-          window.history.pushState({ tab: activeTab }, '');
-        }
+        setActiveTab('home');
+        setGymSubTab('overview');
+        setSpaSubTab('overview');
       }
     };
 
