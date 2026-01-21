@@ -327,7 +327,7 @@ export default function MembershipDetailsModal({ enrollment, onClose, onUpdate, 
                 </div>
                 {enrollment.isReducingBalance && (
                   <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-2xl border border-blue-100 dark:border-blue-800 col-span-2">
-                    <div className="text-xs text-blue-500 mb-1">Current Balance</div>
+                    <div className="text-xs text-blue-500 mb-1">Remaining amount</div>
                     <div className="text-2xl font-black text-blue-600">{((enrollment.currency || fetchedCurrency || 'USD') === 'UGX' ? 'UGX ' : '$')}{Number(enrollment.balance || 0).toLocaleString()}</div>
                   </div>
                 )}
@@ -430,31 +430,57 @@ export default function MembershipDetailsModal({ enrollment, onClose, onUpdate, 
               )}
 
               {enrollment.isReducingBalance && (
-                <div>
-                  <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-3">Log Treatment</h3>
-                  <form onSubmit={handleLogTreatment} className="flex gap-2">
-                    <input
-                      type="text"
-                      placeholder="Service name..."
-                      value={treatmentForm.service}
-                      onChange={(e) => setTreatmentForm({ ...treatmentForm, service: e.target.value })}
-                      className="flex-1 px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500/20"
-                    />
-                    <input
-                      type="number"
-                      placeholder="Amount"
-                      value={treatmentForm.amount}
-                      onChange={(e) => setTreatmentForm({ ...treatmentForm, amount: e.target.value })}
-                      className="w-24 px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500/20"
-                    />
-                    <button
-                      type="submit"
-                      disabled={loading || !canEdit}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 disabled:opacity-50 transition-all"
-                    >
-                      Log
-                    </button>
-                  </form>
+                <div className="space-y-4">
+                  {enrollment.treatments && enrollment.treatments.length > 0 && (
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-3">Treatment History</h3>
+                      <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                        {[...(enrollment.treatments || [])]
+                          .sort((a, b) => (b.date?.toMillis?.() ?? new Date(b.date || 0).getTime()) - (a.date?.toMillis?.() ?? new Date(a.date || 0).getTime()))
+                          .map((t, i) => {
+                            const d = t.date?.toDate?.() ?? (t.date ? new Date(t.date) : null);
+                            return (
+                              <div key={i} className="flex flex-wrap items-center justify-between gap-2 py-2.5 px-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl text-sm border border-slate-100 dark:border-slate-700/50">
+                                <div className="font-medium text-slate-900 dark:text-white">{t.service}</div>
+                                <div className="flex items-center gap-3 text-slate-600 dark:text-slate-400">
+                                  {d && <span>{format(d, 'MMM d, yyyy HH:mm')}</span>}
+                                  <span className="font-semibold text-blue-600 dark:text-blue-400">
+                                    -{((enrollment.currency || fetchedCurrency || 'USD') === 'UGX' ? 'UGX ' : '$')}{Number(t.amount ?? 0).toLocaleString()}
+                                  </span>
+                                </div>
+                                {t.loggedBy?.name && <div className="w-full text-[10px] text-slate-400 mt-0.5">by {t.loggedBy.name}</div>}
+                              </div>
+                            );
+                          })}
+                      </div>
+                    </div>
+                  )}
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-3">Log Treatment</h3>
+                    <form onSubmit={handleLogTreatment} className="flex gap-2">
+                      <input
+                        type="text"
+                        placeholder="Service name..."
+                        value={treatmentForm.service}
+                        onChange={(e) => setTreatmentForm({ ...treatmentForm, service: e.target.value })}
+                        className="flex-1 px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500/20"
+                      />
+                      <input
+                        type="number"
+                        placeholder="Amount"
+                        value={treatmentForm.amount}
+                        onChange={(e) => setTreatmentForm({ ...treatmentForm, amount: e.target.value })}
+                        className="w-24 px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500/20"
+                      />
+                      <button
+                        type="submit"
+                        disabled={loading || !canEdit}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 disabled:opacity-50 transition-all"
+                      >
+                        Log
+                      </button>
+                    </form>
+                  </div>
                 </div>
               )}
 
