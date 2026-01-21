@@ -28,6 +28,9 @@ import UserProfile from '@/components/UserProfile';
 import ActionsTimeline from '@/components/ActionsTimeline';
 import DuplicateSearch from '@/components/DuplicateSearch';
 import NviewDashboard from '@/components/NviewDashboard';
+import InvoiceGenerator from '@/components/InvoiceGenerator';
+import InvoiceList from '@/components/InvoiceList';
+import InvoiceTracking from '@/components/InvoiceTracking';
 
 const NavCard = ({ onClick, icon, title, description, badge, isImage, fullBg, centerBadge }) => {
   return (
@@ -591,6 +594,10 @@ export default function Home() {
                       centerBadge={true}
                     />
                   )}
+                  <NavCard onClick={() => setActiveTab('invoice')} icon="🧾" title="Invoices" description="Proforma invoice generator." />
+                  {(profile?.role === 'Admin' || profile?.role === 'Manager') && (
+                    <NavCard onClick={() => setActiveTab('invoice-tracking')} icon="📋" title="Invoice Tracking" description="Issued, sent, completed and proof of payment." />
+                  )}
                   {profile?.role === 'Admin' && (
                     <NavCard onClick={() => setShowAdminSection(true)} icon="⚙️" title="Admin" description="System tools." />
                   )}
@@ -623,9 +630,50 @@ export default function Home() {
                     {profile?.role === 'Admin' && (
                       <NavCard onClick={() => setActiveTab('timeline')} icon="🕒" title="Timeline" description="Activity logs." />
                     )}
+                    {profile?.role === 'Admin' && (
+                      <NavCard onClick={() => setActiveTab('invoice-list')} icon="🧾" title="All Invoices" description="View, search and recreate PDFs." />
+                    )}
                   </div>
                 </div>
               )}
+            </div>
+          )}
+
+          {activeTab === 'invoice-list' && (
+            <div className="space-y-8 animate-in fade-in duration-300">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-3xl font-bold text-slate-900 dark:text-white">All Invoices</h2>
+                  <p className="text-slate-500 mt-1">View invoice records, search by number, client or phone, and recreate PDFs. Admin only.</p>
+                </div>
+                <button
+                  onClick={() => { setActiveTab('home'); setShowAdminSection(true); }}
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-sm font-medium"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+                  Back to Admin
+                </button>
+              </div>
+              <InvoiceList />
+            </div>
+          )}
+
+          {activeTab === 'invoice-tracking' && (
+            <div className="space-y-8 animate-in fade-in duration-300">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-3xl font-bold text-slate-900 dark:text-white">Invoice Tracking</h2>
+                  <p className="text-slate-500 mt-1">Import invoices, track status (Issued, Sent to client, Completed) and upload proof of payment. Managers and Admins.</p>
+                </div>
+                <button
+                  onClick={() => setActiveTab('home')}
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-sm font-medium"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+                  Back to Dashboard
+                </button>
+              </div>
+              <InvoiceTracking />
             </div>
           )}
 
@@ -1059,6 +1107,25 @@ export default function Home() {
                   )}
                 </div>
               )}
+            </div>
+          )}
+
+          {activeTab === 'invoice' && (
+            <div className="space-y-8 animate-in fade-in duration-300">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-3xl font-bold text-slate-900 dark:text-white">Proforma Invoice Generator</h2>
+                  <p className="text-slate-500 mt-1">Create invoices for GYM and SPA (PE &amp; SSS).</p>
+                </div>
+                <button
+                  onClick={() => setActiveTab('home')}
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-sm font-medium"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+                  Back to Dashboard
+                </button>
+              </div>
+              <InvoiceGenerator />
             </div>
           )}
         </main>

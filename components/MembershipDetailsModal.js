@@ -2,11 +2,15 @@
 
 import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
+import { collection, getDocs, query, where, limit, doc, getDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 import { redeemEntitlement, getAccessLogs, logAccess, cancelEnrollment, deleteEnrollment, logTreatment, updateEnrollmentDocuments, updateEnrollment } from '@/lib/memberships';
 import { useAuth } from '@/contexts/AuthContext';
+import ViewInvoiceModal from '@/components/ViewInvoiceModal';
+import LinkInvoiceModal from '@/components/LinkInvoiceModal';
 
 export default function MembershipDetailsModal({ enrollment, onClose, onUpdate, isSpa = false }) {
-  const { profile } = useAuth();
+  const { user, profile } = useAuth();
   const canEdit = isSpa ? profile?.permissions?.spa?.edit !== false : profile?.permissions?.gym?.edit !== false;
   const isAdmin = profile?.role === 'Admin';
   
@@ -15,6 +19,14 @@ export default function MembershipDetailsModal({ enrollment, onClose, onUpdate, 
   const [treatmentForm, setTreatmentForm] = useState({ service: '', amount: '' });
   const [uploading, setUploading] = useState(false);
   
+  // Linked invoice
+  const [linkModalOpen, setLinkModalOpen] = useState(false);
+  const [viewInvoice, setViewInvoice] = useState(null);
+  const [viewInvoiceLoading, setViewInvoiceLoading] = useState(false);
+
+  // Fallback: when enrollment has no currency, fetch from membership type
+  const [fetchedCurrency, setFetchedCurrency] = useState(null);
+
   // Admin Edit State
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState({
@@ -32,6 +44,25 @@ export default function MembershipDetailsModal({ enrollment, onClose, onUpdate, 
     };
     loadLogs();
   }, [enrollment.clientId]);
+
+  // When enrollment has no currency, fetch from membership type so we show UGX/USD correctly
+  useEffect(() => {
+    if (enrollment.currency) {
+      setFetchedCurrency(null);
+      return;
+    }
+    if (!enrollment.membershipTypeId) {
+      setFetchedCurrency('USD');
+      return;
+    }
+    let cancelled = false;
+    const col = isSpa ? 'spa_membership_types' : 'membership_types';
+    getDoc(doc(db, col, enrollment.membershipTypeId)).then((snap) => {
+      if (cancelled) return;
+      setFetchedCurrency(snap.exists() ? (snap.data().currency || 'USD') : 'USD');
+    });
+    return () => { cancelled = true; };
+  }, [enrollment.currency, enrollment.membershipTypeId, isSpa]);
 
   const handleRedeem = async (entitlementName) => {
     if (confirm(`Redeem "${entitlementName}"?`)) {
@@ -130,7 +161,49 @@ export default function MembershipDetailsModal({ enrollment, onClose, onUpdate, 
     }
   };
 
+  const handleViewInvoice = async () => {
+    if (!enrollment?.invoiceNumber) return;
+    setViewInvoiceLoading(true);
+    try {
+      const snap = await getDocs(query(collection(db, 'invoices'), where('invoiceNumber', '==', enrollment.invoiceNumber), limit(1)));
+      if (!snap.empty) setViewInvoice({ id: snap.docs[0].id, ...snap.docs[0].data() });
+      else alert('Invoice not found.');
+    } catch (e) {
+      alert('Error loading invoice: ' + (e?.message || 'Unknown'));
+    } finally {
+      setViewInvoiceLoading(false);
+    }
+  };
+
+  const handleLinkSelect = async (inv) => {
+    setViewInvoiceLoading(true);
+    try {
+      const res = await updateEnrollment(enrollment.id, { invoiceNumber: inv.invoiceNumber }, user ? { uid: user.uid, displayName: user.displayName || user.email, email: user.email } : null, isSpa);
+      if (res.success) onUpdate();
+      else alert('Error: ' + (res.error || 'Could not link.'));
+    } catch (e) {
+      alert('Error: ' + (e?.message || 'Unknown'));
+    } finally {
+      setViewInvoiceLoading(false);
+    }
+  };
+
+  const handleUnlinkInvoice = async () => {
+    if (!confirm('Unlink this invoice from the membership?')) return;
+    setViewInvoiceLoading(true);
+    try {
+      const res = await updateEnrollment(enrollment.id, { invoiceNumber: null }, user ? { uid: user.uid, displayName: user.displayName || user.email, email: user.email } : null, isSpa);
+      if (res.success) onUpdate();
+      else alert('Error: ' + (res.error || 'Could not unlink.'));
+    } catch (e) {
+      alert('Error: ' + (e?.message || 'Unknown'));
+    } finally {
+      setViewInvoiceLoading(false);
+    }
+  };
+
   return (
+    <>
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
       <div className="bg-white dark:bg-slate-900 w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800">
         <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
@@ -237,7 +310,7 @@ export default function MembershipDetailsModal({ enrollment, onClose, onUpdate, 
                 </div>
                 <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl">
                   <div className="text-xs text-slate-500 mb-1">Price</div>
-                  <div className="font-bold text-blue-600">${enrollment.price}</div>
+                  <div className="font-bold text-blue-600">{((enrollment.currency || fetchedCurrency || 'USD') === 'UGX' ? 'UGX ' : '$')}{Number(enrollment.price || 0).toLocaleString()}</div>
                 </div>
                 <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl">
                   <div className="text-xs text-slate-500 mb-1">Enrolled By</div>
@@ -252,9 +325,46 @@ export default function MembershipDetailsModal({ enrollment, onClose, onUpdate, 
                 {enrollment.isReducingBalance && (
                   <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-2xl border border-blue-100 dark:border-blue-800 col-span-2">
                     <div className="text-xs text-blue-500 mb-1">Current Balance</div>
-                    <div className="text-2xl font-black text-blue-600">${enrollment.balance?.toLocaleString() || 0}</div>
+                    <div className="text-2xl font-black text-blue-600">{((enrollment.currency || fetchedCurrency || 'USD') === 'UGX' ? 'UGX ' : '$')}{Number(enrollment.balance || 0).toLocaleString()}</div>
                   </div>
                 )}
+              </div>
+
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-3">Linked invoice</h3>
+                <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-700">
+                  {enrollment.invoiceNumber != null && enrollment.invoiceNumber !== '' ? (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-medium text-slate-900 dark:text-white">Invoice #{enrollment.invoiceNumber}</span>
+                      <button
+                        onClick={handleViewInvoice}
+                        disabled={viewInvoiceLoading}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-medium"
+                      >
+                        {viewInvoiceLoading ? 'Loading…' : 'View'}
+                      </button>
+                      {canEdit && (
+                        <button
+                          onClick={handleUnlinkInvoice}
+                          disabled={viewInvoiceLoading}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-medium"
+                        >
+                          Unlink
+                        </button>
+                      )}
+                    </div>
+                  ) : canEdit ? (
+                    <button
+                      onClick={() => setLinkModalOpen(true)}
+                      className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-dashed border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-400 hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-400 text-sm font-medium transition-colors"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
+                      Link invoice
+                    </button>
+                  ) : (
+                    <span className="text-slate-500 dark:text-slate-400 text-sm">No invoice linked</span>
+                  )}
+                </div>
               </div>
 
               {isAdmin && (
@@ -418,5 +528,8 @@ export default function MembershipDetailsModal({ enrollment, onClose, onUpdate, 
         </div>
       </div>
     </div>
+    {linkModalOpen && <LinkInvoiceModal onSelect={handleLinkSelect} onClose={() => setLinkModalOpen(false)} />}
+    {viewInvoice && <ViewInvoiceModal invoice={viewInvoice} onClose={() => setViewInvoice(null)} />}
+    </>
   );
 }

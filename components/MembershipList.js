@@ -248,7 +248,7 @@ export default function MembershipList() {
 
       {selectedEnrollment && (
         <MembershipDetailsModal 
-          enrollment={selectedEnrollment} 
+          enrollment={enrollments.find(e => e.id === selectedEnrollment.id) ?? selectedEnrollment} 
           onClose={() => setSelectedEnrollment(null)}
           onUpdate={loadEnrollments}
         />

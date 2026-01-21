@@ -16,7 +16,8 @@ export default function MembershipTypeManager() {
     duration: '',
     description: '',
     isReducingBalance: false,
-    entitlements: ''
+    entitlements: '',
+    currency: 'USD'
   });
 
   const loadTypes = async () => {
@@ -40,7 +41,8 @@ export default function MembershipTypeManager() {
       isReducingBalance: type.isReducingBalance || false,
       entitlements: Array.isArray(type.entitlements) 
         ? type.entitlements.map(e => `${e.name}${e.quantity > 1 ? ` x${e.quantity}` : ''}`).join(', ')
-        : type.entitlements || ''
+        : type.entitlements || '',
+      currency: type.currency === 'UGX' ? 'UGX' : 'USD'
     });
   };
 
@@ -61,7 +63,8 @@ export default function MembershipTypeManager() {
       ...editForm,
       price: parseFloat(editForm.price),
       duration: parseInt(editForm.duration),
-      entitlements: formattedEntitlements
+      entitlements: formattedEntitlements,
+      currency: editForm.currency || 'USD'
     }, user);
 
     if (result.success) {
@@ -142,6 +145,17 @@ export default function MembershipTypeManager() {
                       className="w-full px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
                     />
                   </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-500 mb-1">Currency</label>
+                    <select
+                      value={editForm.currency}
+                      onChange={(e) => setEditForm({ ...editForm, currency: e.target.value })}
+                      className="w-full px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="USD">USD</option>
+                      <option value="UGX">UGX</option>
+                    </select>
+                  </div>
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">Description</label>
@@ -182,7 +196,7 @@ export default function MembershipTypeManager() {
                   <div className="flex flex-wrap gap-4 text-xs">
                     <div className="flex flex-col">
                       <span className="text-slate-400 uppercase font-bold text-[10px]">Price</span>
-                      <span className="font-bold text-slate-700 dark:text-slate-300">${type.price}</span>
+                      <span className="font-bold text-slate-700 dark:text-slate-300">{(type.currency || 'USD') === 'UGX' ? 'UGX ' : '$'}{Number(type.price || 0).toLocaleString()}</span>
                     </div>
                     <div className="flex flex-col">
                       <span className="text-slate-400 uppercase font-bold text-[10px]">Duration</span>

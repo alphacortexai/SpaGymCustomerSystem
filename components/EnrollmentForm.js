@@ -84,6 +84,7 @@ export default function EnrollmentForm({ onEnrolled }) {
         membershipTypeId: formData.membershipTypeId,
         membershipType: selectedType.type,
         price: enrollmentPrice,
+        currency: selectedType?.currency || 'USD',
         description: selectedType.description,
         durationDays: selectedType.duration,
         entitlements: selectedType.entitlements,
