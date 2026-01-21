@@ -457,7 +457,7 @@ export default function MembershipDetailsModal({ enrollment, onClose, onUpdate, 
                   )}
                   <div>
                     <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-3">Log Treatment</h3>
-                    <form onSubmit={handleLogTreatment} className="flex gap-2">
+                    <form onSubmit={handleLogTreatment} className="flex flex-col sm:flex-row gap-2">
                       <input
                         type="text"
                         placeholder="Service name..."
@@ -470,12 +470,12 @@ export default function MembershipDetailsModal({ enrollment, onClose, onUpdate, 
                         placeholder="Amount"
                         value={treatmentForm.amount}
                         onChange={(e) => setTreatmentForm({ ...treatmentForm, amount: e.target.value })}
-                        className="w-24 px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500/20"
+                        className="w-full sm:w-24 px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500/20"
                       />
                       <button
                         type="submit"
                         disabled={loading || !canEdit}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 disabled:opacity-50 transition-all"
+                        className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 disabled:opacity-50 transition-all whitespace-nowrap"
                       >
                         Log
                       </button>
