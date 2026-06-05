@@ -2,34 +2,42 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import Image from 'next/image';
+import dynamic from 'next/dynamic';
 import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
 import { signOut } from '@/lib/auth';
-import ClientForm from '@/components/ClientForm';
 import ClientList from '@/components/ClientList';
-import ExcelUpload from '@/components/ExcelUpload';
 import { searchClients } from '@/lib/clients';
 import { affirmations } from '@/lib/affirmations';
 import ProtectedRoute from '@/components/ProtectedRoute';
-import BranchForm from '@/components/BranchForm';
-import UnrecognizedClientsList from '@/components/UnrecognizedClientsList';
-import UploadHistory from '@/components/UploadHistory';
-import MembershipForm from '@/components/MembershipForm';
-import MembershipTypeManager from '@/components/MembershipTypeManager';
-import EnrollmentForm from '@/components/EnrollmentForm';
-import MembershipList from '@/components/MembershipList';
-import SpaMembershipForm from '@/components/SpaMembershipForm';
-import SpaMembershipTypeManager from '@/components/SpaMembershipTypeManager';
-import SpaEnrollmentForm from '@/components/SpaEnrollmentForm';
-import SpaMembershipList from '@/components/SpaMembershipList';
-import UserManagement from '@/components/UserManagement';
-import UserProfile from '@/components/UserProfile';
-import ActionsTimeline from '@/components/ActionsTimeline';
-import DuplicateSearch from '@/components/DuplicateSearch';
-import NviewDashboard from '@/components/NviewDashboard';
-import InvoiceGenerator from '@/components/InvoiceGenerator';
-import InvoiceList from '@/components/InvoiceList';
-import InvoiceTracking from '@/components/InvoiceTracking';
+
+const LazySectionFallback = () => (
+  <div className="card-bg-doc rounded-2xl border border-slate-200 dark:border-slate-800 p-8 text-center text-slate-500 dark:text-slate-400">
+    Loading section...
+  </div>
+);
+
+const ClientForm = dynamic(() => import('@/components/ClientForm'), { loading: LazySectionFallback });
+const ExcelUpload = dynamic(() => import('@/components/ExcelUpload'), { loading: LazySectionFallback });
+const BranchForm = dynamic(() => import('@/components/BranchForm'), { loading: LazySectionFallback });
+const UnrecognizedClientsList = dynamic(() => import('@/components/UnrecognizedClientsList'), { loading: LazySectionFallback });
+const UploadHistory = dynamic(() => import('@/components/UploadHistory'), { loading: LazySectionFallback });
+const MembershipForm = dynamic(() => import('@/components/MembershipForm'), { loading: LazySectionFallback });
+const MembershipTypeManager = dynamic(() => import('@/components/MembershipTypeManager'), { loading: LazySectionFallback });
+const EnrollmentForm = dynamic(() => import('@/components/EnrollmentForm'), { loading: LazySectionFallback });
+const MembershipList = dynamic(() => import('@/components/MembershipList'), { loading: LazySectionFallback });
+const SpaMembershipForm = dynamic(() => import('@/components/SpaMembershipForm'), { loading: LazySectionFallback });
+const SpaMembershipTypeManager = dynamic(() => import('@/components/SpaMembershipTypeManager'), { loading: LazySectionFallback });
+const SpaEnrollmentForm = dynamic(() => import('@/components/SpaEnrollmentForm'), { loading: LazySectionFallback });
+const SpaMembershipList = dynamic(() => import('@/components/SpaMembershipList'), { loading: LazySectionFallback });
+const UserManagement = dynamic(() => import('@/components/UserManagement'), { loading: LazySectionFallback });
+const UserProfile = dynamic(() => import('@/components/UserProfile'), { loading: LazySectionFallback });
+const ActionsTimeline = dynamic(() => import('@/components/ActionsTimeline'), { loading: LazySectionFallback });
+const DuplicateSearch = dynamic(() => import('@/components/DuplicateSearch'), { loading: LazySectionFallback });
+const NviewDashboard = dynamic(() => import('@/components/NviewDashboard'), { loading: LazySectionFallback });
+const InvoiceGenerator = dynamic(() => import('@/components/InvoiceGenerator'), { loading: LazySectionFallback });
+const InvoiceList = dynamic(() => import('@/components/InvoiceList'), { loading: LazySectionFallback });
+const InvoiceTracking = dynamic(() => import('@/components/InvoiceTracking'), { loading: LazySectionFallback });
 
 const NavCard = ({ onClick, icon, title, description, badge, isImage, fullBg, centerBadge }) => {
   return (
@@ -88,6 +96,9 @@ export default function Home() {
     clientCountsByBranch: cachedClientCounts,
     birthdayCountsByBranch: cachedBirthdayCounts,
     loading: isDataLoading,
+    fullDataLoading: isFullDataLoading,
+    activeGymEnrollmentCount,
+    activeSpaEnrollmentCount,
     refreshData
   } = useData();
 
@@ -217,7 +228,7 @@ export default function Home() {
     if (['dashboard', 'birthdays', 'unrecognized'].includes(activeTab)) {
       setCurrentPage(1);
     }
-  }, [activeTab]);
+  }, [activeTab, selectedBranch]);
 
   const handleSetDefaultBranch = (branchName) => {
     localStorage.setItem('defaultBirthdayBranch', branchName);
@@ -263,6 +274,18 @@ export default function Home() {
       return monthMatch && dayMatch && branchMatch;
     });
   }, [todaysBirthdays, allClients, selectedMonth, selectedDay, selectedBranch]);
+
+  const isFullDatasetLoading = isFullDataLoading && cachedAllClients.length === 0;
+
+  const activeGymMembers = useMemo(() => {
+    if (typeof activeGymEnrollmentCount === 'number') return activeGymEnrollmentCount;
+    return cachedGymEnrollments.filter(e => e.status === 'active' && e.expiryDate && new Date(e.expiryDate) >= new Date()).length;
+  }, [activeGymEnrollmentCount, cachedGymEnrollments]);
+
+  const activeSpaMembers = useMemo(() => {
+    if (typeof activeSpaEnrollmentCount === 'number') return activeSpaEnrollmentCount;
+    return cachedSpaEnrollments.filter(e => e.status === 'active' && e.expiryDate && new Date(e.expiryDate) >= new Date()).length;
+  }, [activeSpaEnrollmentCount, cachedSpaEnrollments]);
 
   const getBranchInitials = (name) => {
     if (!name) return '??';
@@ -489,7 +512,7 @@ export default function Home() {
                 <div className="mt-4 p-4 card-bg-doc rounded-2xl border border-slate-200/50 dark:border-slate-800/50 backdrop-blur-sm">
                   <h2 className="text-xs font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 mb-1">Power Quotes</h2>
                   <p className="text-base text-slate-600 dark:text-slate-300 leading-relaxed italic font-medium">
-                    "{currentAffirmation}"
+                    “{currentAffirmation}”
                   </p>
                 </div>
               </div>
@@ -510,7 +533,7 @@ export default function Home() {
                       description="Memberships." 
                       isImage={true} 
                       fullBg={true} 
-                      badge={dataLoaded && cachedGymEnrollments ? cachedGymEnrollments.filter(e => e.status === 'active' && e.expiryDate && new Date(e.expiryDate) >= new Date()).length : (dataLoaded ? '...' : undefined)}
+                      badge={dataLoaded ? activeGymMembers : undefined}
                       centerBadge={true}
                     />
                   )}
@@ -522,7 +545,7 @@ export default function Home() {
                       description="Memberships." 
                       isImage={true} 
                       fullBg={true} 
-                      badge={dataLoaded && cachedSpaEnrollments ? cachedSpaEnrollments.filter(e => e.status === 'active' && e.expiryDate && new Date(e.expiryDate) >= new Date()).length : (dataLoaded ? '...' : undefined)}
+                      badge={dataLoaded ? activeSpaMembers : undefined}
                       centerBadge={true}
                     />
                   )}
@@ -656,7 +679,7 @@ export default function Home() {
                 totalCount={searchTerm ? searchResults.length : allClients.length}
                 title={searchTerm ? `Search Results for "${searchTerm}"` : "All Clients"}
                 onClientUpdated={refreshData}
-                isLoading={isInitialLoading}
+                isLoading={isInitialLoading || isFullDatasetLoading}
               />
 
               {(searchTerm ? searchResults.length : allClients.length) > clientsPerPage && (
@@ -760,7 +783,7 @@ export default function Home() {
                 totalCount={filteredBirthdays.length}
                 title={selectedMonth || selectedDay ? "Filtered Birthdays" : "Today's Birthdays"}
                 onClientUpdated={refreshData}
-                isLoading={isInitialLoading}
+                isLoading={isInitialLoading || ((selectedMonth || selectedDay) && isFullDatasetLoading)}
               />
 
               {filteredBirthdays.length > clientsPerPage && (
