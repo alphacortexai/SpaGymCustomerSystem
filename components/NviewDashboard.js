@@ -25,7 +25,9 @@ export default function NviewDashboard() {
     gymEnrollments, 
     spaEnrollments,
     branches,
-    clientCountsByBranch
+    clientCountsByBranch,
+    activeGymEnrollmentCount,
+    activeSpaEnrollmentCount
   } = useData();
   
   const [monthlyBirthdays, setMonthlyBirthdays] = useState({});
@@ -79,16 +81,17 @@ export default function NviewDashboard() {
   // Calculate KPIs with background images mapping
   const kpis = useMemo(() => {
     const today = new Date();
-    const activeGymMembers = gymEnrollments.filter(e => 
-      e.status === 'active' && e.expiryDate && new Date(e.expiryDate) >= today
-    ).length;
+    const activeGymMembers = typeof activeGymEnrollmentCount === 'number'
+      ? activeGymEnrollmentCount
+      : gymEnrollments.filter(e => e.status === 'active' && e.expiryDate && new Date(e.expiryDate) >= today).length;
     
-    const activeSpaMembers = spaEnrollments.filter(e => 
-      e.status === 'active' && e.expiryDate && new Date(e.expiryDate) >= today
-    ).length;
+    const activeSpaMembers = typeof activeSpaEnrollmentCount === 'number'
+      ? activeSpaEnrollmentCount
+      : spaEnrollments.filter(e => e.status === 'active' && e.expiryDate && new Date(e.expiryDate) >= today).length;
 
     const todaysBirthdays = allBirthdays.length;
-    const totalClients = globalClients.length;
+    const countedClients = Object.values(clientCountsByBranch || {}).reduce((sum, count) => sum + count, 0);
+    const totalClients = globalClients.length || countedClients;
 
     return {
       clientsByBranch: {
@@ -125,7 +128,7 @@ export default function NviewDashboard() {
         backgroundImage: '/gym_bg.jpg'
       }
     };
-  }, [globalClients, gymEnrollments, spaEnrollments, allBirthdays, clientsByBranch]);
+  }, [globalClients, gymEnrollments, spaEnrollments, allBirthdays, clientsByBranch, clientCountsByBranch, activeGymEnrollmentCount, activeSpaEnrollmentCount]);
 
   const getColorClasses = (color) => {
     const colors = {

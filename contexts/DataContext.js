@@ -1,15 +1,16 @@
 'use client';
 
-import { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import { useAuth } from './AuthContext';
 import { getAllClients, getTodaysBirthdays, getClientCountsByBranch, getBirthdayCountsByBranch } from '@/lib/clients';
-import { getAllEnrollments } from '@/lib/memberships';
+import { getAllEnrollments, getActiveEnrollmentCount } from '@/lib/memberships';
 import { getAllBranches } from '@/lib/branches';
 
 const DataContext = createContext({});
 
 export function DataProvider({ children }) {
   const { user } = useAuth();
+  const loadingRef = useRef(false);
   const [data, setData] = useState({
     allClients: [],
     globalClients: [],
@@ -20,9 +21,12 @@ export function DataProvider({ children }) {
     spaEnrollments: [],
     clientCountsByBranch: {},
     birthdayCountsByBranch: {},
+    activeGymEnrollmentCount: 0,
+    activeSpaEnrollmentCount: 0,
     lastFetched: null
   });
   const [loading, setLoading] = useState(false);
+  const [fullDataLoading, setFullDataLoading] = useState(false);
 
   const loadData = useCallback(async (force = false) => {
     const now = Date.now();
@@ -30,28 +34,43 @@ export function DataProvider({ children }) {
       return;
     }
 
-    if (!user) return;
+    if (!user || loadingRef.current) return;
 
+    loadingRef.current = true;
     setLoading(true);
+    setFullDataLoading(true);
+
     try {
-      // Load counts first (lightweight) for badges
-      const [clientCounts, birthdayCounts, allBranches] = await Promise.all([
-        getClientCountsByBranch(),
-        getBirthdayCountsByBranch(),
-        getAllBranches(),
+      // Load lightweight home-card data first so refreshes can render the main page quickly.
+      const allBranches = await getAllBranches();
+      const [
+        clientCounts,
+        birthdayCounts,
+        birthdays,
+        activeGymEnrollmentCount,
+        activeSpaEnrollmentCount,
+      ] = await Promise.all([
+        getClientCountsByBranch(allBranches),
+        getBirthdayCountsByBranch(allBranches),
+        getTodaysBirthdays(null),
+        getActiveEnrollmentCount(false),
+        getActiveEnrollmentCount(true),
       ]);
 
-      // Update counts immediately for fast badge rendering
       setData(prev => ({
         ...prev,
+        branches: allBranches,
         clientCountsByBranch: clientCounts,
         birthdayCountsByBranch: birthdayCounts,
-        branches: allBranches,
+        todaysBirthdays: birthdays,
+        allBirthdays: birthdays,
+        activeGymEnrollmentCount,
+        activeSpaEnrollmentCount,
       }));
+      setLoading(false);
 
-      // Load full data in parallel (no duplicate fetches)
-      const [birthdays, clients, gymEnrollments, spaEnrollments] = await Promise.all([
-        getTodaysBirthdays(null),
+      // Load large datasets after the cards have enough data to display.
+      const [clients, gymEnrollments, spaEnrollments] = await Promise.all([
         getAllClients(null),
         getAllEnrollments(false),
         getAllEnrollments(true),
@@ -59,21 +78,23 @@ export function DataProvider({ children }) {
 
       setData(prev => ({
         ...prev,
-        todaysBirthdays: birthdays,
         allClients: clients,
-        allBirthdays: birthdays,
         globalClients: clients,
         gymEnrollments,
         spaEnrollments,
         branches: allBranches,
         clientCountsByBranch: clientCounts,
         birthdayCountsByBranch: birthdayCounts,
+        activeGymEnrollmentCount,
+        activeSpaEnrollmentCount,
         lastFetched: now
       }));
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
+      loadingRef.current = false;
       setLoading(false);
+      setFullDataLoading(false);
     }
   }, [user, data.lastFetched]);
 
@@ -84,7 +105,7 @@ export function DataProvider({ children }) {
   }, [user, data.lastFetched, loadData]);
 
   return (
-    <DataContext.Provider value={{ ...data, loading, refreshData: () => loadData(true) }}>
+    <DataContext.Provider value={{ ...data, loading, fullDataLoading, refreshData: () => loadData(true) }}>
       {children}
     </DataContext.Provider>
   );
