@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import jsPDF from 'jspdf';
 import { db } from '@/lib/firebase';
 import {
@@ -10,6 +10,7 @@ import {
   runTransaction,
   serverTimestamp,
 } from 'firebase/firestore';
+import { getMembershipTypes } from '@/lib/memberships';
 
 export default function InvoiceGenerator() {
   const [step, setStep] = useState(1);
@@ -28,11 +29,71 @@ export default function InvoiceGenerator() {
   const [pdfPreview, setPdfPreview] = useState('');
   const [invoiceNumber, setInvoiceNumber] = useState(null);
   const [invoiceDate] = useState(new Date().toLocaleDateString());
+  const [gymMembershipTypes, setGymMembershipTypes] = useState([]);
+  const [spaMembershipTypes, setSpaMembershipTypes] = useState([]);
+  const [membershipTypesLoading, setMembershipTypesLoading] = useState(true);
 
-  const membershipPrices = {
-    'Annual Individual GYM Membership': 1300,
-    'Annual Family GYM Membership': 1800,
-    'Half Year GYM Membership Subscription': 800,
+  const membershipOptions = useMemo(() => {
+    const availableTypes = serviceType === 'Spa' ? spaMembershipTypes : gymMembershipTypes;
+    return availableTypes.filter(
+      (type) => !type.currency || type.currency === currency
+    );
+  }, [currency, gymMembershipTypes, serviceType, spaMembershipTypes]);
+
+  const formatEntitlements = (entitlements) => {
+    if (!Array.isArray(entitlements) || entitlements.length === 0) return '';
+
+    return entitlements
+      .map((entitlement) => {
+        const quantity = Number(entitlement.quantity || 1);
+        return `${entitlement.name}${quantity > 1 ? ` x${quantity}` : ''}`;
+      })
+      .join(', ');
+  };
+
+  const selectedMembershipType = useMemo(
+    () => membershipOptions.find((type) => type.id === membership) || null,
+    [membership, membershipOptions]
+  );
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadMembershipTypes = async () => {
+      setMembershipTypesLoading(true);
+      const [gymTypes, spaTypes] = await Promise.all([
+        getMembershipTypes(false),
+        getMembershipTypes(true),
+      ]);
+
+      if (isMounted) {
+        setGymMembershipTypes(gymTypes);
+        setSpaMembershipTypes(spaTypes);
+        setMembershipTypesLoading(false);
+      }
+    };
+
+    loadMembershipTypes();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const handleMembershipChange = (membershipId) => {
+    setMembership(membershipId);
+    const nextMembershipType = membershipOptions.find(
+      (type) => type.id === membershipId
+    );
+
+    if (nextMembershipType) {
+      setCustomAmount(String(nextMembershipType.price || ''));
+      setCustomItem(nextMembershipType.type || '');
+      setCustomComplimentaries(
+        nextMembershipType.description ||
+          formatEntitlements(nextMembershipType.entitlements)
+      );
+    }
   };
 
   const defaultGymComplimentaries =
@@ -41,18 +102,9 @@ export default function InvoiceGenerator() {
     'Health drinks and Tea, Juices, Fruit Salad and many more';
 
   const computedCustomAmount = parseFloat(customAmount) || 0;
-  const unitAmount =
-    experienceType === 'Positive' && serviceType === 'Gym'
-      ? currency === 'UGX'
-        ? computedCustomAmount > 0
-          ? computedCustomAmount
-          : membership
-            ? membershipPrices[membership] || 0
-            : 0
-        : membership
-          ? membershipPrices[membership] || 0
-          : computedCustomAmount || 0
-      : computedCustomAmount || 0;
+  const unitAmount = selectedMembershipType
+    ? Number(selectedMembershipType.price || 0)
+    : computedCustomAmount || 0;
 
   const totalAmount = unitAmount * qty;
 
@@ -97,18 +149,15 @@ export default function InvoiceGenerator() {
     pdfDoc.text(`${phone}`, 15, 89);
     pdfDoc.text(`${qty}`, 20, 110);
     const itemDescription =
-      experienceType === 'Positive' && serviceType === 'Gym' && membership
-        ? membership
-        : customItem;
+      selectedMembershipType?.type || customItem;
     pdfDoc.text(itemDescription, 32, 110);
     pdfDoc.text(`${displaySymbol}${unitAmount.toLocaleString()}`, 125, 110);
     pdfDoc.text(`${displaySymbol}${totalAmount.toLocaleString()}`, 162, 110);
     const complimentariesText =
-      experienceType === 'Positive' && serviceType === 'Gym' && membership
-        ? defaultGymComplimentaries
-        : serviceType === 'Spa'
-          ? customComplimentaries || defaultSpaComplimentaries
-          : customComplimentaries;
+      customComplimentaries ||
+      (serviceType === 'Spa'
+        ? defaultSpaComplimentaries
+        : defaultGymComplimentaries);
     pdfDoc.text('Complimentaries:', 32, 140);
     pdfDoc.text(complimentariesText, 32, 145, { maxWidth: 100 });
     pdfDoc.text(`${displaySymbol}${totalAmount.toLocaleString()}`, 162, 220);
@@ -183,6 +232,7 @@ export default function InvoiceGenerator() {
         experienceType,
         serviceType,
         membership,
+        membershipName: selectedMembershipType?.type || '',
         customItem,
         customAmount,
         customComplimentaries,
@@ -228,6 +278,7 @@ export default function InvoiceGenerator() {
                     setExperienceType('Positive');
                     setServiceType('Gym');
                     setCurrency('USD');
+                    setMembership('');
                     nextStep();
                   }}
                   className="flex-1 min-w-[140px] px-4 py-3 rounded-xl font-medium bg-pink-100 dark:bg-pink-900/30 text-pink-900 dark:text-pink-200 border-2 border-pink-200 dark:border-pink-800 hover:bg-pink-200/50 dark:hover:bg-pink-800/30 transition-colors"
@@ -239,6 +290,7 @@ export default function InvoiceGenerator() {
                     setExperienceType('Positive');
                     setServiceType('Gym');
                     setCurrency('UGX');
+                    setMembership('');
                     nextStep();
                   }}
                   className="flex-1 min-w-[140px] px-4 py-3 rounded-xl font-medium bg-pink-100 dark:bg-pink-900/30 text-pink-900 dark:text-pink-200 border-2 border-pink-200 dark:border-pink-800 hover:bg-pink-200/50 dark:hover:bg-pink-800/30 transition-colors"
@@ -250,6 +302,7 @@ export default function InvoiceGenerator() {
                     setExperienceType('Positive');
                     setServiceType('Spa');
                     setCurrency('UGX');
+                    setMembership('');
                     nextStep();
                   }}
                   className="flex-1 min-w-[140px] px-4 py-3 rounded-xl font-medium bg-pink-100 dark:bg-pink-900/30 text-pink-900 dark:text-pink-200 border-2 border-pink-200 dark:border-pink-800 hover:bg-pink-200/50 dark:hover:bg-pink-800/30 transition-colors"
@@ -269,6 +322,7 @@ export default function InvoiceGenerator() {
                   setExperienceType('Soothing');
                   setServiceType('Spa');
                   setCurrency('UGX');
+                  setMembership('');
                   nextStep();
                 }}
                 className="w-full max-w-xs mx-auto flex justify-center px-4 py-3 rounded-xl font-medium bg-purple-900 text-white hover:bg-purple-800 transition-colors"
@@ -328,71 +382,80 @@ export default function InvoiceGenerator() {
           <h2 className="text-xl font-bold text-slate-900 dark:text-white text-center mb-4">
             Additional Invoice Details
           </h2>
-          {experienceType === 'Positive' &&
-            serviceType === 'Gym' &&
-            currency === 'USD' && (
-              <>
-                <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">
-                  Membership Type:
-                </label>
-                <select
-                  value={membership}
-                  onChange={(e) => setMembership(e.target.value)}
-                  className="w-full mb-3 px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
-                >
-                  <option value="">Select Membership</option>
-                  <option value="Annual Individual GYM Membership">
-                    Annual Individual - $1300
+          {experienceType === 'Positive' && serviceType === 'Gym' && (
+            <>
+              <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">
+                Membership Type:
+              </label>
+              <select
+                value={selectedMembershipType ? membership : ''}
+                onChange={(e) => handleMembershipChange(e.target.value)}
+                className="w-full mb-3 px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+                disabled={membershipTypesLoading}
+              >
+                <option value="">
+                  {membershipTypesLoading ? 'Loading memberships...' : 'Select Membership'}
+                </option>
+                {membershipOptions.map((type) => (
+                  <option key={type.id} value={type.id}>
+                    {type.type} - {(type.currency || currency) === 'UGX' ? 'UGX ' : '$'}
+                    {Number(type.price || 0).toLocaleString()}
                   </option>
-                  <option value="Annual Family GYM Membership">
-                    Annual Family - $1800
-                  </option>
-                  <option value="Half Year GYM Membership Subscription">
-                    Half Year - $800
-                  </option>
-                </select>
-              </>
-            )}
-          {experienceType === 'Positive' &&
-            serviceType === 'Gym' &&
-            currency === 'UGX' && (
-              <>
-                <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">
-                  Membership Type:
-                </label>
-                <select
-                  value={membership}
-                  onChange={(e) => setMembership(e.target.value)}
-                  className="w-full mb-3 px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
-                >
-                  <option value="">Select Membership</option>
-                  <option value="Annual Individual GYM Membership">
-                    Annual Individual
-                  </option>
-                  <option value="Annual Family GYM Membership">
-                    Annual Family
-                  </option>
-                  <option value="Half Year GYM Membership Subscription">
-                    Half Year
-                  </option>
-                </select>
-                <input
-                  type="number"
-                  placeholder="Amount (UGX)"
-                  value={customAmount}
-                  onChange={(e) => setCustomAmount(e.target.value)}
-                  className="w-full mb-3 px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
-                />
-                <textarea
-                  placeholder="Custom complimentaries (optional)"
-                  value={customComplimentaries}
-                  onChange={(e) => setCustomComplimentaries(e.target.value)}
-                  className="w-full mb-3 px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none resize-none h-20"
-                />
-              </>
-            )}
+                ))}
+              </select>
+              {!membershipTypesLoading && membershipOptions.length === 0 && (
+                <p className="mb-3 text-sm text-amber-600 dark:text-amber-400">
+                  No {currency} gym memberships found. Add one in Membership Management or enter a custom item below.
+                </p>
+              )}
+              <input
+                type="text"
+                placeholder="Custom item description"
+                value={customItem}
+                onChange={(e) => setCustomItem(e.target.value)}
+                className="w-full mb-3 px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+              />
+              <input
+                type="number"
+                placeholder={`Amount (${currency})`}
+                value={customAmount}
+                onChange={(e) => setCustomAmount(e.target.value)}
+                className="w-full mb-3 px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+              />
+              <textarea
+                placeholder="Custom complimentaries (optional)"
+                value={customComplimentaries}
+                onChange={(e) => setCustomComplimentaries(e.target.value)}
+                className="w-full mb-3 px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none resize-none h-20"
+              />
+            </>
+          )}
           {experienceType === 'Positive' && serviceType === 'Spa' && (
             <>
+              <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">
+                Spa Membership Type (optional):
+              </label>
+              <select
+                value={selectedMembershipType ? membership : ''}
+                onChange={(e) => handleMembershipChange(e.target.value)}
+                className="w-full mb-3 px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+                disabled={membershipTypesLoading}
+              >
+                <option value="">
+                  {membershipTypesLoading ? 'Loading memberships...' : 'Select Spa Membership'}
+                </option>
+                {membershipOptions.map((type) => (
+                  <option key={type.id} value={type.id}>
+                    {type.type} - {(type.currency || currency) === 'UGX' ? 'UGX ' : '$'}
+                    {Number(type.price || 0).toLocaleString()}
+                  </option>
+                ))}
+              </select>
+              {!membershipTypesLoading && membershipOptions.length === 0 && (
+                <p className="mb-3 text-sm text-amber-600 dark:text-amber-400">
+                  No {currency} spa memberships found. Add one in Spa Membership Management or enter a custom item below.
+                </p>
+              )}
               <input
                 type="text"
                 placeholder="Item Description"
@@ -409,7 +472,10 @@ export default function InvoiceGenerator() {
               />
               <select
                 value={currency}
-                onChange={(e) => setCurrency(e.target.value)}
+                onChange={(e) => {
+                  setCurrency(e.target.value);
+                  setMembership('');
+                }}
                 className="w-full mb-3 px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
               >
                 <option value="USD">USD</option>
@@ -425,6 +491,30 @@ export default function InvoiceGenerator() {
           )}
           {experienceType === 'Soothing' && (
             <>
+              <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">
+                Spa Membership Type (optional):
+              </label>
+              <select
+                value={selectedMembershipType ? membership : ''}
+                onChange={(e) => handleMembershipChange(e.target.value)}
+                className="w-full mb-3 px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+                disabled={membershipTypesLoading}
+              >
+                <option value="">
+                  {membershipTypesLoading ? 'Loading memberships...' : 'Select Spa Membership'}
+                </option>
+                {membershipOptions.map((type) => (
+                  <option key={type.id} value={type.id}>
+                    {type.type} - {(type.currency || currency) === 'UGX' ? 'UGX ' : '$'}
+                    {Number(type.price || 0).toLocaleString()}
+                  </option>
+                ))}
+              </select>
+              {!membershipTypesLoading && membershipOptions.length === 0 && (
+                <p className="mb-3 text-sm text-amber-600 dark:text-amber-400">
+                  No {currency} spa memberships found. Add one in Spa Membership Management or enter a custom item below.
+                </p>
+              )}
               <input
                 type="text"
                 placeholder="Item Description"
