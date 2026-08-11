@@ -39,11 +39,51 @@ const InvoiceGenerator = dynamic(() => import('@/components/InvoiceGenerator'), 
 const InvoiceList = dynamic(() => import('@/components/InvoiceList'), { loading: LazySectionFallback });
 const InvoiceTracking = dynamic(() => import('@/components/InvoiceTracking'), { loading: LazySectionFallback });
 
-const NavCard = ({ onClick, icon, title, description, badge, isImage, fullBg, centerBadge }) => {
+const NavCard = ({ onClick, icon, title, description, badge, isImage, fullBg, centerBadge, accent = 'blue', eyebrow }) => {
+  const accentStyles = {
+    blue: {
+      gradient: 'from-blue-500/16 via-sky-400/10 to-cyan-300/12',
+      icon: 'bg-blue-50 text-blue-600 border-blue-100 shadow-blue-500/10 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-900/70',
+      glow: 'bg-blue-500/20',
+      badge: 'bg-blue-600 shadow-blue-500/30',
+    },
+    amber: {
+      gradient: 'from-amber-400/18 via-orange-300/10 to-yellow-200/14',
+      icon: 'bg-amber-50 text-amber-700 border-amber-100 shadow-amber-500/10 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900/60',
+      glow: 'bg-amber-400/20',
+      badge: 'bg-amber-600 shadow-amber-500/30',
+    },
+    violet: {
+      gradient: 'from-violet-500/16 via-fuchsia-400/10 to-pink-300/12',
+      icon: 'bg-violet-50 text-violet-600 border-violet-100 shadow-violet-500/10 dark:bg-violet-950/40 dark:text-violet-300 dark:border-violet-900/60',
+      glow: 'bg-violet-500/20',
+      badge: 'bg-violet-600 shadow-violet-500/30',
+    },
+    emerald: {
+      gradient: 'from-emerald-500/16 via-teal-400/10 to-lime-300/12',
+      icon: 'bg-emerald-50 text-emerald-600 border-emerald-100 shadow-emerald-500/10 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900/60',
+      glow: 'bg-emerald-500/20',
+      badge: 'bg-emerald-600 shadow-emerald-500/30',
+    },
+    rose: {
+      gradient: 'from-rose-500/16 via-pink-400/10 to-orange-300/12',
+      icon: 'bg-rose-50 text-rose-600 border-rose-100 shadow-rose-500/10 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-900/60',
+      glow: 'bg-rose-500/20',
+      badge: 'bg-rose-600 shadow-rose-500/30',
+    },
+    slate: {
+      gradient: 'from-slate-500/14 via-slate-300/10 to-slate-100/20',
+      icon: 'bg-slate-50 text-slate-600 border-slate-100 shadow-slate-500/10 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700',
+      glow: 'bg-slate-400/20',
+      badge: 'bg-slate-700 shadow-slate-500/30',
+    },
+  };
+  const selectedAccent = accentStyles[accent] || accentStyles.blue;
+
   return (
     <button
       onClick={onClick}
-      className={`group relative flex flex-col items-center justify-center p-4 ${fullBg ? 'bg-transparent' : 'card-bg-doc'} border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm transition-all duration-300 hover:shadow-md hover:-translate-y-1 text-center w-full aspect-square overflow-hidden`}
+      className={`group relative flex flex-col items-center justify-center p-4 ${fullBg ? 'bg-transparent' : 'card-bg-doc'} border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-sm transition-all duration-300 hover:shadow-xl hover:shadow-slate-900/10 hover:-translate-y-1 text-center w-full aspect-square overflow-hidden`}
     >
       {fullBg && isImage && (
         <div className="absolute inset-0 z-0">
@@ -51,10 +91,17 @@ const NavCard = ({ onClick, icon, title, description, badge, isImage, fullBg, ce
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent z-1" />
         </div>
       )}
+      {!fullBg && (
+        <>
+          <div className={`absolute inset-0 bg-gradient-to-br ${selectedAccent.gradient} opacity-80 transition-opacity duration-300 group-hover:opacity-100`} />
+          <div className={`absolute -right-8 -top-8 h-24 w-24 rounded-full blur-2xl ${selectedAccent.glow} transition-transform duration-500 group-hover:scale-125`} />
+          <div className="absolute inset-x-5 top-0 h-px bg-gradient-to-r from-transparent via-white/80 to-transparent" />
+        </>
+      )}
       {badge !== undefined && (
         <div className={centerBadge 
           ? "absolute inset-0 flex items-center justify-center z-10 pointer-events-none" 
-          : "absolute top-3 right-3 min-w-[20px] h-5 px-1.5 flex items-center justify-center bg-blue-600 text-white text-[10px] font-bold rounded-full shadow-lg shadow-blue-500/30 z-10"
+          : `absolute top-3 right-3 min-w-[22px] h-6 px-2 flex items-center justify-center ${selectedAccent.badge} text-white text-[10px] font-bold rounded-full shadow-lg z-10 ring-2 ring-white/80 dark:ring-slate-950/80`
         }>
           <div className={centerBadge 
             ? "text-white text-4xl md:text-5xl font-black drop-shadow-lg"
@@ -65,17 +112,18 @@ const NavCard = ({ onClick, icon, title, description, badge, isImage, fullBg, ce
         </div>
       )}
       {!fullBg && (
-        <div className="mb-3 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 text-slate-600 dark:text-slate-300 transition-colors duration-300 group-hover:bg-slate-100 dark:group-hover:bg-slate-700 flex items-center justify-center overflow-hidden">
+        <div className={`relative z-10 mb-3 p-3 rounded-2xl border shadow-lg ${selectedAccent.icon} transition-all duration-300 group-hover:scale-110 group-hover:-rotate-3 flex items-center justify-center overflow-hidden`}>
           {isImage ? (
             <div className="w-8 h-8 relative">
               <Image src={icon} alt={title} fill className="object-contain" />
             </div>
           ) : (
-            <span className="text-xl">{icon}</span>
+            <span className="text-2xl">{icon}</span>
           )}
         </div>
       )}
       <div className={`relative z-20 ${fullBg ? 'mt-auto' : ''}`}>
+        {eyebrow && <div className="mb-1 text-[10px] font-black uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">{eyebrow}</div>}
         <h3 className={`text-lg font-bold ${fullBg ? 'text-white' : 'text-slate-900 dark:text-white'} mb-1`}>{title}</h3>
         <p className={`text-sm ${fullBg ? 'text-slate-200' : 'text-slate-500 dark:text-slate-400'} leading-tight line-clamp-2 px-1`}>{description}</p>
       </div>
@@ -559,34 +607,41 @@ export default function Home() {
                 </div>
               ) : (
                 <div className="space-y-6">
-                  <div className="flex items-center justify-between">
-                    <h2 className="text-xl font-bold text-slate-900 dark:text-white">Admin Tools</h2>
-                    <button onClick={() => setShowAdminSection(false)} className="text-sm font-medium text-blue-600 hover:text-blue-700">Back to main</button>
+                  <div className="relative overflow-hidden rounded-3xl border border-blue-100/80 bg-gradient-to-br from-white via-blue-50/70 to-slate-100 p-5 shadow-lg shadow-blue-900/5 dark:border-slate-800 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+                    <div className="absolute right-0 top-0 h-28 w-28 rounded-full bg-blue-400/20 blur-3xl" />
+                    <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <div className="text-xs font-black uppercase tracking-[0.24em] text-blue-600 dark:text-blue-400">Control Center</div>
+                        <h2 className="mt-1 text-2xl font-black tracking-tight text-slate-900 dark:text-white">Admin Tools</h2>
+                        <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">Operate imports, audits, locations, users, and billing from one polished workspace.</p>
+                      </div>
+                      <button onClick={() => setShowAdminSection(false)} className="inline-flex items-center justify-center rounded-2xl border border-blue-200/70 bg-white/80 px-4 py-2 text-sm font-bold text-blue-700 shadow-sm backdrop-blur hover:bg-blue-50 hover:shadow-md dark:border-blue-900/50 dark:bg-slate-900/80 dark:text-blue-300 dark:hover:bg-blue-950/40">Back to main</button>
+                    </div>
                   </div>
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
                     {profile?.permissions?.clients?.add !== false && (
-                      <NavCard onClick={() => setActiveTab('upload')} icon="📤" title="Upload" description="Bulk data import." />
+                      <NavCard onClick={() => setActiveTab('upload')} icon="📤" title="Upload" description="Bulk data import." accent="blue" eyebrow="Import" />
                     )}
                     {profile?.permissions?.clients?.edit !== false && (
-                      <NavCard onClick={() => setActiveTab('unrecognized')} icon="⚠️" title="Issues" description="Fix failed imports." />
+                      <NavCard onClick={() => setActiveTab('unrecognized')} icon="⚠️" title="Issues" description="Fix failed imports." accent="amber" eyebrow="Review" />
                     )}
                     {profile?.permissions?.clients?.view !== false && (
-                      <NavCard onClick={() => setActiveTab('history')} icon="📜" title="History" description="View upload logs." />
+                      <NavCard onClick={() => setActiveTab('history')} icon="📜" title="History" description="View upload logs." accent="slate" eyebrow="Audit" />
                     )}
                     {profile?.permissions?.users?.view !== false && (
-                      <NavCard onClick={() => setActiveTab('users')} icon="👥" title="Users" description="Manage roles." />
+                      <NavCard onClick={() => setActiveTab('users')} icon="👥" title="Users" description="Manage roles." accent="violet" eyebrow="Access" />
                     )}
                     {profile?.permissions?.branches?.view !== false && (
-                      <NavCard onClick={() => setActiveTab('branches')} icon="🏢" title="Branches" description="Manage locations." badge={dataLoaded ? branches.length : undefined} />
+                      <NavCard onClick={() => setActiveTab('branches')} icon="🏢" title="Branches" description="Manage locations." badge={dataLoaded ? branches.length : undefined} accent="emerald" eyebrow="Network" />
                     )}
                     {profile?.role === 'Admin' && (
-                      <NavCard onClick={() => setActiveTab('duplicates')} icon="🔍" title="Duplicates" description="Find duplicate phones." />
+                      <NavCard onClick={() => setActiveTab('duplicates')} icon="🔍" title="Duplicates" description="Find duplicate phones." accent="rose" eyebrow="Cleanse" />
                     )}
                     {profile?.role === 'Admin' && (
-                      <NavCard onClick={() => setActiveTab('timeline')} icon="🕒" title="Timeline" description="Activity logs." />
+                      <NavCard onClick={() => setActiveTab('timeline')} icon="🕒" title="Timeline" description="Activity logs." accent="blue" eyebrow="Monitor" />
                     )}
                     {profile?.role === 'Admin' && (
-                      <NavCard onClick={() => setActiveTab('invoice-list')} icon="🧾" title="All Invoices" description="View, search and recreate PDFs." />
+                      <NavCard onClick={() => setActiveTab('invoice-list')} icon="🧾" title="All Invoices" description="View, search and recreate PDFs." accent="emerald" eyebrow="Finance" />
                     )}
                   </div>
                 </div>
