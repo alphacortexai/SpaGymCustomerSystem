@@ -585,16 +585,13 @@ export default function Home() {
               <section className="dashboard-hero relative overflow-hidden p-5 sm:p-6 lg:p-7">
                 <div className="relative z-10 flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
                   <div className="max-w-2xl">
-                    <div className="mb-4 flex items-center gap-2 text-xs font-black uppercase tracking-[0.24em] text-blue-600 dark:text-blue-300"><span className="h-2 w-2 rounded-full bg-blue-500 shadow-[0_0_0_5px_rgba(59,130,246,0.12)]" />Workspace overview</div>
-                    <h1 className="text-2xl font-black tracking-tight text-slate-950 dark:text-white sm:text-3xl lg:text-4xl">Good to see you, <span className="text-blue-600 dark:text-blue-400">{user?.displayName?.split(' ')[0] || 'there'}</span>.</h1>
+                    <h1 className="text-2xl font-black tracking-tight text-slate-950 dark:text-white sm:text-3xl lg:text-4xl">Good to see you, <span className="text-blue-600 dark:text-blue-400">{user?.displayName?.split(' ')[0] || 'there'}</span><span className="ml-2 align-middle text-xs font-semibold tracking-normal text-slate-400 sm:text-sm">· {new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span></h1>
                   </div>
-                  <div className="flex shrink-0 items-center gap-3"><div className="rounded-2xl border border-white/80 bg-white/75 px-4 py-3 shadow-sm backdrop-blur dark:border-slate-700 dark:bg-slate-900/70"><div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Today</div><div className="mt-1 text-sm font-bold text-slate-800 dark:text-white">{new Date().toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</div></div></div>
                 </div>
               </section>
 
                   {!showAdminSection ? (
                 <section>
-                  <div className="mb-4 flex items-end justify-between gap-4"><div><p className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">Quick access</p><h2 className="mt-1 text-xl font-black tracking-tight text-slate-900 dark:text-white">Your workspace</h2></div><p className="hidden text-xs font-semibold text-slate-400 sm:block">Choose a workspace to continue</p></div>
                   <div className="mb-3 flex items-center gap-3"><span className="h-px flex-1 bg-slate-200/80 dark:bg-slate-800" /><span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Core workspaces</span><span className="h-px flex-1 bg-slate-200/80 dark:bg-slate-800" /></div>
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                   {profile?.permissions?.clients?.view !== false && (
