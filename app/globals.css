@@ -498,3 +498,25 @@ button { @apply transition-all duration-200 active:scale-95; }
     border-radius: 12px;
   }
 }
+
+@media (max-width: 1023px) {
+  .dashboard-rail {
+    padding: 0.45rem;
+  }
+  .dashboard-rail-group.manage-group,
+  .dashboard-rail-group.operations-group {
+    grid-template-columns: repeat(3, 34px);
+    justify-content: start;
+    gap: 0.35rem !important;
+  }
+  .dashboard-rail-group.manage-group .dashboard-rail-link,
+  .dashboard-rail-group.operations-group .dashboard-rail-link {
+    width: 34px;
+    height: 34px;
+    aspect-ratio: 1 / 1;
+    border-radius: 9px;
+  }
+  .dashboard-rail-icon {
+    font-size: 0.86rem;
+  }
+}
