@@ -186,6 +186,7 @@ export default function Home() {
   const [selectedBranch, setSelectedBranch] = useState('');
   const [branches, setBranches] = useState([]);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState('');
   const [selectedDay, setSelectedDay] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -489,7 +490,7 @@ export default function Home() {
         <header className="dashboard-nav bg-white/85 dark:bg-slate-900/85 backdrop-blur-xl border-b border-slate-200/80 dark:border-slate-800 sticky top-0 z-50">
           <div className="mx-auto flex min-h-16 max-w-[1440px] flex-wrap items-center justify-between gap-x-5 gap-y-3 px-4 py-3 sm:px-6 lg:px-10">
             <div className="flex items-center gap-8">
-              <button onClick={() => setActiveTab('home')} className="flex items-center gap-3 group">
+              <button onClick={() => { setActiveTab('home'); setMobileNavOpen(true); }} aria-label="Open navigation menu" aria-expanded={mobileNavOpen} className="flex items-center gap-3 group">
                 <div className="flex -space-x-2">
                   <div className="w-10 h-10 rounded-full border-2 border-white dark:border-slate-800 bg-white overflow-hidden shadow-md group-hover:scale-105 transition-transform relative z-20">
                     <Image src="/logo1.png" alt="Logo 1" fill className="object-contain p-1" />
@@ -501,7 +502,7 @@ export default function Home() {
                 <span className="text-lg font-black tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-slate-950 via-blue-700 to-slate-500 dark:from-white dark:via-blue-300 dark:to-slate-400">SpaManager</span>
               </button>
 
-                <nav aria-label="Primary navigation" className="order-3 flex w-full items-center gap-1 overflow-x-auto pb-0.5 sm:order-none sm:w-auto sm:max-w-[58vw]">
+                <nav aria-label="Primary navigation" className="mobile-primary-nav order-3 flex w-full items-center gap-1 overflow-x-auto pb-0.5 sm:order-none sm:w-auto sm:max-w-[58vw]">
                 {['home', 'dashboard', 'birthdays', 'gym', 'spa', 'profile'].map((tab) => {
                   // Check permissions for each tab
                   if (tab === 'dashboard' && profile?.permissions?.clients?.view === false) return null;
@@ -521,6 +522,32 @@ export default function Home() {
                 })}
               </nav>
             </div>
+
+            {mobileNavOpen && (
+              <div className="mobile-nav-drawer" role="dialog" aria-modal="true" aria-label="Navigation menu">
+                <button type="button" className="mobile-nav-backdrop" aria-label="Close navigation menu" onClick={() => setMobileNavOpen(false)} />
+                <div className="mobile-nav-panel">
+                  <div className="flex items-center justify-between border-b border-slate-200/80 px-5 py-4 dark:border-slate-800">
+                    <span className="text-sm font-black tracking-tight text-slate-900 dark:text-white">Navigation</span>
+                    <button type="button" onClick={() => setMobileNavOpen(false)} aria-label="Close navigation menu" className="rounded-lg px-2 py-1 text-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800">×</button>
+                  </div>
+                  <nav className="grid gap-1 p-3" aria-label="Mobile primary navigation">
+                    {['home', 'dashboard', 'birthdays', 'gym', 'spa', 'profile'].map((tab) => {
+                      if (tab === 'dashboard' && profile?.permissions?.clients?.view === false) return null;
+                      if (tab === 'birthdays' && profile?.permissions?.birthdays?.view === false) return null;
+                      if (tab === 'gym' && profile?.permissions?.gym?.view === false) return null;
+                      if (tab === 'spa' && profile?.permissions?.spa?.view === false) return null;
+                      return (
+                        <button key={tab} type="button" onClick={() => { setActiveTab(tab); setMobileNavOpen(false); }} className={`flex items-center justify-between rounded-xl px-4 py-3 text-left text-sm font-semibold transition-colors ${activeTab === tab ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400' : 'text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800'}`}>
+                          <span>{tab === 'gym' ? 'GYM' : tab === 'spa' ? 'SPA' : tab.charAt(0).toUpperCase() + tab.slice(1)}</span>
+                          <span className="text-slate-400">›</span>
+                        </button>
+                      );
+                    })}
+                  </nav>
+                </div>
+              </div>
+            )}
             
             {user && (
               <div className="relative">
