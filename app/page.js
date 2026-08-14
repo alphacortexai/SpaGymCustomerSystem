@@ -132,6 +132,16 @@ const NavCard = ({ onClick, icon, title, description, badge, isImage, fullBg, ce
   );
 };
 
+const BillingCard = ({ onCreateInvoice, onTrackInvoice, canTrack }) => (
+  <div className="dashboard-grid-card flex min-h-[124px] flex-col justify-between rounded-[18px] bg-white p-4 text-left dark:bg-slate-900">
+    <div className="mb-3 flex items-center gap-3"><span className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-violet-100 bg-violet-50 text-violet-600 dark:border-violet-900/50 dark:bg-violet-950/40 dark:text-violet-300">▤</span><div><div className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Operations</div><h3 className="text-sm font-bold tracking-tight text-slate-900 dark:text-white">Billing</h3></div></div>
+    <div className="grid grid-cols-2 gap-2">
+      <button type="button" onClick={onCreateInvoice} className="billing-action"><span className="billing-action-icon">＋</span><span>New invoice</span></button>
+      {canTrack && <button type="button" onClick={onTrackInvoice} className="billing-action"><span className="billing-action-icon">↗</span><span>Tracking</span></button>}
+    </div>
+  </div>
+);
+
 export default function Home() {
   const { user, profile } = useAuth();
   const { 
@@ -577,7 +587,6 @@ export default function Home() {
                   <div className="max-w-2xl">
                     <div className="mb-4 flex items-center gap-2 text-xs font-black uppercase tracking-[0.24em] text-blue-600 dark:text-blue-300"><span className="h-2 w-2 rounded-full bg-blue-500 shadow-[0_0_0_5px_rgba(59,130,246,0.12)]" />Workspace overview</div>
                     <h1 className="text-2xl font-black tracking-tight text-slate-950 dark:text-white sm:text-3xl lg:text-4xl">Good to see you, <span className="text-blue-600 dark:text-blue-400">{user?.displayName?.split(' ')[0] || 'there'}</span>.</h1>
-                    <p className="mt-3 max-w-xl text-sm font-medium leading-6 text-slate-500 dark:text-slate-300">Keep your client records, memberships, birthdays, and invoices moving from one clear workspace.</p>
                   </div>
                   <div className="flex shrink-0 items-center gap-3"><div className="rounded-2xl border border-white/80 bg-white/75 px-4 py-3 shadow-sm backdrop-blur dark:border-slate-700 dark:bg-slate-900/70"><div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Today</div><div className="mt-1 text-sm font-bold text-slate-800 dark:text-white">{new Date().toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</div></div></div>
                 </div>
@@ -622,10 +631,7 @@ export default function Home() {
                   </div>
                   <div className="mb-3 mt-8 flex items-center gap-3"><span className="h-px flex-1 bg-slate-200/80 dark:bg-slate-800" /><span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Operations</span><span className="h-px flex-1 bg-slate-200/80 dark:bg-slate-800" /></div>
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                    <NavCard onClick={() => setActiveTab('invoice')} icon="🧾" title="Invoices" description="Create a proforma invoice." accent="violet" eyebrow="Billing" />
-                    {(profile?.role === 'Admin' || profile?.role === 'Manager') && (
-                      <NavCard onClick={() => setActiveTab('invoice-tracking')} icon="📋" title="Invoice Tracking" description="Monitor status and proof of payment." accent="emerald" eyebrow="Billing" />
-                    )}
+                    <BillingCard onCreateInvoice={() => setActiveTab('invoice')} onTrackInvoice={() => setActiveTab('invoice-tracking')} canTrack={profile?.role === 'Admin' || profile?.role === 'Manager'} />
                     {profile?.role === 'Admin' && (
                       <NavCard onClick={() => setShowAdminSection(true)} icon="⚙️" title="Admin" description="Imports, access, and system tools." accent="slate" eyebrow="Control" />
                     )}
