@@ -21,6 +21,12 @@
   --input: #e2e8f0;
   --ring: #3b82f6;
   --radius: 0.75rem;
+  --dashboard-ink: #172033;
+  --dashboard-muted: #718096;
+  --dashboard-line: #e8edf3;
+  --dashboard-surface: #ffffff;
+  --dashboard-canvas: #f5f7fb;
+  --dashboard-blue: #356ae6;
 }
 
 @theme inline {
@@ -45,9 +51,9 @@
 }
 
 body {
-  background: var(--background);
+  background: var(--dashboard-canvas);
   color: var(--foreground);
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -64,7 +70,6 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-/* Card background using docbg.jpeg for cards without their own background images */
 .card-bg-doc {
   background-image: linear-gradient(rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.9)), url('/docbg.jpeg');
   background-size: cover;
@@ -75,10 +80,42 @@ body {
   background-image: linear-gradient(rgba(15, 23, 42, 0.9), rgba(15, 23, 42, 0.9)), url('/docbg.jpeg');
 }
 
-input, select, textarea {
-  @apply transition-all duration-200;
+.dashboard-shell {
+  background: radial-gradient(circle at 82% -10%, rgba(81, 129, 244, 0.11), transparent 34rem), linear-gradient(180deg, #f8faff 0%, #f5f7fb 44%, #f7f8fb 100%);
 }
 
-button {
-  @apply transition-all duration-200 active:scale-95;
+.dashboard-surface {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(229, 235, 243, 0.9);
+  box-shadow: 0 18px 45px rgba(31, 48, 77, 0.06), 0 2px 8px rgba(31, 48, 77, 0.025);
+}
+
+.dashboard-nav {
+  box-shadow: 0 1px 0 rgba(32, 48, 76, 0.05), 0 10px 28px rgba(32, 48, 76, 0.035);
+}
+
+.dashboard-grid-card {
+  min-height: 148px;
+  border: 1px solid rgba(229, 235, 243, 0.9);
+  box-shadow: 0 9px 24px rgba(31, 48, 77, 0.045);
+}
+
+.dashboard-grid-card:hover {
+  box-shadow: 0 18px 34px rgba(31, 48, 77, 0.1);
+}
+
+input, select, textarea { @apply transition-all duration-200; }
+button { @apply transition-all duration-200 active:scale-95; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .dashboard-reveal > * { animation: dashboard-rise 420ms cubic-bezier(0.23, 1, 0.32, 1) both; }
+  .dashboard-reveal > *:nth-child(2) { animation-delay: 45ms; }
+  .dashboard-reveal > *:nth-child(3) { animation-delay: 90ms; }
+  .dashboard-reveal > *:nth-child(4) { animation-delay: 135ms; }
+  .dashboard-reveal > *:nth-child(5) { animation-delay: 180ms; }
+}
+
+@keyframes dashboard-rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }

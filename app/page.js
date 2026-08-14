@@ -83,7 +83,7 @@ const NavCard = ({ onClick, icon, title, description, badge, isImage, fullBg, ce
   return (
     <button
       onClick={onClick}
-      className={`group relative flex flex-col items-center justify-center p-4 ${fullBg ? 'bg-transparent' : 'card-bg-doc'} border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-sm transition-all duration-300 hover:shadow-xl hover:shadow-slate-900/10 hover:-translate-y-1 text-center w-full aspect-square overflow-hidden`}
+      className={`dashboard-grid-card group relative flex flex-col items-center justify-center p-5 ${fullBg ? 'bg-transparent' : 'card-bg-doc'} rounded-[22px] shadow-sm transition-all duration-300 hover:-translate-y-1 text-center w-full overflow-hidden`}
     >
       {fullBg && isImage && (
         <div className="absolute inset-0 z-0">
@@ -430,7 +430,7 @@ export default function Home() {
 
   return (
     <ProtectedRoute>
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans selection:bg-blue-100 selection:text-blue-900">
+      <div className="dashboard-shell min-h-screen text-slate-900 dark:text-slate-100 font-sans selection:bg-blue-100 selection:text-blue-900">
         {/* Exit Confirmation Modal */}
         {showExitConfirm && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
@@ -462,7 +462,7 @@ export default function Home() {
           </div>
         )}
         {/* Navigation */}
-        <header className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl border-b border-slate-200 dark:border-slate-800 sticky top-0 z-50">
+        <header className="dashboard-nav bg-white/85 dark:bg-slate-900/85 backdrop-blur-xl border-b border-slate-200/80 dark:border-slate-800 sticky top-0 z-50">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
             <div className="flex items-center gap-8">
               <button onClick={() => setActiveTab('home')} className="flex items-center gap-3 group">
@@ -548,16 +548,16 @@ export default function Home() {
           </div>
         </header>
 
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        <main className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-10 py-7 lg:py-9">
           {activeTab === 'home' && profile?.preferences?.nviewEnabled && profile?.role === 'Admin' ? (
             <NviewDashboard />
           ) : activeTab === 'home' && (
-            <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <div className="max-w-2xl">
-                <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white sm:text-3xl">
+            <div className="dashboard-reveal space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <div className="max-w-none">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-xs font-black uppercase tracking-[0.24em] text-blue-600 dark:text-blue-400">Workspace overview</p><h1 className="mt-2 text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white sm:text-4xl">
                   Hi, <span className="text-blue-600">{user?.displayName?.split(' ')[0] || 'User'}</span>
-                </h1>
-                <div className="mt-4 p-4 card-bg-doc rounded-2xl border border-slate-200/50 dark:border-slate-800/50 backdrop-blur-sm">
+                </h1></div><div className="hidden rounded-full border border-blue-100 bg-white/70 px-3 py-1.5 text-xs font-bold text-slate-500 shadow-sm sm:block dark:border-slate-800 dark:bg-slate-900/60">Today · {new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</div></div>
+                <div className="dashboard-surface mt-5 max-w-3xl rounded-[22px] p-5 backdrop-blur-sm">
                   <h2 className="text-xs font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 mb-1">Power Quotes</h2>
                   <p className="text-base text-slate-600 dark:text-slate-300 leading-relaxed italic font-medium">
                     “{currentAffirmation}”
@@ -566,7 +566,7 @@ export default function Home() {
               </div>
 
                   {!showAdminSection ? (
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                   {profile?.permissions?.clients?.view !== false && (
                     <NavCard onClick={() => setActiveTab('dashboard')} icon="/clients_bg.png" title="Clients" description="Manage" badge={cachedClientCounts ? clientBadgeTotal : (dataLoaded ? '...' : undefined)} isImage={true} fullBg={true} centerBadge={true} />
                   )}
@@ -618,7 +618,7 @@ export default function Home() {
                       <button onClick={() => setShowAdminSection(false)} className="inline-flex items-center justify-center rounded-2xl border border-blue-200/70 bg-white/80 px-4 py-2 text-sm font-bold text-blue-700 shadow-sm backdrop-blur hover:bg-blue-50 hover:shadow-md dark:border-blue-900/50 dark:bg-slate-900/80 dark:text-blue-300 dark:hover:bg-blue-950/40">Back to main</button>
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                  <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                     {profile?.permissions?.clients?.add !== false && (
                       <NavCard onClick={() => setActiveTab('upload')} icon="📤" title="Upload" description="Bulk data import." accent="blue" eyebrow="Import" />
                     )}
@@ -968,7 +968,7 @@ export default function Home() {
               </div>
               
               {gymSubTab === 'overview' ? (
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                   {profile?.permissions?.gym?.add !== false && (
                     <NavCard 
                       onClick={() => setGymSubTab('create-type')} 
@@ -1050,7 +1050,7 @@ export default function Home() {
               </div>
               
               {spaSubTab === 'overview' ? (
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                   {profile?.permissions?.spa?.add !== false && (
                     <NavCard 
                       onClick={() => setSpaSubTab('create-type')} 
