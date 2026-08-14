@@ -145,28 +145,33 @@ const WorkspaceRail = ({ activeTab, setActiveTab, profile, showAdminSection, set
 
 
 
-const SummaryPanel = ({ clients, loading }) => {
+const SummaryPanel = ({ clients, branches, loading }) => {
   const now = new Date();
   const [birthdayMonth, setBirthdayMonth] = useState(now.getMonth() + 1);
   const [recentDays, setRecentDays] = useState(30);
+  const [summaryBranch, setSummaryBranch] = useState('');
 
-  const birthdayClients = useMemo(() => clients.filter((client) => Number(client.birthMonth) === birthdayMonth), [birthdayMonth, clients]);
+  const branchClients = useMemo(() => summaryBranch ? clients.filter((client) => client.branch === summaryBranch) : clients, [clients, summaryBranch]);
+  const birthdayClients = useMemo(() => branchClients.filter((client) => Number(client.birthMonth) === birthdayMonth), [birthdayMonth, branchClients]);
   const recentClients = useMemo(() => {
     const cutoff = Date.now() - recentDays * 24 * 60 * 60 * 1000;
-    return clients.filter((client) => {
+    return branchClients.filter((client) => {
       const createdAt = client.createdAt?.toDate?.() || client.createdAt;
       return createdAt instanceof Date && createdAt.getTime() >= cutoff;
     });
-  }, [clients, recentDays]);
+  }, [branchClients, recentDays]);
 
   return (
     <section className="dashboard-summary dashboard-surface rounded-2xl p-4 sm:p-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-600 dark:text-blue-400">Summary</p>
-          <h2 className="mt-1 text-xl font-black tracking-tight text-slate-900 dark:text-white">Client activity</h2>
         </div>
         <div className="flex flex-wrap gap-2">
+          <select value={summaryBranch} onChange={(event) => setSummaryBranch(event.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200" aria-label="Summary branch">
+            <option value="">All branches</option>
+            {branches.map((branch) => <option key={branch.id} value={branch.name}>{branch.name}</option>)}
+          </select>
           <select value={birthdayMonth} onChange={(event) => setBirthdayMonth(Number(event.target.value))} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200" aria-label="Birthday month">
             {Array.from({ length: 12 }, (_, index) => <option key={index + 1} value={index + 1}>{new Date(2000, index, 1).toLocaleDateString(undefined, { month: 'long' })}</option>)}
           </select>
@@ -178,13 +183,12 @@ const SummaryPanel = ({ clients, loading }) => {
       {loading ? <p className="mt-5 text-sm text-slate-500">Loading summary...</p> : (
         <div className="mt-5 grid gap-4 md:grid-cols-2">
           <div className="rounded-2xl border border-pink-100 bg-pink-50/70 p-4 dark:border-pink-900/40 dark:bg-pink-950/20">
-            <div className="flex items-center justify-between gap-3"><h3 className="font-bold text-slate-900 dark:text-white">Birthday babies</h3><span className="rounded-full bg-pink-600 px-2.5 py-1 text-xs font-black text-white">{birthdayClients.length}</span></div>
-            {birthdayClients.length === 0 ? <p className="mt-3 text-sm text-slate-500">No birthdays this month.</p> : <div className="mt-3 space-y-1.5">{birthdayClients.slice(0, 6).map((client) => <p key={client.id} className="truncate text-sm font-semibold text-slate-700 dark:text-slate-200">{client.name}</p>)}{birthdayClients.length > 6 && <p className="text-xs font-bold text-slate-500">+{birthdayClients.length - 6} more</p>}</div>}
+            <h3 className="font-bold text-slate-900 dark:text-white">Birthday babies</h3>
+            <p className="mt-5 text-5xl font-black tracking-tight text-pink-600 dark:text-pink-300">{birthdayClients.length}</p><p className="mt-1 text-xs font-bold uppercase tracking-wider text-slate-500">Birthday babies in {new Date(2000, birthdayMonth - 1, 1).toLocaleDateString(undefined, { month: 'long' })}</p>
           </div>
           <div className="rounded-2xl border border-blue-100 bg-blue-50/70 p-4 dark:border-blue-900/40 dark:bg-blue-950/20">
-            <div className="flex items-center justify-between gap-3"><h3 className="font-bold text-slate-900 dark:text-white">New clients</h3><span className="rounded-full bg-blue-600 px-2.5 py-1 text-xs font-black text-white">{recentClients.length}</span></div>
-            <p className="mt-2 text-xs font-bold uppercase tracking-wider text-blue-700 dark:text-blue-300">Added in the last {recentDays} days</p>
-            {recentClients.length === 0 ? <p className="mt-3 text-sm text-slate-500">No new clients in this period.</p> : <div className="mt-3 space-y-1.5">{recentClients.slice(0, 6).map((client) => <p key={client.id} className="truncate text-sm font-semibold text-slate-700 dark:text-slate-200">{client.name}</p>)}{recentClients.length > 6 && <p className="text-xs font-bold text-slate-500">+{recentClients.length - 6} more</p>}</div>}
+            <h3 className="font-bold text-slate-900 dark:text-white">New client additions</h3>
+            <p className="mt-5 text-5xl font-black tracking-tight text-blue-600 dark:text-blue-300">{recentClients.length}</p><p className="mt-1 text-xs font-bold uppercase tracking-wider text-slate-500">New client additions in the last {recentDays} days</p>
           </div>
         </div>
       )}
@@ -672,7 +676,7 @@ export default function Home() {
                   </div>
                 </section>
                 <div className="hidden md:block">
-                  <SummaryPanel clients={globalClients.length ? globalClients : cachedGlobalClients} loading={isFullDataLoading} />
+                  <SummaryPanel clients={globalClients.length ? globalClients : cachedGlobalClients} branches={branches} loading={isFullDataLoading} />
                 </div>
                 </>
               ) : (
