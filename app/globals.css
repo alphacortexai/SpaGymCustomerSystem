@@ -612,7 +612,7 @@ button { @apply transition-all duration-200 active:scale-95; }
   .dashboard-nav > div {
     flex-wrap: nowrap;
     gap: 0.65rem;
-    overflow: hidden;
+    overflow: visible;
   }
   .dashboard-nav > div > div:first-child {
     min-width: 0;
