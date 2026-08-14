@@ -549,21 +549,21 @@ export default function Home() {
           </div>
         </header>
 
-        <main className="mx-auto max-w-[1440px] px-4 py-6 sm:px-6 lg:px-10 lg:py-9">
+        <main className="mx-auto max-w-[1280px] px-4 py-5 sm:px-6 lg:px-8 lg:py-7">
           {activeTab === 'home' && profile?.preferences?.nviewEnabled && profile?.role === 'Admin' ? (
             <NviewDashboard />
           ) : activeTab === 'home' && (
-            <div className="dashboard-reveal space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <section className="dashboard-hero relative overflow-hidden rounded-[28px] p-6 sm:p-8 lg:p-10">
+            <div className="dashboard-reveal space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <section className="dashboard-hero relative overflow-hidden p-5 sm:p-6 lg:p-7">
                 <div className="relative z-10 flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
                   <div className="max-w-2xl">
                     <div className="mb-4 flex items-center gap-2 text-xs font-black uppercase tracking-[0.24em] text-blue-600 dark:text-blue-300"><span className="h-2 w-2 rounded-full bg-blue-500 shadow-[0_0_0_5px_rgba(59,130,246,0.12)]" />Workspace overview</div>
-                    <h1 className="text-3xl font-black tracking-tight text-slate-950 dark:text-white sm:text-4xl lg:text-5xl">Good to see you, <span className="text-blue-600 dark:text-blue-400">{user?.displayName?.split(' ')[0] || 'there'}</span>.</h1>
-                    <p className="mt-4 max-w-xl text-sm font-medium leading-6 text-slate-500 dark:text-slate-300 sm:text-base">Keep your client records, memberships, birthdays, and invoices moving from one clear workspace.</p>
+                    <h1 className="text-2xl font-black tracking-tight text-slate-950 dark:text-white sm:text-3xl lg:text-4xl">Good to see you, <span className="text-blue-600 dark:text-blue-400">{user?.displayName?.split(' ')[0] || 'there'}</span>.</h1>
+                    <p className="mt-3 max-w-xl text-sm font-medium leading-6 text-slate-500 dark:text-slate-300">Keep your client records, memberships, birthdays, and invoices moving from one clear workspace.</p>
                   </div>
                   <div className="flex shrink-0 items-center gap-3"><div className="rounded-2xl border border-white/80 bg-white/75 px-4 py-3 shadow-sm backdrop-blur dark:border-slate-700 dark:bg-slate-900/70"><div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Today</div><div className="mt-1 text-sm font-bold text-slate-800 dark:text-white">{new Date().toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</div></div></div>
                 </div>
-                <div className="relative z-10 mt-8 max-w-2xl rounded-2xl border border-white/80 bg-white/65 px-4 py-3 backdrop-blur dark:border-slate-700 dark:bg-slate-900/50"><div className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-600 dark:text-blue-300">Power quote</div><p className="mt-1 text-sm font-semibold italic leading-6 text-slate-600 dark:text-slate-200">“{currentAffirmation}”</p></div>
+                <div className="relative z-10 mt-5 max-w-2xl rounded-2xl border border-white/80 bg-white/65 px-4 py-3 backdrop-blur dark:border-slate-700 dark:bg-slate-900/50"><div className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-600 dark:text-blue-300">Power quote</div><p className="mt-1 text-sm font-semibold italic leading-6 text-slate-600 dark:text-slate-200">“{currentAffirmation}”</p></div>
               </section>
 
                   {!showAdminSection ? (
