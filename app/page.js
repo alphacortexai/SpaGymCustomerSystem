@@ -136,7 +136,7 @@ const NavCard = ({ onClick, icon, title, description, badge, isImage, fullBg, ce
 const WorkspaceRail = ({ activeTab, setActiveTab, profile, showAdminSection, setShowAdminSection }) => (
   <aside className="dashboard-rail dashboard-surface h-fit rounded-2xl p-3 lg:sticky lg:top-24">
     <div className="mb-5 flex items-center gap-2 px-2"><div className="h-7 w-7 overflow-hidden rounded-lg bg-white"><Image src="/logo1.png" alt="" width={28} height={28} className="h-full w-full object-contain p-1" /></div><span className="text-sm font-black tracking-tight text-slate-900 dark:text-white">Quick Actions</span></div>
-    <div className="mb-2 px-2 text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">Manage</div>
+    <div className="mobile-rail-section-title mb-2 px-2 text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">Manage</div>
     <div className="dashboard-rail-group manage-group space-y-1">
       <button type="button" onClick={() => setActiveTab('home')} className={`dashboard-rail-link ${activeTab === 'home' ? 'is-active' : ''}`} aria-label="Home"><span className="dashboard-rail-icon">⌂</span><span className="dashboard-rail-label">Home</span></button>
       {profile?.permissions?.clients?.view !== false && <button type="button" onClick={() => setActiveTab('dashboard')} className={`dashboard-rail-link ${activeTab === 'dashboard' ? 'is-active' : ''}`} aria-label="Clients"><span className="dashboard-rail-icon">♙♙</span><span className="dashboard-rail-label">Clients</span></button>}
@@ -144,7 +144,7 @@ const WorkspaceRail = ({ activeTab, setActiveTab, profile, showAdminSection, set
       {profile?.permissions?.gym?.view !== false && <button type="button" onClick={() => setActiveTab('gym')} className={`dashboard-rail-link ${activeTab === 'gym' ? 'is-active' : ''}`} aria-label="Gym"><span className="dashboard-rail-icon">⚙</span><span className="dashboard-rail-label">GYM</span></button>}
       {profile?.permissions?.spa?.view !== false && <button type="button" onClick={() => setActiveTab('spa')} className={`dashboard-rail-link ${activeTab === 'spa' ? 'is-active' : ''}`} aria-label="Spa"><span className="dashboard-rail-icon">✿</span><span className="dashboard-rail-label">SPA</span></button>}
     </div>
-    <div className="mb-2 mt-6 px-2 text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">Operations</div>
+    <div className="mobile-rail-section-title mb-2 mt-6 px-2 text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">Operations</div>
     <div className="dashboard-rail-group operations-group space-y-1">
       <button type="button" onClick={() => setActiveTab('invoice')} className={`dashboard-rail-link ${activeTab === 'invoice' ? 'is-active' : ''}`} aria-label="Invoices"><span className="dashboard-rail-icon">▤</span><span className="dashboard-rail-label">Invoices</span></button>
       {(profile?.role === 'Admin' || profile?.role === 'Manager') && <button type="button" onClick={() => setActiveTab('invoice-tracking')} className={`dashboard-rail-link ${activeTab === 'invoice-tracking' ? 'is-active' : ''}`} aria-label="Invoice tracking"><span className="dashboard-rail-icon">↗</span><span className="dashboard-rail-label">Tracking</span></button>}

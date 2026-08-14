@@ -698,3 +698,37 @@ button { @apply transition-all duration-200 active:scale-95; }
     margin-top: -0.75rem;
   }
 }
+
+@media (max-width: 1023px) {
+  .mobile-quick-actions .dashboard-rail {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.4rem;
+  }
+  .mobile-quick-actions .dashboard-rail > div:first-child {
+    grid-column: 1 / -1;
+    margin-bottom: 0.25rem;
+  }
+  .mobile-quick-actions .mobile-rail-section-title {
+    display: none;
+  }
+  .mobile-quick-actions .manage-group,
+  .mobile-quick-actions .operations-group {
+    display: contents !important;
+  }
+  .mobile-quick-actions .dashboard-rail-link {
+    width: 100% !important;
+    min-width: 0;
+    height: 36px !important;
+    padding: 0 0.45rem;
+    justify-content: center;
+    gap: 0.3rem;
+    overflow: hidden;
+  }
+  .mobile-quick-actions .dashboard-rail-label {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
