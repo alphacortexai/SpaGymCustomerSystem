@@ -102,11 +102,14 @@ export default function InvoiceGenerator() {
     'Health drinks and Tea, Juices, Fruit Salad and many more';
 
   const computedCustomAmount = parseFloat(customAmount) || 0;
-  const unitAmount = selectedMembershipType
-    ? Number(selectedMembershipType.price || 0)
-    : computedCustomAmount || 0;
+  const usesManualMembershipAmount = Boolean(selectedMembershipType?.isReducingBalance);
+  const unitAmount = usesManualMembershipAmount
+    ? computedCustomAmount
+    : selectedMembershipType
+      ? Number(selectedMembershipType.price || 0)
+      : computedCustomAmount || 0;
 
-  const totalAmount = unitAmount * qty;
+  const totalAmount = unitAmount * (Number(qty) || 0);
 
   /** @param {boolean} consume - If true, increment counter and return new number. If false, return current without incrementing (for preview). */
   const getInvoiceNumber = async (consume = false) => {
@@ -187,13 +190,15 @@ export default function InvoiceGenerator() {
         pdfDoc.addImage(img, 'PNG', 0, 0, 210, 297);
         await renderInvoiceContent(pdfDoc, displaySymbol, overrideNum);
         const pdfData = pdfDoc.output('datauristring');
-        setPdfPreview(pdfData);
+        const previewUrl = pdfDoc.output('bloburl');
+        setPdfPreview(previewUrl);
         resolve(pdfData);
       };
       img.onerror = async () => {
         await renderInvoiceContent(pdfDoc, displaySymbol, overrideNum);
         const pdfData = pdfDoc.output('datauristring');
-        setPdfPreview(pdfData);
+        const previewUrl = pdfDoc.output('bloburl');
+        setPdfPreview(previewUrl);
         resolve(pdfData);
       };
     });
@@ -233,8 +238,9 @@ export default function InvoiceGenerator() {
         serviceType,
         membership,
         membershipName: selectedMembershipType?.type || '',
+        isReducingBalance: Boolean(selectedMembershipType?.isReducingBalance),
         customItem,
-        customAmount,
+        customAmount: String(unitAmount),
         customComplimentaries,
         currency,
         qty,
@@ -398,8 +404,9 @@ export default function InvoiceGenerator() {
                 </option>
                 {membershipOptions.map((type) => (
                   <option key={type.id} value={type.id}>
-                    {type.type} - {(type.currency || currency) === 'UGX' ? 'UGX ' : '$'}
-                    {Number(type.price || 0).toLocaleString()}
+                    {type.type} - {type.isReducingBalance
+                      ? 'Manual reducing balance'
+                      : `${(type.currency || currency) === 'UGX' ? 'UGX ' : '$'}${Number(type.price || 0).toLocaleString()}`}
                   </option>
                 ))}
               </select>
@@ -446,8 +453,9 @@ export default function InvoiceGenerator() {
                 </option>
                 {membershipOptions.map((type) => (
                   <option key={type.id} value={type.id}>
-                    {type.type} - {(type.currency || currency) === 'UGX' ? 'UGX ' : '$'}
-                    {Number(type.price || 0).toLocaleString()}
+                    {type.type} - {type.isReducingBalance
+                      ? 'Manual reducing balance'
+                      : `${(type.currency || currency) === 'UGX' ? 'UGX ' : '$'}${Number(type.price || 0).toLocaleString()}`}
                   </option>
                 ))}
               </select>
@@ -465,7 +473,7 @@ export default function InvoiceGenerator() {
               />
               <input
                 type="number"
-                placeholder="Amount"
+                placeholder={usesManualMembershipAmount ? `Reducing balance amount (${currency})` : "Amount"}
                 value={customAmount}
                 onChange={(e) => setCustomAmount(e.target.value)}
                 className="w-full mb-3 px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
@@ -505,8 +513,9 @@ export default function InvoiceGenerator() {
                 </option>
                 {membershipOptions.map((type) => (
                   <option key={type.id} value={type.id}>
-                    {type.type} - {(type.currency || currency) === 'UGX' ? 'UGX ' : '$'}
-                    {Number(type.price || 0).toLocaleString()}
+                    {type.type} - {type.isReducingBalance
+                      ? 'Manual reducing balance'
+                      : `${(type.currency || currency) === 'UGX' ? 'UGX ' : '$'}${Number(type.price || 0).toLocaleString()}`}
                   </option>
                 ))}
               </select>
@@ -524,7 +533,7 @@ export default function InvoiceGenerator() {
               />
               <input
                 type="number"
-                placeholder="Amount"
+                placeholder={usesManualMembershipAmount ? `Reducing balance amount (${currency})` : "Amount"}
                 value={customAmount}
                 onChange={(e) => setCustomAmount(e.target.value)}
                 className="w-full mb-3 px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
