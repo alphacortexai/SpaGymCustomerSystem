@@ -126,7 +126,7 @@ const NavCard = ({ onClick, icon, title, description, badge, isImage, fullBg, ce
       )}
       <div className={`relative z-20 ${fullBg ? 'mt-auto' : ''} w-full`}>
         {eyebrow && <div className="mb-1 text-[10px] font-black uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">{eyebrow}</div>}
-        <div className="mb-3 flex items-center justify-between gap-3">{!fullBg && <span className={`inline-flex h-9 w-9 items-center justify-center rounded-xl border text-sm shadow-sm ${selectedAccent.icon}`}>{isImage ? <span className="relative h-5 w-5"><Image src={icon} alt="" fill className="object-contain" /></span> : <span>{icon}</span>}</span>}{badge !== undefined && !centerBadge && <span className={`rounded-full px-2.5 py-1 text-[11px] font-black ${fullBg ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200'}`}>{badge}</span>}</div><h3 className={`text-lg font-bold ${fullBg ? 'text-white' : 'text-slate-900 dark:text-white'} mb-1`}>{title}</h3>
+        <div className="mb-3 flex items-center justify-between gap-3">{!fullBg && <span className={`inline-flex h-9 w-9 items-center justify-center rounded-xl border text-sm shadow-sm ${selectedAccent.icon}`}>{isImage ? <span className="relative h-5 w-5"><Image src={icon} alt="" fill className="object-contain" /></span> : <span>{icon}</span>}</span>}{badge !== undefined && !centerBadge && <span className={`rounded-full px-2.5 py-1 text-[11px] font-black ${fullBg ? 'absolute right-3 top-3 z-20 bg-white/80 text-slate-900 shadow-sm dark:bg-slate-950/70 dark:text-white' : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200'}`}>{badge}</span>}</div><h3 className={`text-lg font-bold ${fullBg ? 'text-white' : 'text-slate-900 dark:text-white'} mb-1`}>{title}</h3>
         <p className={`text-sm ${fullBg ? 'text-slate-200' : 'text-slate-500 dark:text-slate-400'} leading-tight line-clamp-2 px-1`}>{description}</p>
       </div>
     </button>
@@ -589,15 +589,19 @@ export default function Home() {
                 </div>
               </section>
 
+              <div className="mobile-quick-actions">
+                <WorkspaceRail activeTab={activeTab} setActiveTab={setActiveTab} profile={profile} showAdminSection={showAdminSection} setShowAdminSection={setShowAdminSection} />
+              </div>
+
                   {!showAdminSection ? (
                 <section>
                   <div className="mb-3 flex items-center gap-3"><span className="h-px flex-1 bg-slate-200/80 dark:bg-slate-800" /><span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Core workspaces</span><span className="h-px flex-1 bg-slate-200/80 dark:bg-slate-800" /></div>
                   <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
                   {profile?.permissions?.clients?.view !== false && (
-                    <NavCard onClick={() => setActiveTab('dashboard')} icon="/clients_bg.png" title="Clients" description="Manage" badge={cachedClientCounts ? clientBadgeTotal : (dataLoaded ? '...' : undefined)} isImage={true} fullBg={true} centerBadge={true} />
+                    <NavCard onClick={() => setActiveTab('dashboard')} icon="/clients_bg.png" title="Clients" description="Manage" badge={cachedClientCounts ? clientBadgeTotal : (dataLoaded ? '...' : undefined)} isImage={true} fullBg={true} />
                   )}
                   {profile?.permissions?.birthdays?.view !== false && (
-                    <NavCard onClick={() => setActiveTab('birthdays')} icon="/birthday.png" title="Birthdays" description="Celebrations" badge={cachedBirthdayCounts ? birthdayBadgeTotal : (dataLoaded ? '...' : undefined)} isImage={true} fullBg={true} centerBadge={true} />
+                    <NavCard onClick={() => setActiveTab('birthdays')} icon="/birthday.png" title="Birthdays" description="Celebrations" badge={cachedBirthdayCounts ? birthdayBadgeTotal : (dataLoaded ? '...' : undefined)} isImage={true} fullBg={true} />
                   )}
                   {profile?.permissions?.gym?.view !== false && (
                     <NavCard 
@@ -608,7 +612,6 @@ export default function Home() {
                       isImage={true} 
                       fullBg={true} 
                       badge={dataLoaded ? activeGymMembers : undefined}
-                      centerBadge={true}
                     />
                   )}
                   {profile?.permissions?.spa?.view !== false && (
@@ -620,7 +623,6 @@ export default function Home() {
                       isImage={true} 
                       fullBg={true} 
                       badge={dataLoaded ? activeSpaMembers : undefined}
-                      centerBadge={true}
                     />
                   )}
                   </div>
