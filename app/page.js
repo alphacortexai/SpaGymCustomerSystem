@@ -583,10 +583,11 @@ export default function Home() {
               </aside>
               <div className="dashboard-reveal min-w-0 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
               <section className="dashboard-hero relative overflow-hidden p-5 sm:p-6 lg:p-7">
-                <div className="relative z-10 flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
-                  <div className="max-w-2xl">
-                    <h1 className="text-2xl font-black tracking-tight text-slate-950 dark:text-white sm:text-3xl lg:text-4xl">Good to see you, <span className="text-blue-600 dark:text-blue-400">{user?.displayName?.split(' ')[0] || 'there'}</span><span className="ml-2 align-middle text-xs font-semibold tracking-normal text-slate-400 sm:text-sm">· {new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span></h1>
+                <div className="relative z-10 flex items-center justify-between gap-4">
+                  <div className="min-w-0">
+                    <h1 className="text-xl font-black tracking-tight text-slate-950 dark:text-white sm:text-3xl lg:text-4xl">Good to see you, <span className="text-blue-600 dark:text-blue-400">{user?.displayName?.split(' ')[0] || 'there'}</span>.</h1>
                   </div>
+                  <div className="dashboard-date-card shrink-0 rounded-xl border border-slate-200/80 bg-white/80 px-3 py-2 text-right shadow-sm dark:border-slate-700 dark:bg-slate-900/70"><div className="text-[9px] font-black uppercase tracking-[0.16em] text-slate-400">Today</div><div className="mt-0.5 text-sm font-bold text-slate-800 dark:text-white sm:text-base">{new Date().toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</div></div>
                 </div>
               </section>
 

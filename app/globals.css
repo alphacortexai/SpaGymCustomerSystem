@@ -520,3 +520,51 @@ button { @apply transition-all duration-200 active:scale-95; }
     font-size: 0.86rem;
   }
 }
+
+.dashboard-date-card {
+  min-width: 104px;
+  background: rgba(255, 255, 255, 0.82);
+}
+.dark .dashboard-date-card {
+  background: rgba(28, 28, 30, 0.78);
+}
+@media (max-width: 1023px) {
+  .dashboard-rail {
+    overflow-x: auto;
+  }
+  .dashboard-rail-group.manage-group,
+  .dashboard-rail-group.operations-group {
+    display: flex !important;
+    flex-wrap: nowrap;
+    width: max-content;
+    grid-template-columns: none;
+    overflow: visible;
+  }
+  .dashboard-rail-group .dashboard-rail-link {
+    width: auto !important;
+    min-width: max-content;
+    height: 34px !important;
+    aspect-ratio: auto !important;
+    justify-content: flex-start;
+    gap: 0.4rem;
+    padding: 0 0.65rem;
+    font-size: 0.68rem;
+  }
+  .dashboard-rail-group .dashboard-rail-label {
+    display: inline;
+    font-size: 0.68rem;
+    font-weight: 700;
+  }
+  .dashboard-rail-icon {
+    font-size: 0.82rem;
+  }
+}
+@media (max-width: 420px) {
+  .dashboard-date-card {
+    min-width: 92px;
+    padding: 0.45rem 0.55rem;
+  }
+  .dashboard-date-card .text-sm {
+    font-size: 0.75rem;
+  }
+}
