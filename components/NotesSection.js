@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { addNote, deleteNote, getAllNotes, updateNoteStatus } from '@/lib/notes';
+import { addNote, deleteNote, getAllNotes, updateNote, updateNoteStatus } from '@/lib/notes';
 
 const formatDate = (date) => {
   if (!date) return 'Unknown date';
@@ -22,6 +22,7 @@ export default function NotesSection({ onActiveCountChange }) {
   const [content, setContent] = useState('');
   const [filter, setFilter] = useState('active');
   const [isComposerOpen, setIsComposerOpen] = useState(false);
+  const [editingNote, setEditingNote] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -48,19 +49,42 @@ export default function NotesSection({ onActiveCountChange }) {
   const closeComposer = () => {
     if (saving) return;
     setIsComposerOpen(false);
+    setEditingNote(null);
+    setTitle('');
+    setContent('');
     setError('');
+  };
+
+  const openCreateComposer = () => {
+    setError('');
+    setEditingNote(null);
+    setTitle('');
+    setContent('');
+    setIsComposerOpen(true);
+  };
+
+  const openEditComposer = (note) => {
+    if (note.createdBy !== user?.uid) return;
+    setError('');
+    setEditingNote(note);
+    setTitle(note.title);
+    setContent(note.content);
+    setIsComposerOpen(true);
   };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
     setError('');
     setSaving(true);
-    const result = await addNote({ title, content }, user);
+    const result = editingNote
+      ? await updateNote(editingNote.id, { title, content }, user)
+      : await addNote({ title, content }, user);
     if (result.success) {
       setTitle('');
       setContent('');
       setFilter('active');
       setIsComposerOpen(false);
+      setEditingNote(null);
       await loadNotes();
     } else {
       setError(result.error || 'Unable to create note.');
@@ -93,7 +117,7 @@ export default function NotesSection({ onActiveCountChange }) {
           <div className="rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm font-bold text-blue-700 dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-300">
             {activeNotes.length} active notes
           </div>
-          <button type="button" onClick={() => { setError(''); setIsComposerOpen(true); }} className="rounded-xl bg-blue-600 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-blue-500/20 transition hover:bg-blue-700">
+          <button type="button" onClick={openCreateComposer} className="rounded-xl bg-blue-600 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-blue-500/20 transition hover:bg-blue-700">
             Create note
           </button>
         </div>
@@ -129,6 +153,7 @@ export default function NotesSection({ onActiveCountChange }) {
               </div>
               <p className="mt-4 whitespace-pre-wrap text-sm leading-6 text-slate-600 dark:text-slate-300">{note.content}</p>
               <div className="mt-5 flex flex-wrap gap-2 border-t border-slate-100 pt-4 dark:border-slate-800">
+                {note.createdBy === user?.uid && <button type="button" onClick={() => openEditComposer(note)} className="rounded-lg bg-blue-50 px-3 py-2 text-xs font-bold text-blue-700 hover:bg-blue-100 dark:bg-blue-950/30 dark:text-blue-300">Edit</button>}
                 {note.status === 'active' ? (
                   <button type="button" onClick={() => handleStatusChange(note, 'archived')} className="rounded-lg bg-amber-50 px-3 py-2 text-xs font-bold text-amber-700 hover:bg-amber-100 dark:bg-amber-950/30 dark:text-amber-300">Deactivate / archive</button>
                 ) : (
@@ -142,13 +167,13 @@ export default function NotesSection({ onActiveCountChange }) {
       )}
 
       {isComposerOpen && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="create-note-title">
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="note-composer-title">
           <button type="button" className="absolute inset-0 h-full w-full cursor-default" aria-label="Close note composer" onClick={closeComposer} />
           <form onSubmit={handleSubmit} className="relative z-10 w-full max-w-xl rounded-3xl border border-slate-200 bg-white p-5 shadow-2xl dark:border-slate-800 dark:bg-slate-900 sm:p-6">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-600 dark:text-blue-400">New reference</p>
-                <h3 id="create-note-title" className="mt-1 text-2xl font-black text-slate-900 dark:text-white">Create a note</h3>
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-600 dark:text-blue-400">{editingNote ? 'Update reference' : 'New reference'}</p>
+                <h3 id="note-composer-title" className="mt-1 text-2xl font-black text-slate-900 dark:text-white">{editingNote ? 'Edit note' : 'Create a note'}</h3>
               </div>
               <button type="button" onClick={closeComposer} className="rounded-xl px-3 py-1 text-2xl text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800" aria-label="Close">×</button>
             </div>
@@ -157,10 +182,10 @@ export default function NotesSection({ onActiveCountChange }) {
               <textarea value={content} onChange={(event) => setContent(event.target.value)} placeholder="Write a reminder or reference note..." rows={5} className="w-full resize-y rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200" required />
             </div>
             <div className="mt-4 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
-              {error ? <p className="text-sm font-medium text-rose-600">{error}</p> : <p className="text-xs text-slate-500">New notes are active by default.</p>}
+              {error ? <p className="text-sm font-medium text-rose-600">{error}</p> : <p className="text-xs text-slate-500">{editingNote ? 'Only you can edit this note.' : 'New notes are active by default.'}</p>}
               <div className="flex gap-2 sm:ml-auto">
                 <button type="button" onClick={closeComposer} className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800">Cancel</button>
-                <button type="submit" disabled={saving} className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-blue-500/20 transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60">{saving ? 'Saving...' : 'Save note'}</button>
+                <button type="submit" disabled={saving} className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-blue-500/20 transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60">{saving ? 'Saving...' : editingNote ? 'Save changes' : 'Save note'}</button>
               </div>
             </div>
           </form>
