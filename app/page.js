@@ -582,7 +582,6 @@ export default function Home() {
 
                   {!showAdminSection ? (
                 <section>
-                  <div className="mb-3 flex items-center gap-3"><span className="h-px flex-1 bg-slate-200/80 dark:bg-slate-800" /><span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Core workspaces</span><span className="h-px flex-1 bg-slate-200/80 dark:bg-slate-800" /></div>
                   <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
                   {profile?.permissions?.clients?.view !== false && (
                     <NavCard onClick={() => setActiveTab('dashboard')} icon="/clients_bg.png" title="Clients" description="Manage" badge={cachedClientCounts ? clientBadgeTotal : (dataLoaded ? '...' : undefined)} isImage={true} fullBg={true} />
