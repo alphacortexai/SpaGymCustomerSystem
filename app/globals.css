@@ -174,3 +174,33 @@ button { @apply transition-all duration-200 active:scale-95; }
   .dashboard-nav nav { scrollbar-width: none; }
   .dashboard-nav nav::-webkit-scrollbar { display: none; }
 }
+
+/* UI polish: compact navigation and content surfaces */
+.dashboard-nav nav {
+  scrollbar-width: none;
+}
+.dashboard-nav nav::-webkit-scrollbar {
+  display: none;
+}
+.dashboard-surface {
+  border-radius: 24px;
+}
+@media (max-width: 639px) {
+  .dashboard-nav > div > div:first-child {
+    width: 100%;
+  }
+  .dashboard-nav > div > div:last-child {
+    position: absolute;
+    right: 1rem;
+    top: 0.75rem;
+  }
+}
+@media (min-width: 640px) {
+  .dashboard-nav nav {
+    margin-left: auto;
+  }
+}
+.dark .dashboard-surface {
+  background: rgba(15, 23, 42, 0.78);
+  border-color: rgba(51, 65, 85, 0.78);
+}

@@ -82,8 +82,9 @@ const NavCard = ({ onClick, icon, title, description, badge, isImage, fullBg, ce
 
   return (
     <button
+      type="button"
       onClick={onClick}
-      className={`dashboard-grid-card group relative flex min-h-[154px] flex-col items-start justify-end p-5 sm:p-6 ${fullBg ? 'bg-transparent' : 'card-bg-doc'} rounded-[24px] shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl text-left w-full overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2`}
+      className={`dashboard-grid-card group relative flex min-h-[166px] flex-col items-start justify-end p-5 sm:p-6 ${fullBg ? 'bg-transparent' : 'card-bg-doc'} rounded-[24px] shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl text-left w-full overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2`}
     >
       {fullBg && isImage && (
         <div className="absolute inset-0 z-0">
@@ -463,7 +464,7 @@ export default function Home() {
         )}
         {/* Navigation */}
         <header className="dashboard-nav bg-white/85 dark:bg-slate-900/85 backdrop-blur-xl border-b border-slate-200/80 dark:border-slate-800 sticky top-0 z-50">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+          <div className="mx-auto flex min-h-16 max-w-[1440px] flex-wrap items-center justify-between gap-x-5 gap-y-3 px-4 py-3 sm:px-6 lg:px-10">
             <div className="flex items-center gap-8">
               <button onClick={() => setActiveTab('home')} className="flex items-center gap-3 group">
                 <div className="flex -space-x-2">
@@ -474,10 +475,10 @@ export default function Home() {
                     <Image src="/logo2.png" alt="Logo 2" fill className="object-contain p-1" />
                   </div>
                 </div>
-                <span className="text-lg font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-600 dark:from-white dark:to-slate-400">SpaManager</span>
+                <span className="text-lg font-black tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-slate-950 via-blue-700 to-slate-500 dark:from-white dark:via-blue-300 dark:to-slate-400">SpaManager</span>
               </button>
 
-                <nav className="hidden md:flex items-center gap-1">
+                <nav aria-label="Primary navigation" className="order-3 flex w-full items-center gap-1 overflow-x-auto pb-0.5 sm:order-none sm:w-auto sm:max-w-[58vw]">
                 {['home', 'dashboard', 'birthdays', 'gym', 'spa', 'profile'].map((tab) => {
                   // Check permissions for each tab
                   if (tab === 'dashboard' && profile?.permissions?.clients?.view === false) return null;
@@ -566,7 +567,10 @@ export default function Home() {
               </section>
 
                   {!showAdminSection ? (
-                <section><div className="mb-4 flex items-end justify-between gap-4"><div><p className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">Quick access</p><h2 className="mt-1 text-xl font-black tracking-tight text-slate-900 dark:text-white">Your workspace</h2></div><p className="hidden text-xs font-semibold text-slate-400 sm:block">Choose a workspace to continue</p></div><div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <section>
+                  <div className="mb-4 flex items-end justify-between gap-4"><div><p className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">Quick access</p><h2 className="mt-1 text-xl font-black tracking-tight text-slate-900 dark:text-white">Your workspace</h2></div><p className="hidden text-xs font-semibold text-slate-400 sm:block">Choose a workspace to continue</p></div>
+                  <div className="mb-3 flex items-center gap-3"><span className="h-px flex-1 bg-slate-200/80 dark:bg-slate-800" /><span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Core workspaces</span><span className="h-px flex-1 bg-slate-200/80 dark:bg-slate-800" /></div>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                   {profile?.permissions?.clients?.view !== false && (
                     <NavCard onClick={() => setActiveTab('dashboard')} icon="/clients_bg.png" title="Clients" description="Manage" badge={cachedClientCounts ? clientBadgeTotal : (dataLoaded ? '...' : undefined)} isImage={true} fullBg={true} centerBadge={true} />
                   )}
@@ -597,14 +601,17 @@ export default function Home() {
                       centerBadge={true}
                     />
                   )}
-                  <NavCard onClick={() => setActiveTab('invoice')} icon="🧾" title="Invoices" description="Proforma invoice generator." />
-                  {(profile?.role === 'Admin' || profile?.role === 'Manager') && (
-                    <NavCard onClick={() => setActiveTab('invoice-tracking')} icon="📋" title="Invoice Tracking" description="Issued, sent, completed and proof of payment." />
-                  )}
-                  {profile?.role === 'Admin' && (
-                    <NavCard onClick={() => setShowAdminSection(true)} icon="⚙️" title="Admin" description="System tools." />
-                  )}
-                </div></section>
+                  </div>
+                  <div className="mb-3 mt-8 flex items-center gap-3"><span className="h-px flex-1 bg-slate-200/80 dark:bg-slate-800" /><span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Operations</span><span className="h-px flex-1 bg-slate-200/80 dark:bg-slate-800" /></div>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                    <NavCard onClick={() => setActiveTab('invoice')} icon="🧾" title="Invoices" description="Create a proforma invoice." accent="violet" eyebrow="Billing" />
+                    {(profile?.role === 'Admin' || profile?.role === 'Manager') && (
+                      <NavCard onClick={() => setActiveTab('invoice-tracking')} icon="📋" title="Invoice Tracking" description="Monitor status and proof of payment." accent="emerald" eyebrow="Billing" />
+                    )}
+                    {profile?.role === 'Admin' && (
+                      <NavCard onClick={() => setShowAdminSection(true)} icon="⚙️" title="Admin" description="Imports, access, and system tools." accent="slate" eyebrow="Control" />
+                    )}
+                  </div></section>
               ) : (
                 <div className="space-y-6">
                   <div className="relative overflow-hidden rounded-3xl border border-blue-100/80 bg-gradient-to-br from-white via-blue-50/70 to-slate-100 p-5 shadow-lg shadow-blue-900/5 dark:border-slate-800 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
@@ -689,8 +696,8 @@ export default function Home() {
 
           {activeTab === 'dashboard' && (
             <div className="space-y-8 animate-in fade-in duration-300">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                <h2 className="text-3xl font-bold text-slate-900 dark:text-white">Client Database</h2>
+              <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+                <div><p className="text-[11px] font-black uppercase tracking-[0.2em] text-blue-600 dark:text-blue-400">Client workspace</p><h2 className="mt-1 text-3xl font-black tracking-tight text-slate-900 dark:text-white">Client Database</h2><p className="mt-2 max-w-xl text-sm font-medium text-slate-500 dark:text-slate-400">Search, filter, and manage every client record from one place.</p></div>
                 <div className="flex flex-wrap items-center gap-3">
                   <select
                     value={selectedBranch}
@@ -709,6 +716,7 @@ export default function Home() {
                 </div>
               </div>
 
+              <div className="dashboard-surface rounded-[24px] p-3 sm:p-4">
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                   {isSearching ? (
@@ -727,6 +735,7 @@ export default function Home() {
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full pl-11 pr-4 py-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all text-lg"
                 />
+              </div>
               </div>
 
               <ClientList
