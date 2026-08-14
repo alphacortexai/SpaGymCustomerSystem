@@ -568,3 +568,74 @@ button { @apply transition-all duration-200 active:scale-95; }
     font-size: 0.75rem;
   }
 }
+
+.dashboard-card-affordance {
+  position: absolute;
+  right: 0.85rem;
+  top: 0.85rem;
+  z-index: 12;
+  display: inline-flex;
+  height: 1.75rem;
+  width: 1.75rem;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.76);
+  color: #475569;
+  font-size: 0.9rem;
+  font-weight: 800;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12);
+  transition: transform 180ms ease, background 180ms ease;
+}
+.dashboard-grid-card:hover .dashboard-card-affordance,
+.dashboard-grid-card:focus-visible .dashboard-card-affordance {
+  transform: translate(2px, -2px);
+  background: #ffffff;
+}
+.dark .dashboard-card-affordance {
+  border-color: rgba(255, 255, 255, 0.16);
+  background: rgba(15, 23, 42, 0.76);
+  color: #cbd5e1;
+}
+@media (max-width: 1023px) {
+  .dashboard-page-layout {
+    display: flex !important;
+    flex-direction: column;
+  }
+  .dashboard-page-content {
+    order: 1;
+  }
+  .dashboard-page-layout > .dashboard-rail {
+    order: 2;
+  }
+  .dashboard-nav > div {
+    flex-wrap: nowrap;
+    gap: 0.65rem;
+    overflow: hidden;
+  }
+  .dashboard-nav > div > div:first-child {
+    min-width: 0;
+    flex: 1 1 auto;
+    gap: 0.65rem;
+    overflow: hidden;
+  }
+  .dashboard-nav > div > div:first-child > button {
+    flex: 0 0 auto;
+  }
+  .dashboard-nav nav {
+    min-width: 0;
+    flex: 1 1 auto;
+    width: auto !important;
+    max-width: none !important;
+  }
+  .dashboard-nav nav button {
+    flex: 0 0 auto;
+    white-space: nowrap;
+    padding-left: 0.65rem;
+    padding-right: 0.65rem;
+  }
+  .dashboard-nav > div > div:last-child {
+    flex: 0 0 auto;
+  }
+}

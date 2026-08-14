@@ -84,8 +84,10 @@ const NavCard = ({ onClick, icon, title, description, badge, isImage, fullBg, ce
     <button
       type="button"
       onClick={onClick}
-      className={`dashboard-grid-card group relative flex min-h-[166px] flex-col items-start justify-end p-5 sm:p-6 ${fullBg ? 'bg-transparent' : 'card-bg-doc'} rounded-[24px] shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl text-left w-full overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2`}
+      className={`dashboard-grid-card group relative flex min-h-[166px] cursor-pointer flex-col items-start justify-end p-5 sm:p-6 ${fullBg ? 'bg-transparent' : 'card-bg-doc'} rounded-[24px] shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl text-left w-full overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2`}
+      aria-label={`Open ${title}`}
     >
+      <span className="dashboard-card-affordance" aria-hidden="true">↗</span>
       {fullBg && isImage && (
         <div className="absolute inset-0 z-0">
           <Image src={icon} alt={title} fill className="object-cover opacity-80 group-hover:opacity-100 transition-opacity duration-300" />
@@ -599,7 +601,7 @@ export default function Home() {
                   {!showAdminSection ? (
                 <section>
                   <div className="mb-3 flex items-center gap-3"><span className="h-px flex-1 bg-slate-200/80 dark:bg-slate-800" /><span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Core workspaces</span><span className="h-px flex-1 bg-slate-200/80 dark:bg-slate-800" /></div>
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                  <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
                   {profile?.permissions?.clients?.view !== false && (
                     <NavCard onClick={() => setActiveTab('dashboard')} icon="/clients_bg.png" title="Clients" description="Manage" badge={cachedClientCounts ? clientBadgeTotal : (dataLoaded ? '...' : undefined)} isImage={true} fullBg={true} centerBadge={true} />
                   )}
