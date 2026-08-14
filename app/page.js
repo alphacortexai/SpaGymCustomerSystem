@@ -87,7 +87,6 @@ const NavCard = ({ onClick, icon, title, description, badge, isImage, fullBg, ce
       className={`dashboard-grid-card group relative flex min-h-[166px] cursor-pointer flex-col items-start justify-end p-5 sm:p-6 ${fullBg ? 'bg-transparent' : 'card-bg-doc'} rounded-[24px] shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl text-left w-full overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2`}
       aria-label={`Open ${title}`}
     >
-      <span className="dashboard-card-affordance" aria-hidden="true">↗</span>
       {fullBg && isImage && (
         <div className="absolute inset-0 z-0">
           <Image src={icon} alt={title} fill className="object-cover opacity-80 group-hover:opacity-100 transition-opacity duration-300" />
