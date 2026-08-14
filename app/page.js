@@ -83,7 +83,7 @@ const NavCard = ({ onClick, icon, title, description, badge, isImage, fullBg, ce
   return (
     <button
       onClick={onClick}
-      className={`dashboard-grid-card group relative flex flex-col items-center justify-center p-5 ${fullBg ? 'bg-transparent' : 'card-bg-doc'} rounded-[22px] shadow-sm transition-all duration-300 hover:-translate-y-1 text-center w-full overflow-hidden`}
+      className={`dashboard-grid-card group relative flex min-h-[154px] flex-col items-start justify-end p-5 sm:p-6 ${fullBg ? 'bg-transparent' : 'card-bg-doc'} rounded-[24px] shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl text-left w-full overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2`}
     >
       {fullBg && isImage && (
         <div className="absolute inset-0 z-0">
@@ -122,9 +122,9 @@ const NavCard = ({ onClick, icon, title, description, badge, isImage, fullBg, ce
           )}
         </div>
       )}
-      <div className={`relative z-20 ${fullBg ? 'mt-auto' : ''}`}>
+      <div className={`relative z-20 ${fullBg ? 'mt-auto' : ''} w-full`}>
         {eyebrow && <div className="mb-1 text-[10px] font-black uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">{eyebrow}</div>}
-        <h3 className={`text-lg font-bold ${fullBg ? 'text-white' : 'text-slate-900 dark:text-white'} mb-1`}>{title}</h3>
+        <div className="mb-3 flex items-center justify-between gap-3"><span className={`inline-flex h-9 w-9 items-center justify-center rounded-xl border text-sm shadow-sm ${fullBg ? 'border-white/20 bg-white/15 text-white' : `${selectedAccent.icon}`}`}>{isImage ? <span className="relative h-5 w-5"><Image src={icon} alt="" fill className="object-contain" /></span> : <span>{icon}</span>}</span>{badge !== undefined && !centerBadge && <span className={`rounded-full px-2.5 py-1 text-[11px] font-black ${fullBg ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200'}`}>{badge}</span>}</div><h3 className={`text-lg font-bold ${fullBg ? 'text-white' : 'text-slate-900 dark:text-white'} mb-1`}>{title}</h3>
         <p className={`text-sm ${fullBg ? 'text-slate-200' : 'text-slate-500 dark:text-slate-400'} leading-tight line-clamp-2 px-1`}>{description}</p>
       </div>
     </button>
@@ -548,25 +548,25 @@ export default function Home() {
           </div>
         </header>
 
-        <main className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-10 py-7 lg:py-9">
+        <main className="mx-auto max-w-[1440px] px-4 py-6 sm:px-6 lg:px-10 lg:py-9">
           {activeTab === 'home' && profile?.preferences?.nviewEnabled && profile?.role === 'Admin' ? (
             <NviewDashboard />
           ) : activeTab === 'home' && (
             <div className="dashboard-reveal space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <div className="max-w-none">
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-xs font-black uppercase tracking-[0.24em] text-blue-600 dark:text-blue-400">Workspace overview</p><h1 className="mt-2 text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white sm:text-4xl">
-                  Hi, <span className="text-blue-600">{user?.displayName?.split(' ')[0] || 'User'}</span>
-                </h1></div><div className="hidden rounded-full border border-blue-100 bg-white/70 px-3 py-1.5 text-xs font-bold text-slate-500 shadow-sm sm:block dark:border-slate-800 dark:bg-slate-900/60">Today · {new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</div></div>
-                <div className="dashboard-surface mt-5 max-w-3xl rounded-[22px] p-5 backdrop-blur-sm">
-                  <h2 className="text-xs font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 mb-1">Power Quotes</h2>
-                  <p className="text-base text-slate-600 dark:text-slate-300 leading-relaxed italic font-medium">
-                    “{currentAffirmation}”
-                  </p>
+              <section className="dashboard-hero relative overflow-hidden rounded-[28px] p-6 sm:p-8 lg:p-10">
+                <div className="relative z-10 flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
+                  <div className="max-w-2xl">
+                    <div className="mb-4 flex items-center gap-2 text-xs font-black uppercase tracking-[0.24em] text-blue-600 dark:text-blue-300"><span className="h-2 w-2 rounded-full bg-blue-500 shadow-[0_0_0_5px_rgba(59,130,246,0.12)]" />Workspace overview</div>
+                    <h1 className="text-3xl font-black tracking-tight text-slate-950 dark:text-white sm:text-4xl lg:text-5xl">Good to see you, <span className="text-blue-600 dark:text-blue-400">{user?.displayName?.split(' ')[0] || 'there'}</span>.</h1>
+                    <p className="mt-4 max-w-xl text-sm font-medium leading-6 text-slate-500 dark:text-slate-300 sm:text-base">Keep your client records, memberships, birthdays, and invoices moving from one clear workspace.</p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-3"><div className="rounded-2xl border border-white/80 bg-white/75 px-4 py-3 shadow-sm backdrop-blur dark:border-slate-700 dark:bg-slate-900/70"><div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Today</div><div className="mt-1 text-sm font-bold text-slate-800 dark:text-white">{new Date().toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</div></div></div>
                 </div>
-              </div>
+                <div className="relative z-10 mt-8 max-w-2xl rounded-2xl border border-white/80 bg-white/65 px-4 py-3 backdrop-blur dark:border-slate-700 dark:bg-slate-900/50"><div className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-600 dark:text-blue-300">Power quote</div><p className="mt-1 text-sm font-semibold italic leading-6 text-slate-600 dark:text-slate-200">“{currentAffirmation}”</p></div>
+              </section>
 
                   {!showAdminSection ? (
-                <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                <section><div className="mb-4 flex items-end justify-between gap-4"><div><p className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">Quick access</p><h2 className="mt-1 text-xl font-black tracking-tight text-slate-900 dark:text-white">Your workspace</h2></div><p className="hidden text-xs font-semibold text-slate-400 sm:block">Choose a workspace to continue</p></div><div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                   {profile?.permissions?.clients?.view !== false && (
                     <NavCard onClick={() => setActiveTab('dashboard')} icon="/clients_bg.png" title="Clients" description="Manage" badge={cachedClientCounts ? clientBadgeTotal : (dataLoaded ? '...' : undefined)} isImage={true} fullBg={true} centerBadge={true} />
                   )}
@@ -604,7 +604,7 @@ export default function Home() {
                   {profile?.role === 'Admin' && (
                     <NavCard onClick={() => setShowAdminSection(true)} icon="⚙️" title="Admin" description="System tools." />
                   )}
-                </div>
+                </div></section>
               ) : (
                 <div className="space-y-6">
                   <div className="relative overflow-hidden rounded-3xl border border-blue-100/80 bg-gradient-to-br from-white via-blue-50/70 to-slate-100 p-5 shadow-lg shadow-blue-900/5 dark:border-slate-800 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
