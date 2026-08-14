@@ -567,18 +567,18 @@ export default function Home() {
               <aside className="dashboard-rail dashboard-surface h-fit rounded-2xl p-3 lg:sticky lg:top-24">
                 <div className="mb-5 flex items-center gap-2 px-2"><div className="h-7 w-7 overflow-hidden rounded-lg bg-white"><Image src="/logo1.png" alt="" width={28} height={28} className="h-full w-full object-contain p-1" /></div><span className="text-sm font-black tracking-tight text-slate-900 dark:text-white">Workspace</span></div>
                 <div className="mb-2 px-2 text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">Manage</div>
-                <div className="space-y-1">
-                  <button type="button" onClick={() => setActiveTab('home')} className={`dashboard-rail-link ${activeTab === 'home' ? 'is-active' : ''}`}><span className="dashboard-rail-icon">⌂</span>Overview</button>
-                  {profile?.permissions?.clients?.view !== false && <button type="button" onClick={() => setActiveTab('dashboard')} className={`dashboard-rail-link ${activeTab === 'dashboard' ? 'is-active' : ''}`}><span className="dashboard-rail-icon">◫</span>Clients</button>}
-                  {profile?.permissions?.birthdays?.view !== false && <button type="button" onClick={() => setActiveTab('birthdays')} className={`dashboard-rail-link ${activeTab === 'birthdays' ? 'is-active' : ''}`}><span className="dashboard-rail-icon">◌</span>Birthdays</button>}
-                  {profile?.permissions?.gym?.view !== false && <button type="button" onClick={() => setActiveTab('gym')} className={`dashboard-rail-link ${activeTab === 'gym' ? 'is-active' : ''}`}><span className="dashboard-rail-icon">＋</span>GYM</button>}
-                  {profile?.permissions?.spa?.view !== false && <button type="button" onClick={() => setActiveTab('spa')} className={`dashboard-rail-link ${activeTab === 'spa' ? 'is-active' : ''}`}><span className="dashboard-rail-icon">✦</span>SPA</button>}
+                <div className="dashboard-rail-group manage-group space-y-1">
+                  <button type="button" onClick={() => setActiveTab('home')} className={`dashboard-rail-link ${activeTab === 'home' ? 'is-active' : ''}`} aria-label="Home"><span className="dashboard-rail-icon">⌂</span><span className="dashboard-rail-label">Home</span></button>
+                  {profile?.permissions?.clients?.view !== false && <button type="button" onClick={() => setActiveTab('dashboard')} className={`dashboard-rail-link ${activeTab === 'dashboard' ? 'is-active' : ''}`} aria-label="Clients"><span className="dashboard-rail-icon">♙♙</span><span className="dashboard-rail-label">Clients</span></button>}
+                  {profile?.permissions?.birthdays?.view !== false && <button type="button" onClick={() => setActiveTab('birthdays')} className={`dashboard-rail-link ${activeTab === 'birthdays' ? 'is-active' : ''}`} aria-label="Birthdays"><span className="dashboard-rail-icon">✦</span><span className="dashboard-rail-label">Birthdays</span></button>}
+                  {profile?.permissions?.gym?.view !== false && <button type="button" onClick={() => setActiveTab('gym')} className={`dashboard-rail-link ${activeTab === 'gym' ? 'is-active' : ''}`} aria-label="Gym"><span className="dashboard-rail-icon">⚙</span><span className="dashboard-rail-label">GYM</span></button>}
+                  {profile?.permissions?.spa?.view !== false && <button type="button" onClick={() => setActiveTab('spa')} className={`dashboard-rail-link ${activeTab === 'spa' ? 'is-active' : ''}`} aria-label="Spa"><span className="dashboard-rail-icon">✿</span><span className="dashboard-rail-label">SPA</span></button>}
                 </div>
                 <div className="mb-2 mt-6 px-2 text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">Operations</div>
-                <div className="space-y-1">
-                  <button type="button" onClick={() => setActiveTab('invoice')} className={`dashboard-rail-link ${activeTab === 'invoice' ? 'is-active' : ''}`}><span className="dashboard-rail-icon">▤</span>Invoices</button>
-                  {(profile?.role === 'Admin' || profile?.role === 'Manager') && <button type="button" onClick={() => setActiveTab('invoice-tracking')} className={`dashboard-rail-link ${activeTab === 'invoice-tracking' ? 'is-active' : ''}`}><span className="dashboard-rail-icon">↗</span>Tracking</button>}
-                  {profile?.role === 'Admin' && <button type="button" onClick={() => { setActiveTab('home'); setShowAdminSection(true); }} className={`dashboard-rail-link ${showAdminSection ? 'is-active' : ''}`}><span className="dashboard-rail-icon">⚙</span>Admin</button>}
+                <div className="dashboard-rail-group operations-group space-y-1">
+                  <button type="button" onClick={() => setActiveTab('invoice')} className={`dashboard-rail-link ${activeTab === 'invoice' ? 'is-active' : ''}`} aria-label="Invoices"><span className="dashboard-rail-icon">▤</span><span className="dashboard-rail-label">Invoices</span></button>
+                  {(profile?.role === 'Admin' || profile?.role === 'Manager') && <button type="button" onClick={() => setActiveTab('invoice-tracking')} className={`dashboard-rail-link ${activeTab === 'invoice-tracking' ? 'is-active' : ''}`} aria-label="Invoice tracking"><span className="dashboard-rail-icon">↗</span><span className="dashboard-rail-label">Tracking</span></button>}
+                  {profile?.role === 'Admin' && <button type="button" onClick={() => { setActiveTab('home'); setShowAdminSection(true); }} className={`dashboard-rail-link ${showAdminSection ? 'is-active' : ''}`} aria-label="Admin"><span className="dashboard-rail-icon">⚙</span><span className="dashboard-rail-label">Admin</span></button>}
                 </div>
               </aside>
               <div className="dashboard-reveal min-w-0 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -590,7 +590,6 @@ export default function Home() {
                   </div>
                   <div className="flex shrink-0 items-center gap-3"><div className="rounded-2xl border border-white/80 bg-white/75 px-4 py-3 shadow-sm backdrop-blur dark:border-slate-700 dark:bg-slate-900/70"><div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Today</div><div className="mt-1 text-sm font-bold text-slate-800 dark:text-white">{new Date().toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</div></div></div>
                 </div>
-                <div className="relative z-10 mt-5 max-w-2xl rounded-2xl border border-white/80 bg-white/65 px-4 py-3 backdrop-blur dark:border-slate-700 dark:bg-slate-900/50"><div className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-600 dark:text-blue-300">Power quote</div><p className="mt-1 text-sm font-semibold italic leading-6 text-slate-600 dark:text-slate-200">“{currentAffirmation}”</p></div>
               </section>
 
                   {!showAdminSection ? (
@@ -677,6 +676,7 @@ export default function Home() {
                   </div>
                 </div>
               )}
+                <div className="dashboard-quote mt-1 rounded-2xl border border-slate-200/80 bg-white/70 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/50"><div className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-600 dark:text-blue-300">Power quote</div><p className="mt-1 text-sm font-semibold italic leading-6 text-slate-600 dark:text-slate-200">“{currentAffirmation}”</p></div>
               </div>
             </div>
           )}
