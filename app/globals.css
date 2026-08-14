@@ -676,3 +676,19 @@ button { @apply transition-all duration-200 active:scale-95; }
     white-space: nowrap;
   }
 }
+
+.mobile-quick-actions {
+  display: none;
+}
+@media (max-width: 1023px) {
+  .dashboard-page-layout > .dashboard-rail {
+    display: none;
+  }
+  .mobile-quick-actions {
+    display: block;
+  }
+  .mobile-quick-actions .dashboard-rail {
+    display: block;
+    width: 100%;
+  }
+}
