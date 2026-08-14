@@ -647,3 +647,32 @@ button { @apply transition-all duration-200 active:scale-95; }
   bottom: 0.85rem;
   z-index: 6;
 }
+
+@media (max-width: 1023px) {
+  .dashboard-page-layout > .dashboard-rail {
+    width: 100%;
+  }
+  .dashboard-rail-group.manage-group,
+  .dashboard-rail-group.operations-group {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    width: 100%;
+    gap: 0.4rem !important;
+    overflow: visible;
+  }
+  .dashboard-rail-group .dashboard-rail-link {
+    width: 100% !important;
+    min-width: 0;
+    height: 36px !important;
+    padding: 0 0.5rem;
+    justify-content: center;
+    gap: 0.3rem;
+    overflow: hidden;
+  }
+  .dashboard-rail-group .dashboard-rail-label {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}

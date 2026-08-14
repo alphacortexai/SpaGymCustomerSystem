@@ -154,15 +154,7 @@ const WorkspaceRail = ({ activeTab, setActiveTab, profile, showAdminSection, set
   </aside>
 );
 
-const BillingCard = ({ onCreateInvoice, onTrackInvoice, canTrack }) => (
-  <div className="dashboard-grid-card flex min-h-[124px] flex-col justify-between rounded-[18px] bg-white p-4 text-left dark:bg-slate-900">
-    <div className="mb-3 flex items-center gap-3"><span className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-violet-100 bg-violet-50 text-violet-600 dark:border-violet-900/50 dark:bg-violet-950/40 dark:text-violet-300">▤</span><div><div className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Operations</div><h3 className="text-sm font-bold tracking-tight text-slate-900 dark:text-white">Billing</h3></div></div>
-    <div className="grid grid-cols-2 gap-2">
-      <button type="button" onClick={onCreateInvoice} className="billing-action"><span className="billing-action-icon">＋</span><span>New invoice</span></button>
-      {canTrack && <button type="button" onClick={onTrackInvoice} className="billing-action"><span className="billing-action-icon">↗</span><span>Tracking</span></button>}
-    </div>
-  </div>
-);
+
 
 export default function Home() {
   const { user, profile } = useAuth();
@@ -633,13 +625,7 @@ export default function Home() {
                     />
                   )}
                   </div>
-                  <div className="mb-3 mt-8 flex items-center gap-3"><span className="h-px flex-1 bg-slate-200/80 dark:bg-slate-800" /><span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Operations</span><span className="h-px flex-1 bg-slate-200/80 dark:bg-slate-800" /></div>
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                    <BillingCard onCreateInvoice={() => setActiveTab('invoice')} onTrackInvoice={() => setActiveTab('invoice-tracking')} canTrack={profile?.role === 'Admin' || profile?.role === 'Manager'} />
-                    {profile?.role === 'Admin' && (
-                      <NavCard onClick={() => setShowAdminSection(true)} icon="⚙️" title="Admin" description="Imports, access, and system tools." accent="slate" eyebrow="Control" />
-                    )}
-                  </div></section>
+</section>
               ) : (
                 <div className="space-y-6">
                   <div className="relative overflow-hidden rounded-3xl border border-blue-100/80 bg-gradient-to-br from-white via-blue-50/70 to-slate-100 p-5 shadow-lg shadow-blue-900/5 dark:border-slate-800 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
