@@ -9,6 +9,7 @@ import { signOut } from '@/lib/auth';
 import ClientList from '@/components/ClientList';
 import { searchClients } from '@/lib/clients';
 import { affirmations } from '@/lib/affirmations';
+import { getActiveNotesCount } from '@/lib/notes';
 import ProtectedRoute from '@/components/ProtectedRoute';
 
 const LazySectionFallback = () => (
@@ -38,6 +39,7 @@ const NviewDashboard = dynamic(() => import('@/components/NviewDashboard'), { lo
 const InvoiceGenerator = dynamic(() => import('@/components/InvoiceGenerator'), { loading: LazySectionFallback });
 const InvoiceList = dynamic(() => import('@/components/InvoiceList'), { loading: LazySectionFallback });
 const InvoiceTracking = dynamic(() => import('@/components/InvoiceTracking'), { loading: LazySectionFallback });
+const NotesSection = dynamic(() => import('@/components/NotesSection'), { loading: LazySectionFallback });
 
 const NavCard = ({ onClick, icon, title, description, badge, isImage, fullBg, centerBadge, accent = 'blue', eyebrow }) => {
   const accentStyles = {
@@ -122,7 +124,7 @@ const NavCard = ({ onClick, icon, title, description, badge, isImage, fullBg, ce
   );
 };
 
-const WorkspaceRail = ({ activeTab, setActiveTab, profile, showAdminSection, setShowAdminSection }) => (
+const WorkspaceRail = ({ activeTab, setActiveTab, profile, showAdminSection, setShowAdminSection, activeNotesCount }) => (
   <aside className="dashboard-rail dashboard-surface h-fit rounded-2xl p-3 lg:sticky lg:top-24">
     <div className="mb-5 px-2"><span className="text-sm font-black tracking-tight text-slate-900 dark:text-white">Quick Actions</span></div>
     <div className="dashboard-rail-group manage-group space-y-1">
@@ -131,6 +133,7 @@ const WorkspaceRail = ({ activeTab, setActiveTab, profile, showAdminSection, set
       {profile?.permissions?.birthdays?.view !== false && <button type="button" onClick={() => setActiveTab('birthdays')} className={`dashboard-rail-link ${activeTab === 'birthdays' ? 'is-active' : ''}`} aria-label="Birthdays"><span className="dashboard-rail-icon">✦</span><span className="dashboard-rail-label">Birthdays</span></button>}
       {profile?.permissions?.gym?.view !== false && <button type="button" onClick={() => setActiveTab('gym')} className={`dashboard-rail-link ${activeTab === 'gym' ? 'is-active' : ''}`} aria-label="Gym"><span className="dashboard-rail-icon">⚙</span><span className="dashboard-rail-label">GYM</span></button>}
       {profile?.permissions?.spa?.view !== false && <button type="button" onClick={() => setActiveTab('spa')} className={`dashboard-rail-link ${activeTab === 'spa' ? 'is-active' : ''}`} aria-label="Spa"><span className="dashboard-rail-icon">✿</span><span className="dashboard-rail-label">SPA</span></button>}
+      <button type="button" onClick={() => setActiveTab('notes')} className={`dashboard-rail-link ${activeTab === 'notes' ? 'is-active' : ''}`} aria-label="Notes"><span className="dashboard-rail-icon">📝</span><span className="dashboard-rail-label">Notes</span>{activeNotesCount > 0 && <span className="ml-auto inline-flex min-w-5 items-center justify-center rounded-full bg-blue-600 px-1.5 py-0.5 text-[10px] font-black text-white">{activeNotesCount}</span>}</button>
     </div>
     <div className="dashboard-rail-group operations-group space-y-1">
       <button type="button" onClick={() => setActiveTab('invoice')} className={`dashboard-rail-link ${activeTab === 'invoice' ? 'is-active' : ''}`} aria-label="Invoices"><span className="dashboard-rail-icon">▤</span><span className="dashboard-rail-label">Invoices</span></button>
@@ -184,6 +187,12 @@ export default function Home() {
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [dataLoaded, setDataLoaded] = useState(false);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [activeNotesCount, setActiveNotesCount] = useState(0);
+
+  useEffect(() => {
+    if (!user) return;
+    getActiveNotesCount().then(setActiveNotesCount);
+  }, [user]);
 
   // Sync with cached data from DataContext (single source of truth). Branch filter applied client-side.
   useEffect(() => {
@@ -561,7 +570,7 @@ export default function Home() {
 
         <main className="mx-auto max-w-[1280px] px-4 py-5 sm:px-6 lg:px-8 lg:py-7">
           <div className="dashboard-page-layout grid gap-5 lg:grid-cols-[188px_minmax(0,1fr)]">
-            <WorkspaceRail activeTab={activeTab} setActiveTab={setActiveTab} profile={profile} showAdminSection={showAdminSection} setShowAdminSection={setShowAdminSection} />
+            <WorkspaceRail activeTab={activeTab} setActiveTab={setActiveTab} profile={profile} showAdminSection={showAdminSection} setShowAdminSection={setShowAdminSection} activeNotesCount={activeNotesCount} />
             <div className="dashboard-page-content min-w-0">
           {activeTab === 'home' && profile?.preferences?.nviewEnabled && profile?.role === 'Admin' ? (
             <NviewDashboard />
@@ -577,7 +586,7 @@ export default function Home() {
               </section>
 
               <div className="mobile-quick-actions">
-                <WorkspaceRail activeTab={activeTab} setActiveTab={setActiveTab} profile={profile} showAdminSection={showAdminSection} setShowAdminSection={setShowAdminSection} />
+                <WorkspaceRail activeTab={activeTab} setActiveTab={setActiveTab} profile={profile} showAdminSection={showAdminSection} setShowAdminSection={setShowAdminSection} activeNotesCount={activeNotesCount} />
               </div>
 
                   {!showAdminSection ? (
@@ -611,6 +620,7 @@ export default function Home() {
                       badge={dataLoaded ? activeSpaMembers : undefined}
                     />
                   )}
+                  <NavCard onClick={() => setActiveTab('notes')} icon="📝" title="Notes" description="Reference reminders." badge={activeNotesCount} accent="violet" />
                   </div>
 </section>
               ) : (
@@ -656,6 +666,10 @@ export default function Home() {
               )}
                 <div className="dashboard-quote mt-1 rounded-2xl border border-slate-200/80 bg-white/70 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/50"><div className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-600 dark:text-blue-300">Power quote</div><p className="mt-1 text-sm font-semibold italic leading-6 text-slate-600 dark:text-slate-200">“{currentAffirmation}”</p></div>
               </div>
+          )}
+
+          {activeTab === 'notes' && (
+            <NotesSection onActiveCountChange={setActiveNotesCount} />
           )}
 
           {activeTab === 'invoice-list' && (
