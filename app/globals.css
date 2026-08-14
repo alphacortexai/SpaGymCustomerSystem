@@ -639,3 +639,11 @@ button { @apply transition-all duration-200 active:scale-95; }
     flex: 0 0 auto;
   }
 }
+
+/* Keep the click affordance clear of centered metric badges. */
+.dashboard-card-affordance {
+  top: auto;
+  right: 0.85rem;
+  bottom: 0.85rem;
+  z-index: 6;
+}
