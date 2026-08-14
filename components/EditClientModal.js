@@ -17,6 +17,7 @@ export default function EditClientModal({ client, isOpen, onClose, onClientUpdat
     birthDay: '',
     branch: '',
     nextOfKin: '',
+    birthdayOfferRedeemedYear: null,
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -38,6 +39,7 @@ export default function EditClientModal({ client, isOpen, onClose, onClientUpdat
         birthDay: client.birthDay || '',
         branch: client.branch || '',
         nextOfKin: client.nextOfKin || '',
+        birthdayOfferRedeemedYear: client.birthdayOfferRedeemedYear === new Date().getFullYear() ? new Date().getFullYear() : null,
       });
       setError('');
       setSuccess('');
@@ -145,6 +147,7 @@ export default function EditClientModal({ client, isOpen, onClose, onClientUpdat
         birthDay: day,
         dateOfBirth: dateOfBirth,
         nextOfKin: formData.nextOfKin,
+        birthdayOfferRedeemedYear: formData.birthdayOfferRedeemedYear ? new Date().getFullYear() : null,
       }, user);
       
       if (result.success) {
@@ -301,6 +304,17 @@ export default function EditClientModal({ client, isOpen, onClose, onClientUpdat
                 </div>
               </div>
             </div>
+
+            <label className="flex items-center gap-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-gray-700">
+              <input
+                type="checkbox"
+                name="birthdayOfferRedeemedYear"
+                checked={Boolean(formData.birthdayOfferRedeemedYear)}
+                onChange={(e) => setFormData((prev) => ({ ...prev, birthdayOfferRedeemedYear: e.target.checked ? new Date().getFullYear() : null }))}
+                className="h-4 w-4 rounded border-gray-300 text-amber-600 focus:ring-amber-500"
+              />
+              <span>Client redeemed the 50% birthday offer in {new Date().getFullYear()}</span>
+            </label>
 
             <div>
               <label htmlFor="edit-nextOfKin" className="block text-sm font-medium text-gray-700 mb-1">
