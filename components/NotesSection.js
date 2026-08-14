@@ -21,6 +21,7 @@ export default function NotesSection({ onActiveCountChange }) {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [filter, setFilter] = useState('active');
+  const [isComposerOpen, setIsComposerOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -28,8 +29,9 @@ export default function NotesSection({ onActiveCountChange }) {
   const loadNotes = useCallback(async () => {
     setLoading(true);
     const loadedNotes = await getAllNotes();
-    setNotes(loadedNotes);
-    onActiveCountChange?.(loadedNotes.filter((note) => note.status === 'active').length);
+    const newestFirst = [...loadedNotes].sort((a, b) => (b.createdAt?.getTime?.() || 0) - (a.createdAt?.getTime?.() || 0));
+    setNotes(newestFirst);
+    onActiveCountChange?.(newestFirst.filter((note) => note.status === 'active').length);
     setLoading(false);
   }, [onActiveCountChange]);
 
@@ -37,10 +39,17 @@ export default function NotesSection({ onActiveCountChange }) {
     loadNotes();
   }, [loadNotes]);
 
+  const activeNotes = useMemo(() => notes.filter((note) => note.status === 'active'), [notes]);
   const visibleNotes = useMemo(() => {
     if (filter === 'all') return notes;
     return notes.filter((note) => note.status === filter);
   }, [filter, notes]);
+
+  const closeComposer = () => {
+    if (saving) return;
+    setIsComposerOpen(false);
+    setError('');
+  };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -51,6 +60,7 @@ export default function NotesSection({ onActiveCountChange }) {
       setTitle('');
       setContent('');
       setFilter('active');
+      setIsComposerOpen(false);
       await loadNotes();
     } else {
       setError(result.error || 'Unable to create note.');
@@ -79,36 +89,15 @@ export default function NotesSection({ onActiveCountChange }) {
           <h2 className="mt-1 text-3xl font-black tracking-tight text-slate-900 dark:text-white">Notes</h2>
           <p className="mt-2 max-w-2xl text-sm font-medium text-slate-500 dark:text-slate-400">Capture reminders for today or later. New notes stay active until you complete or archive them.</p>
         </div>
-        <div className="rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm font-bold text-blue-700 dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-300">
-          {notes.filter((note) => note.status === 'active').length} active notes
-        </div>
-      </div>
-
-      <form onSubmit={handleSubmit} className="dashboard-surface rounded-2xl p-4 sm:p-6">
-        <div className="grid gap-4 sm:grid-cols-[minmax(0,0.7fr)_minmax(0,1.3fr)]">
-          <input
-            value={title}
-            onChange={(event) => setTitle(event.target.value)}
-            placeholder="Note title"
-            className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
-            required
-          />
-          <textarea
-            value={content}
-            onChange={(event) => setContent(event.target.value)}
-            placeholder="Write a reminder or reference note..."
-            rows={3}
-            className="w-full resize-y rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
-            required
-          />
-        </div>
-        <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          {error ? <p className="text-sm font-medium text-rose-600">{error}</p> : <p className="text-xs text-slate-500">New notes are active by default.</p>}
-          <button type="submit" disabled={saving} className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-blue-500/20 transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60">
-            {saving ? 'Saving...' : 'Create note'}
+        <div className="flex items-center gap-3">
+          <div className="rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm font-bold text-blue-700 dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-300">
+            {activeNotes.length} active notes
+          </div>
+          <button type="button" onClick={() => { setError(''); setIsComposerOpen(true); }} className="rounded-xl bg-blue-600 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-blue-500/20 transition hover:bg-blue-700">
+            Create note
           </button>
         </div>
-      </form>
+      </div>
 
       <div className="flex flex-wrap items-center gap-2">
         {['active', 'archived', 'all'].map((option) => (
@@ -121,7 +110,10 @@ export default function NotesSection({ onActiveCountChange }) {
       {loading ? (
         <div className="dashboard-surface rounded-2xl p-10 text-center text-sm text-slate-500">Loading notes...</div>
       ) : visibleNotes.length === 0 ? (
-        <div className="dashboard-surface rounded-2xl p-10 text-center text-sm text-slate-500">No {filter === 'all' ? '' : filter} notes yet.</div>
+        <div className="dashboard-surface rounded-2xl p-10 text-center">
+          <p className="text-lg font-bold text-slate-700 dark:text-slate-200">You have no notes</p>
+          <p className="mt-1 text-sm text-slate-500">Create a note when you need a reminder or future reference.</p>
+        </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
           {visibleNotes.map((note) => (
@@ -146,6 +138,32 @@ export default function NotesSection({ onActiveCountChange }) {
               </div>
             </article>
           ))}
+        </div>
+      )}
+
+      {isComposerOpen && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="create-note-title">
+          <button type="button" className="absolute inset-0 h-full w-full cursor-default" aria-label="Close note composer" onClick={closeComposer} />
+          <form onSubmit={handleSubmit} className="relative z-10 w-full max-w-xl rounded-3xl border border-slate-200 bg-white p-5 shadow-2xl dark:border-slate-800 dark:bg-slate-900 sm:p-6">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-600 dark:text-blue-400">New reference</p>
+                <h3 id="create-note-title" className="mt-1 text-2xl font-black text-slate-900 dark:text-white">Create a note</h3>
+              </div>
+              <button type="button" onClick={closeComposer} className="rounded-xl px-3 py-1 text-2xl text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800" aria-label="Close">×</button>
+            </div>
+            <div className="mt-5 space-y-4">
+              <input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Note title" className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-950 dark:text-white" required autoFocus />
+              <textarea value={content} onChange={(event) => setContent(event.target.value)} placeholder="Write a reminder or reference note..." rows={5} className="w-full resize-y rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200" required />
+            </div>
+            <div className="mt-4 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+              {error ? <p className="text-sm font-medium text-rose-600">{error}</p> : <p className="text-xs text-slate-500">New notes are active by default.</p>}
+              <div className="flex gap-2 sm:ml-auto">
+                <button type="button" onClick={closeComposer} className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800">Cancel</button>
+                <button type="submit" disabled={saving} className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-blue-500/20 transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60">{saving ? 'Saving...' : 'Save note'}</button>
+              </div>
+            </div>
+          </form>
         </div>
       )}
     </div>
