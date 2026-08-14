@@ -485,3 +485,16 @@ button { @apply transition-all duration-200 active:scale-95; }
   background: rgba(28, 28, 30, 0.72);
   border-color: rgba(255, 255, 255, 0.1);
 }
+
+@media (max-width: 1023px) {
+  .dashboard-rail-group.manage-group {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .dashboard-rail-group.manage-group .dashboard-rail-link {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    height: auto;
+    min-height: 0;
+    border-radius: 12px;
+  }
+}
