@@ -125,7 +125,6 @@ const NavCard = ({ onClick, icon, title, description, badge, isImage, fullBg, ce
 const WorkspaceRail = ({ activeTab, setActiveTab, profile, showAdminSection, setShowAdminSection }) => (
   <aside className="dashboard-rail dashboard-surface h-fit rounded-2xl p-3 lg:sticky lg:top-24">
     <div className="mb-5 px-2"><span className="text-sm font-black tracking-tight text-slate-900 dark:text-white">Quick Actions</span></div>
-    <div className="mobile-rail-section-title mb-2 px-2 text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">Manage</div>
     <div className="dashboard-rail-group manage-group space-y-1">
       <button type="button" onClick={() => setActiveTab('home')} className={`dashboard-rail-link ${activeTab === 'home' ? 'is-active' : ''}`} aria-label="Home"><span className="dashboard-rail-icon">⌂</span><span className="dashboard-rail-label">Home</span></button>
       {profile?.permissions?.clients?.view !== false && <button type="button" onClick={() => setActiveTab('dashboard')} className={`dashboard-rail-link ${activeTab === 'dashboard' ? 'is-active' : ''}`} aria-label="Clients"><span className="dashboard-rail-icon">♙♙</span><span className="dashboard-rail-label">Clients</span></button>}
@@ -477,8 +476,8 @@ export default function Home() {
         )}
         {/* Navigation */}
         <header className="dashboard-nav bg-white/85 dark:bg-slate-900/85 backdrop-blur-xl border-b border-slate-200/80 dark:border-slate-800 sticky top-0 z-50">
-          <div className="mx-auto flex min-h-16 max-w-[1440px] flex-wrap items-center justify-between gap-x-5 gap-y-3 px-4 py-3 sm:px-6 lg:px-10">
-            <div className="flex items-center gap-8">
+          <div className="relative mx-auto flex min-h-16 max-w-[1440px] flex-wrap items-center justify-between gap-x-5 gap-y-3 px-4 py-3 sm:px-6 lg:px-10">
+            <div className="flex w-full flex-wrap items-center gap-4 sm:w-auto sm:flex-nowrap sm:gap-8">
               <button onClick={() => { setActiveTab('home'); setMobileNavOpen(true); }} aria-label="Open navigation menu" aria-expanded={mobileNavOpen} className="flex items-center gap-3 group">
                 <div className="flex -space-x-2">
                   <div className="w-10 h-10 rounded-full border-2 border-white dark:border-slate-800 bg-white overflow-hidden shadow-md group-hover:scale-105 transition-transform relative z-20">
@@ -491,7 +490,7 @@ export default function Home() {
                 <span className="text-lg font-black tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-slate-950 via-blue-700 to-slate-500 dark:from-white dark:via-blue-300 dark:to-slate-400">SpaManager</span>
               </button>
 
-                <nav aria-label="Primary navigation" className="mobile-primary-nav order-3 flex w-full items-center gap-1 overflow-x-auto pb-0.5 sm:order-none sm:w-auto sm:max-w-[58vw]">
+                <nav aria-label="Primary navigation" className="mobile-primary-nav order-3 flex basis-full items-center gap-1 overflow-x-auto pb-0.5 sm:order-none sm:w-auto sm:basis-auto sm:max-w-[58vw]">
                 {['home', 'dashboard', 'birthdays', 'gym', 'spa', 'profile'].map((tab) => {
                   // Check permissions for each tab
                   if (tab === 'dashboard' && profile?.permissions?.clients?.view === false) return null;
