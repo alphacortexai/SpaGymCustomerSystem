@@ -191,8 +191,8 @@ export default function Home() {
 
   useEffect(() => {
     if (!user) return;
-    getActiveNotesCount().then(setActiveNotesCount);
-  }, [user]);
+    getActiveNotesCount(user, profile).then(setActiveNotesCount);
+  }, [profile, user]);
 
   // Sync with cached data from DataContext (single source of truth). Branch filter applied client-side.
   useEffect(() => {

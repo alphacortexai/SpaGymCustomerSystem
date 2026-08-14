@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useData } from '@/contexts/DataContext';
 import { addNote, deleteNote, getAllNotes, updateNote, updateNoteStatus } from '@/lib/notes';
 
 const formatDate = (date) => {
@@ -16,10 +17,12 @@ const formatDate = (date) => {
 };
 
 export default function NotesSection({ onActiveCountChange }) {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
+  const { branches = [] } = useData();
   const [notes, setNotes] = useState([]);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
+  const [branch, setBranch] = useState('');
   const [filter, setFilter] = useState('active');
   const [isComposerOpen, setIsComposerOpen] = useState(false);
   const [editingNote, setEditingNote] = useState(null);
@@ -29,12 +32,12 @@ export default function NotesSection({ onActiveCountChange }) {
 
   const loadNotes = useCallback(async () => {
     setLoading(true);
-    const loadedNotes = await getAllNotes();
+    const loadedNotes = await getAllNotes(user, profile);
     const newestFirst = [...loadedNotes].sort((a, b) => (b.createdAt?.getTime?.() || 0) - (a.createdAt?.getTime?.() || 0));
     setNotes(newestFirst);
     onActiveCountChange?.(newestFirst.filter((note) => note.status === 'active').length);
     setLoading(false);
-  }, [onActiveCountChange]);
+  }, [onActiveCountChange, profile, user]);
 
   useEffect(() => {
     loadNotes();
@@ -52,6 +55,7 @@ export default function NotesSection({ onActiveCountChange }) {
     setEditingNote(null);
     setTitle('');
     setContent('');
+    setBranch('');
     setError('');
   };
 
@@ -60,6 +64,7 @@ export default function NotesSection({ onActiveCountChange }) {
     setEditingNote(null);
     setTitle('');
     setContent('');
+    setBranch(branches[0]?.name || '');
     setIsComposerOpen(true);
   };
 
@@ -69,6 +74,7 @@ export default function NotesSection({ onActiveCountChange }) {
     setEditingNote(note);
     setTitle(note.title);
     setContent(note.content);
+    setBranch(note.branch || branches[0]?.name || '');
     setIsComposerOpen(true);
   };
 
@@ -77,11 +83,12 @@ export default function NotesSection({ onActiveCountChange }) {
     setError('');
     setSaving(true);
     const result = editingNote
-      ? await updateNote(editingNote.id, { title, content }, user)
-      : await addNote({ title, content }, user);
+      ? await updateNote(editingNote.id, { title, content, branch }, user)
+      : await addNote({ title, content, branch }, user);
     if (result.success) {
       setTitle('');
       setContent('');
+      setBranch('');
       setFilter('active');
       setIsComposerOpen(false);
       setEditingNote(null);
@@ -145,7 +152,7 @@ export default function NotesSection({ onActiveCountChange }) {
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <h3 className="text-lg font-bold text-slate-900 dark:text-white">{note.title}</h3>
-                  <p className="mt-1 text-xs text-slate-400">Created {formatDate(note.createdAt)} by {note.createdByName || 'User'}</p>
+                  <p className="mt-1 text-xs text-slate-400">Created {formatDate(note.createdAt)} by {note.createdByName || 'User'}{note.branch ? ` · ${note.branch}` : ''}</p>
                 </div>
                 <span className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-wider ${note.status === 'active' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' : 'bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-400'}`}>
                   {note.status}
@@ -179,6 +186,10 @@ export default function NotesSection({ onActiveCountChange }) {
             </div>
             <div className="mt-5 space-y-4">
               <input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Note title" className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-950 dark:text-white" required autoFocus />
+              <select value={branch} onChange={(event) => setBranch(event.target.value)} className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200" required>
+                <option value="">Select a branch</option>
+                {branches.map((availableBranch) => <option key={availableBranch.id} value={availableBranch.name}>{availableBranch.name}</option>)}
+              </select>
               <textarea value={content} onChange={(event) => setContent(event.target.value)} placeholder="Write a reminder or reference note..." rows={5} className="w-full resize-y rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200" required />
             </div>
             <div className="mt-4 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">

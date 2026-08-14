@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getAllUsers, updateUserRole, updateUserStatus, updateUserPermissions, ROLES, ROLE_PERMISSIONS } from '@/lib/users';
+import { getAllUsers, updateUserRole, updateUserStatus, updateUserPermissions, updateUserBranches, ROLES, ROLE_PERMISSIONS } from '@/lib/users';
+import { getAllBranches } from '@/lib/branches';
 import { useNotifications } from '@/contexts/NotificationContext';
 import { format } from 'date-fns';
 
@@ -10,11 +11,13 @@ export default function UserManagement() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(null);
+  const [branches, setBranches] = useState([]);
 
   const loadUsers = async () => {
     setLoading(true);
-    const data = await getAllUsers();
+    const [data, branchList] = await Promise.all([getAllUsers(), getAllBranches()]);
     setUsers(data);
+    setBranches(branchList);
     setLoading(false);
   };
 
@@ -29,6 +32,18 @@ export default function UserManagement() {
       await loadUsers();
     } else {
       toast('Error updating role: ' + result.error, 'error');
+    }
+    setUpdating(null);
+  };
+
+  const handleBranchChange = async (uid, event) => {
+    const assignedBranches = Array.from(event.target.selectedOptions, (option) => option.value);
+    setUpdating(uid);
+    const result = await updateUserBranches(uid, assignedBranches);
+    if (result.success) {
+      await loadUsers();
+    } else {
+      toast('Error updating branches: ' + result.error, 'error');
     }
     setUpdating(null);
   };
@@ -88,6 +103,7 @@ export default function UserManagement() {
               <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">User</th>
               <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Role</th>
               <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Access Permissions</th>
+              <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Assigned Branches</th>
               <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Status</th>
               <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Joined</th>
               <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-right">Actions</th>
@@ -165,6 +181,19 @@ export default function UserManagement() {
                       </div>
                     ))}
                   </div>
+                </td>
+                <td className="px-6 py-4">
+                  <select
+                    multiple
+                    value={user.assignedBranches || []}
+                    disabled={updating === user.uid || user.email === 'alphacortexai@gmail.com'}
+                    onChange={(e) => handleBranchChange(user.uid, e)}
+                    className="min-w-36 rounded-lg border border-slate-200 bg-white p-1 text-xs dark:border-slate-700 dark:bg-slate-900"
+                    aria-label={`Assigned branches for ${user.displayName || user.email}`}
+                  >
+                    {branches.map((branch) => <option key={branch.id} value={branch.name}>{branch.name}</option>)}
+                  </select>
+                  <p className="mt-1 text-[10px] text-slate-400">Ctrl/Cmd-click for multiple</p>
                 </td>
                 <td className="px-6 py-4">
                   <select
