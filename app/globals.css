@@ -281,3 +281,108 @@ button { @apply transition-all duration-200 active:scale-95; }
 .dark .dashboard-grid-card:hover {
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.22);
 }
+
+/* Sample-inspired dashboard workspace rail */
+.dashboard-layout {
+  align-items: start;
+}
+.dashboard-rail {
+  background: rgba(255, 255, 255, 0.84);
+  border: 1px solid #e8e8ed;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.035);
+}
+.dashboard-rail-link {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 0.65rem;
+  border-radius: 10px;
+  padding: 0.58rem 0.65rem;
+  color: #6e6e73;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-align: left;
+  transition: background-color 160ms ease, color 160ms ease;
+}
+.dashboard-rail-link:hover {
+  background: #f5f5f7;
+  color: #1d1d1f;
+}
+.dashboard-rail-link.is-active {
+  background: #1d1d1f;
+  color: #ffffff;
+}
+.dashboard-rail-icon {
+  display: inline-flex;
+  width: 1.25rem;
+  align-items: center;
+  justify-content: center;
+  color: currentColor;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+.dark .dashboard-rail {
+  background: rgba(28, 28, 30, 0.88);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+.dark .dashboard-rail-link:hover {
+  background: #2c2c2e;
+  color: #ffffff;
+}
+.dark .dashboard-rail-link.is-active {
+  background: #ffffff;
+  color: #1d1d1f;
+}
+@media (max-width: 1023px) {
+  .dashboard-rail {
+    position: static;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    overflow-x: auto;
+    padding: 0.55rem;
+  }
+  .dashboard-rail > div:first-child,
+  .dashboard-rail > div:nth-of-type(1),
+  .dashboard-rail > div:nth-of-type(2) {
+    margin: 0;
+  }
+  .dashboard-rail > div:first-child,
+  .dashboard-rail > div:nth-of-type(1) {
+    display: none;
+  }
+  .dashboard-rail > div:nth-of-type(2) {
+    display: flex;
+    gap: 0.35rem;
+  }
+  .dashboard-rail > div:nth-of-type(2)::before {
+    content: 'Manage';
+    align-self: center;
+    margin-right: 0.2rem;
+    color: #a1a1a6;
+    font-size: 0.58rem;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+  .dashboard-rail > div:nth-of-type(3) {
+    display: flex;
+    gap: 0.35rem;
+  }
+  .dashboard-rail > div:nth-of-type(3)::before {
+    content: 'Operations';
+    align-self: center;
+    margin-left: 0.6rem;
+    margin-right: 0.2rem;
+    color: #a1a1a6;
+    font-size: 0.58rem;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+  .dashboard-rail-link {
+    flex: 0 0 auto;
+    width: auto;
+    white-space: nowrap;
+  }
+}

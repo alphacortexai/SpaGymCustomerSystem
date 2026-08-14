@@ -553,7 +553,25 @@ export default function Home() {
           {activeTab === 'home' && profile?.preferences?.nviewEnabled && profile?.role === 'Admin' ? (
             <NviewDashboard />
           ) : activeTab === 'home' && (
-            <div className="dashboard-reveal space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="dashboard-layout grid gap-5 lg:grid-cols-[188px_minmax(0,1fr)]">
+              <aside className="dashboard-rail dashboard-surface h-fit rounded-2xl p-3 lg:sticky lg:top-24">
+                <div className="mb-5 flex items-center gap-2 px-2"><div className="h-7 w-7 overflow-hidden rounded-lg bg-white"><Image src="/logo1.png" alt="" width={28} height={28} className="h-full w-full object-contain p-1" /></div><span className="text-sm font-black tracking-tight text-slate-900 dark:text-white">Workspace</span></div>
+                <div className="mb-2 px-2 text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">Manage</div>
+                <div className="space-y-1">
+                  <button type="button" onClick={() => setActiveTab('home')} className={`dashboard-rail-link ${activeTab === 'home' ? 'is-active' : ''}`}><span className="dashboard-rail-icon">⌂</span>Overview</button>
+                  {profile?.permissions?.clients?.view !== false && <button type="button" onClick={() => setActiveTab('dashboard')} className={`dashboard-rail-link ${activeTab === 'dashboard' ? 'is-active' : ''}`}><span className="dashboard-rail-icon">◫</span>Clients</button>}
+                  {profile?.permissions?.birthdays?.view !== false && <button type="button" onClick={() => setActiveTab('birthdays')} className={`dashboard-rail-link ${activeTab === 'birthdays' ? 'is-active' : ''}`}><span className="dashboard-rail-icon">◌</span>Birthdays</button>}
+                  {profile?.permissions?.gym?.view !== false && <button type="button" onClick={() => setActiveTab('gym')} className={`dashboard-rail-link ${activeTab === 'gym' ? 'is-active' : ''}`}><span className="dashboard-rail-icon">＋</span>GYM</button>}
+                  {profile?.permissions?.spa?.view !== false && <button type="button" onClick={() => setActiveTab('spa')} className={`dashboard-rail-link ${activeTab === 'spa' ? 'is-active' : ''}`}><span className="dashboard-rail-icon">✦</span>SPA</button>}
+                </div>
+                <div className="mb-2 mt-6 px-2 text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">Operations</div>
+                <div className="space-y-1">
+                  <button type="button" onClick={() => setActiveTab('invoice')} className={`dashboard-rail-link ${activeTab === 'invoice' ? 'is-active' : ''}`}><span className="dashboard-rail-icon">▤</span>Invoices</button>
+                  {(profile?.role === 'Admin' || profile?.role === 'Manager') && <button type="button" onClick={() => setActiveTab('invoice-tracking')} className={`dashboard-rail-link ${activeTab === 'invoice-tracking' ? 'is-active' : ''}`}><span className="dashboard-rail-icon">↗</span>Tracking</button>}
+                  {profile?.role === 'Admin' && <button type="button" onClick={() => { setActiveTab('home'); setShowAdminSection(true); }} className={`dashboard-rail-link ${showAdminSection ? 'is-active' : ''}`}><span className="dashboard-rail-icon">⚙</span>Admin</button>}
+                </div>
+              </aside>
+              <div className="dashboard-reveal min-w-0 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
               <section className="dashboard-hero relative overflow-hidden p-5 sm:p-6 lg:p-7">
                 <div className="relative z-10 flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
                   <div className="max-w-2xl">
@@ -653,6 +671,7 @@ export default function Home() {
                   </div>
                 </div>
               )}
+              </div>
             </div>
           )}
 
