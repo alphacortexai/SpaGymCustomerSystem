@@ -334,13 +334,16 @@ export default function Home() {
     return () => clearInterval(interval);
   }, []);
 
+  const adminSubsectionTabs = ['upload', 'unrecognized', 'history', 'users', 'branches', 'duplicates', 'timeline', 'invoice-list'];
+
   const openAdminTool = (tab) => {
     setReturnToAdmin(true);
+    setShowAdminSection(true);
     setActiveTab(tab);
   };
 
   const goBackFromSection = () => {
-    const shouldReturnToAdmin = returnToAdmin;
+    const shouldReturnToAdmin = returnToAdmin || adminSubsectionTabs.includes(activeTab);
     setActiveTab('home');
     setShowAdminSection(shouldReturnToAdmin);
     setReturnToAdmin(false);
