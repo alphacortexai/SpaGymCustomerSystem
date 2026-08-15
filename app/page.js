@@ -126,6 +126,17 @@ const NavCard = ({ onClick, icon, title, description, badge, isImage, fullBg, ce
   );
 };
 
+const AdminBackButton = ({ onBack }) => (
+  <button
+    type="button"
+    onClick={onBack}
+    className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 dark:border-slate-800 dark:text-slate-400 dark:hover:bg-slate-800"
+  >
+    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+    Back to Admin
+  </button>
+);
+
 const WorkspaceRail = ({ activeTab, setActiveTab, profile, showAdminSection, setShowAdminSection, activeNotesCount }) => (
   <aside className="dashboard-rail dashboard-surface h-fit rounded-2xl p-3 lg:sticky lg:top-24">
     <div className="mb-5 px-2"><span className="text-sm font-black tracking-tight text-slate-900 dark:text-white">Quick Actions</span></div>
@@ -969,9 +980,12 @@ export default function Home() {
 
           {activeTab === 'upload' && (
             <div className="max-w-3xl mx-auto animate-in fade-in duration-300">
-              <div className="mb-8">
-                <h2 className="text-3xl font-bold text-slate-900 dark:text-white">Bulk Upload</h2>
-                <p className="text-slate-500 mt-1">Import clients from Excel files.</p>
+              <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <h2 className="text-3xl font-bold text-slate-900 dark:text-white">Bulk Upload</h2>
+                  <p className="text-slate-500 mt-1">Import clients from Excel files.</p>
+                </div>
+                <AdminBackButton onBack={goBackFromSection} />
               </div>
               <ExcelUpload onUploadComplete={refreshData} />
             </div>
@@ -979,9 +993,12 @@ export default function Home() {
 
           {activeTab === 'unrecognized' && (
             <div className="space-y-8 animate-in fade-in duration-300">
-              <div className="mb-8">
-                <h2 className="text-3xl font-bold text-slate-900 dark:text-white">Data Issues</h2>
-                <p className="text-slate-500 mt-1">Fix clients with unrecognized phone numbers.</p>
+              <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <h2 className="text-3xl font-bold text-slate-900 dark:text-white">Data Issues</h2>
+                  <p className="text-slate-500 mt-1">Fix clients with unrecognized phone numbers.</p>
+                </div>
+                <AdminBackButton onBack={goBackFromSection} />
               </div>
               <UnrecognizedClientsList onApproved={refreshData} />
             </div>
@@ -989,9 +1006,12 @@ export default function Home() {
 
           {activeTab === 'history' && (
             <div className="space-y-8 animate-in fade-in duration-300">
-              <div className="mb-8">
-                <h2 className="text-3xl font-bold text-slate-900 dark:text-white">Upload History</h2>
-                <p className="text-slate-500 mt-1">Track and manage your data imports.</p>
+              <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <h2 className="text-3xl font-bold text-slate-900 dark:text-white">Upload History</h2>
+                  <p className="text-slate-500 mt-1">Track and manage your data imports.</p>
+                </div>
+                <AdminBackButton onBack={goBackFromSection} />
               </div>
               <UploadHistory />
             </div>
@@ -1009,9 +1029,12 @@ export default function Home() {
 
           {activeTab === 'branches' && (
             <div className="max-w-4xl mx-auto animate-in fade-in duration-300">
-              <div className="mb-8">
-                <h2 className="text-3xl font-bold text-slate-900 dark:text-white">Branch Management</h2>
-                <p className="text-slate-500 mt-1">Manage your business locations.</p>
+              <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <h2 className="text-3xl font-bold text-slate-900 dark:text-white">Branch Management</h2>
+                  <p className="text-slate-500 mt-1">Manage your business locations.</p>
+                </div>
+                <AdminBackButton onBack={goBackFromSection} />
               </div>
               <BranchForm onBranchAdded={refreshData} />
             </div>
@@ -1019,15 +1042,21 @@ export default function Home() {
 
           {activeTab === 'users' && (
             <div className="space-y-8 animate-in fade-in duration-300">
+              <div className="flex justify-end">
+                <AdminBackButton onBack={goBackFromSection} />
+              </div>
               <UserManagement />
             </div>
           )}
 
           {activeTab === 'timeline' && (
             <div className="space-y-8 animate-in fade-in duration-300">
-              <div className="mb-8">
-                <h2 className="text-3xl font-bold text-slate-900 dark:text-white">Activity Timeline</h2>
-                <p className="text-slate-500 mt-1">Track all system actions and changes.</p>
+              <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <h2 className="text-3xl font-bold text-slate-900 dark:text-white">Activity Timeline</h2>
+                  <p className="text-slate-500 mt-1">Track all system actions and changes.</p>
+                </div>
+                <AdminBackButton onBack={goBackFromSection} />
               </div>
               <ActionsTimeline />
             </div>
@@ -1035,9 +1064,12 @@ export default function Home() {
 
           {activeTab === 'duplicates' && (
             <div className="space-y-8 animate-in fade-in duration-300">
-              <div className="mb-8">
-                <h2 className="text-3xl font-bold text-slate-900 dark:text-white">Duplicate Search</h2>
-                <p className="text-slate-500 mt-1">Find and resolve duplicate client records.</p>
+              <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <h2 className="text-3xl font-bold text-slate-900 dark:text-white">Duplicate Search</h2>
+                  <p className="text-slate-500 mt-1">Find and resolve duplicate client records.</p>
+                </div>
+                <AdminBackButton onBack={goBackFromSection} />
               </div>
               <DuplicateSearch onMerged={refreshData} />
             </div>
