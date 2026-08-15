@@ -140,7 +140,7 @@ const WorkspaceRail = ({ activeTab, setActiveTab, profile, showAdminSection, set
     <div className="dashboard-rail-group operations-group space-y-1">
       <button type="button" onClick={() => setActiveTab('invoice')} className={`dashboard-rail-link ${activeTab === 'invoice' ? 'is-active' : ''}`} aria-label="Invoices"><span className="dashboard-rail-icon">▤</span><span className="dashboard-rail-label">Invoices</span></button>
       {(profile?.role === 'Admin' || profile?.role === 'Manager') && <button type="button" onClick={() => setActiveTab('invoice-tracking')} className={`dashboard-rail-link ${activeTab === 'invoice-tracking' ? 'is-active' : ''}`} aria-label="Invoice tracking"><span className="dashboard-rail-icon">↗</span><span className="dashboard-rail-label">Tracking</span></button>}
-      {profile?.role === 'Admin' && <button type="button" onClick={() => { setReturnToAdmin(false); setActiveTab('home'); setShowAdminSection(true); }} className={`dashboard-rail-link ${showAdminSection ? 'is-active' : ''}`} aria-label="Admin"><span className="dashboard-rail-icon">⚙</span><span className="dashboard-rail-label">Admin</span></button>}
+      {profile?.role === 'Admin' && <button type="button" onClick={() => { setActiveTab('home'); setShowAdminSection(true); }} className={`dashboard-rail-link ${showAdminSection ? 'is-active' : ''}`} aria-label="Admin"><span className="dashboard-rail-icon">⚙</span><span className="dashboard-rail-label">Admin</span></button>}
     </div>
   </aside>
 );
