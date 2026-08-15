@@ -738,3 +738,28 @@ button { @apply transition-all duration-200 active:scale-95; }
     display: none;
   }
 }
+
+.loading-orb {
+  display: block;
+  width: 0.8rem;
+  height: 0.8rem;
+  border-radius: 9999px;
+  animation: loading-orb-bounce 1.15s ease-in-out infinite;
+}
+
+.loading-orb-blue { background: #2563eb; animation-delay: -0.35s; }
+.loading-orb-pink { background: #ec4899; animation-delay: -0.2s; }
+.loading-orb-purple { background: #8b5cf6; animation-delay: -0.05s; }
+.loading-orb-amber { background: #f59e0b; }
+
+@keyframes loading-orb-bounce {
+  0%, 100% { transform: translateY(0) scale(0.72); opacity: 0.55; }
+  45% { transform: translateY(-0.55rem) scale(1); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loading-orb {
+    animation: none;
+    opacity: 0.8;
+  }
+}
