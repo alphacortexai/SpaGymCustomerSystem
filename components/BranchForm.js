@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { addBranch, getAllBranches } from '@/lib/branches';
 import { useAuth } from '@/contexts/AuthContext';
+import { validateBranchName } from '@/lib/validation';
 
 export default function BranchForm({ onBranchAdded }) {
   const { user, profile } = useAuth();
@@ -28,15 +29,15 @@ export default function BranchForm({ onBranchAdded }) {
     setSuccess('');
     setLoading(true);
 
-    // Validation
-    if (!branchName.trim()) {
-      setError('Branch name is required');
+    const validation = validateBranchName(branchName);
+    if (!validation.valid) {
+      setError(validation.error);
       setLoading(false);
       return;
     }
 
     try {
-      const result = await addBranch(branchName, user);
+      const result = await addBranch(validation.value, user);
       
       if (result.success) {
         setSuccess('Branch added successfully!');

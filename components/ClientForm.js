@@ -5,6 +5,7 @@ import { addClient, checkDuplicatePhone } from '@/lib/clients';
 import { useAuth } from '@/contexts/AuthContext';
 import { getAllBranches } from '@/lib/branches';
 import { normalizePhoneNumberWithAll, extractAllPhoneNumbers } from '@/lib/phoneUtils';
+import { validateClientInput } from '@/lib/validation';
 
 export default function ClientForm({ onClientAdded }) {
   const { user, profile } = useAuth();
@@ -63,12 +64,14 @@ export default function ClientForm({ onClientAdded }) {
     setSuccess('');
     setLoading(true);
 
-    if (!formData.name.trim() || !formData.phoneNumber.trim() || !formData.branch.trim()) {
-      setError('All fields marked with * are required');
+    const inputValidation = validateClientInput(formData);
+    if (!inputValidation.valid) {
+      setError(inputValidation.error);
       setLoading(false);
       return;
     }
 
+    const normalizedFormData = { ...formData, ...inputValidation.value };
     let dateOfBirth = null;
     let month = null;
     let day = null;
@@ -88,12 +91,12 @@ export default function ClientForm({ onClientAdded }) {
     }
 
     // Combine phone numbers for processing
-    const combinedPhone = formData.phoneNumber2.trim() 
-      ? `${formData.phoneNumber}, ${formData.phoneNumber2}` 
-      : formData.phoneNumber;
+    const combinedPhone = normalizedFormData.phoneNumber2
+      ? `${normalizedFormData.phoneNumber}, ${normalizedFormData.phoneNumber2}`
+      : normalizedFormData.phoneNumber;
 
     const phoneData = normalizePhoneNumberWithAll(combinedPhone);
-    const exists = await checkDuplicatePhone(combinedPhone, formData.branch);
+    const exists = await checkDuplicatePhone(combinedPhone, normalizedFormData.branch);
     
     if (exists) {
       setError('A client with this phone number already exists in this branch.');
@@ -109,7 +112,7 @@ export default function ClientForm({ onClientAdded }) {
 
     try {
       const result = await addClient({
-        ...formData,
+        ...normalizedFormData,
         phoneNumber: combinedPhone,
         dateOfBirth,
         birthMonth: month,

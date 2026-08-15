@@ -137,7 +137,7 @@ const AdminBackButton = ({ onBack }) => (
   </button>
 );
 
-const WorkspaceRail = ({ activeTab, setActiveTab, profile, showAdminSection, setShowAdminSection, activeNotesCount }) => (
+const WorkspaceRail = ({ activeTab, setActiveTab, profile, showAdminSection, onOpenAdmin, activeNotesCount }) => (
   <aside className="dashboard-rail dashboard-surface h-fit rounded-2xl p-3 lg:sticky lg:top-24">
     <div className="mb-5 px-2"><span className="text-sm font-black tracking-tight text-slate-900 dark:text-white">Quick Actions</span></div>
     <div className="dashboard-rail-group manage-group space-y-1">
@@ -151,7 +151,7 @@ const WorkspaceRail = ({ activeTab, setActiveTab, profile, showAdminSection, set
     <div className="dashboard-rail-group operations-group space-y-1">
       <button type="button" onClick={() => setActiveTab('invoice')} className={`dashboard-rail-link ${activeTab === 'invoice' ? 'is-active' : ''}`} aria-label="Invoices"><span className="dashboard-rail-icon">▤</span><span className="dashboard-rail-label">Invoices</span></button>
       {(profile?.role === 'Admin' || profile?.role === 'Manager') && <button type="button" onClick={() => setActiveTab('invoice-tracking')} className={`dashboard-rail-link ${activeTab === 'invoice-tracking' ? 'is-active' : ''}`} aria-label="Invoice tracking"><span className="dashboard-rail-icon">↗</span><span className="dashboard-rail-label">Tracking</span></button>}
-      {profile?.role === 'Admin' && <button type="button" onClick={() => { setActiveTab('home'); setShowAdminSection(true); }} className={`dashboard-rail-link ${showAdminSection ? 'is-active' : ''}`} aria-label="Admin"><span className="dashboard-rail-icon">⚙</span><span className="dashboard-rail-label">Admin</span></button>}
+      {profile?.role === 'Admin' && <button type="button" onClick={onOpenAdmin} className={`dashboard-rail-link ${showAdminSection ? 'is-active' : ''}`} aria-label="Admin"><span className="dashboard-rail-icon">⚙</span><span className="dashboard-rail-label">Admin</span></button>}
     </div>
   </aside>
 );
@@ -353,10 +353,20 @@ export default function Home() {
     setActiveTab(tab);
   };
 
+  const openAdminOverview = () => {
+    setActiveTab('home');
+    setShowAdminSection(true);
+    setReturnToAdmin(false);
+  };
+
   const goBackFromSection = () => {
     const shouldReturnToAdmin = returnToAdmin || adminSubsectionTabs.includes(activeTab);
+    if (shouldReturnToAdmin) {
+      openAdminOverview();
+      return;
+    }
     setActiveTab('home');
-    setShowAdminSection(shouldReturnToAdmin);
+    setShowAdminSection(false);
     setReturnToAdmin(false);
   };
 
@@ -655,7 +665,7 @@ export default function Home() {
             </div>
           ) : (
           <div className="dashboard-page-layout grid gap-5 lg:grid-cols-[188px_minmax(0,1fr)]">
-            <WorkspaceRail activeTab={activeTab} setActiveTab={setActiveTab} profile={profile} showAdminSection={showAdminSection} setShowAdminSection={setShowAdminSection} activeNotesCount={activeNotesCount} />
+            <WorkspaceRail activeTab={activeTab} setActiveTab={setActiveTab} profile={profile} showAdminSection={showAdminSection} onOpenAdmin={openAdminOverview} activeNotesCount={activeNotesCount} />
             <div className="dashboard-page-content min-w-0">
           {activeTab === 'home' && profile?.preferences?.nviewEnabled && profile?.role === 'Admin' ? (
             <NviewDashboard />
@@ -671,7 +681,7 @@ export default function Home() {
               </section>}
 
               {!showAdminSection && <div className="mobile-quick-actions">
-                <WorkspaceRail activeTab={activeTab} setActiveTab={setActiveTab} profile={profile} showAdminSection={showAdminSection} setShowAdminSection={setShowAdminSection} activeNotesCount={activeNotesCount} />
+                <WorkspaceRail activeTab={activeTab} setActiveTab={setActiveTab} profile={profile} showAdminSection={showAdminSection} onOpenAdmin={openAdminOverview} activeNotesCount={activeNotesCount} />
               </div>}
 
                   {!showAdminSection ? (
@@ -793,7 +803,7 @@ export default function Home() {
                   className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-sm font-medium"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
-                  Back to Dashboard
+                  Back to Admin
                 </button>
               </div>
               <InvoiceTracking />
@@ -1042,7 +1052,11 @@ export default function Home() {
 
           {activeTab === 'users' && (
             <div className="space-y-8 animate-in fade-in duration-300">
-              <div className="flex justify-end">
+              <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <h2 className="text-3xl font-bold text-slate-900 dark:text-white">User Management</h2>
+                  <p className="mt-1 text-slate-500">Manage access, roles, and branch assignments.</p>
+                </div>
                 <AdminBackButton onBack={goBackFromSection} />
               </div>
               <UserManagement />
@@ -1271,7 +1285,7 @@ export default function Home() {
                   className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-sm font-medium"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
-                  Back to Dashboard
+                  Back to Admin
                 </button>
               </div>
               <InvoiceGenerator />

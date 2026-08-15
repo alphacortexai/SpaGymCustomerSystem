@@ -13,6 +13,7 @@ import {
 import { getMembershipTypes } from '@/lib/memberships';
 import { searchClients } from '@/lib/clients';
 import { getPartnerCompanies } from '@/lib/partnerCompanies';
+import { validateInvoiceInput } from '@/lib/validation';
 
 export default function InvoiceGenerator() {
   const [step, setStep] = useState(1);
@@ -39,6 +40,7 @@ export default function InvoiceGenerator() {
   const [gymMembershipTypes, setGymMembershipTypes] = useState([]);
   const [spaMembershipTypes, setSpaMembershipTypes] = useState([]);
   const [membershipTypesLoading, setMembershipTypesLoading] = useState(true);
+  const [validationError, setValidationError] = useState('');
 
   const membershipOptions = useMemo(() => {
     const availableTypes = serviceType === 'Spa' ? spaMembershipTypes : gymMembershipTypes;
@@ -258,6 +260,12 @@ export default function InvoiceGenerator() {
   ]);
 
   const downloadPDF = async () => {
+    const validation = validateInvoiceInput({ clientName, phone, qty, totalAmount });
+    if (!validation.valid) {
+      setValidationError(validation.error);
+      return;
+    }
+    setValidationError('');
     if (pdfPreview) {
       const currentInvoiceNumber = await getInvoiceNumber(true);
       setInvoiceNumber(currentInvoiceNumber);
@@ -289,11 +297,22 @@ export default function InvoiceGenerator() {
     }
   };
 
-  const nextStep = () => setStep((prev) => prev + 1);
+  const nextStep = () => {
+    if (step === 3) {
+      const validation = validateInvoiceInput({ clientName, phone, qty, totalAmount });
+      if (!validation.valid) {
+        setValidationError(validation.error);
+        return;
+      }
+    }
+    setValidationError('');
+    setStep((prev) => prev + 1);
+  };
   const prevStep = () => setStep((prev) => prev - 1);
 
   return (
     <div className="max-w-2xl mx-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-lg p-6 md:p-8">
+      {validationError && <div role="alert" className="mb-5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-300">{validationError}</div>}
       {step === 1 && (
         <>
           <h2 className="text-xl font-bold text-slate-900 dark:text-white text-center mb-4">

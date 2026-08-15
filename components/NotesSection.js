@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
 import { addNote, deleteNote, getAllNotes, updateNote } from '@/lib/notes';
+import { validateNoteInput } from '@/lib/validation';
 import LoadingState from './LoadingState';
 
 const formatDate = (date) => {
@@ -103,10 +104,15 @@ export default function NotesSection({ onActiveCountChange }) {
   const handleSubmit = async (event) => {
     event.preventDefault();
     setError('');
+    const validation = validateNoteInput({ title, content, branch, visibility });
+    if (!validation.valid) {
+      setError(validation.error);
+      return;
+    }
     setSaving(true);
     const result = editingNote
-      ? await updateNote(editingNote.id, { title, content, branch, visibility, status }, user)
-      : await addNote({ title, content, branch, visibility }, user);
+      ? await updateNote(editingNote.id, { ...validation.value, status }, user)
+      : await addNote(validation.value, user);
     if (result.success) {
       closeComposer();
       await loadNotes();
