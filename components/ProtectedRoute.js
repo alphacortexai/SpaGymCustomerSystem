@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { signOut } from '@/lib/auth';
+import LoadingState from './LoadingState';
 
 export default function ProtectedRoute({ children, requiredRoles = [] }) {
   const { user, profile, loading } = useAuth();
@@ -21,10 +22,9 @@ export default function ProtectedRoute({ children, requiredRoles = [] }) {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
+      <div className="min-h-screen bg-slate-50 px-4 dark:bg-slate-950 flex items-center justify-center">
+        <div className="w-full max-w-2xl">
+          <LoadingState title="Preparing your workspace..." description="Checking your secure session." />
         </div>
       </div>
     );
