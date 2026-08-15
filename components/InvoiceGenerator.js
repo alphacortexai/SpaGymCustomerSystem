@@ -11,12 +11,19 @@ import {
   serverTimestamp,
 } from 'firebase/firestore';
 import { getMembershipTypes } from '@/lib/memberships';
+import { searchClients } from '@/lib/clients';
+import { getPartnerCompanies } from '@/lib/partnerCompanies';
 
 export default function InvoiceGenerator() {
   const [step, setStep] = useState(1);
   const [branch, setBranch] = useState('Positive');
   const [clientName, setClientName] = useState('');
+  const [clientSuggestions, setClientSuggestions] = useState([]);
+  const [isSearchingClients, setIsSearchingClients] = useState(false);
+  const [selectedClientId, setSelectedClientId] = useState('');
   const [company, setCompany] = useState('');
+  const [partnerCompanies, setPartnerCompanies] = useState([]);
+  const [partnerCompaniesLoading, setPartnerCompaniesLoading] = useState(true);
   const [phone, setPhone] = useState('');
   const [experienceType, setExperienceType] = useState('');
   const [serviceType, setServiceType] = useState('');
@@ -205,6 +212,33 @@ export default function InvoiceGenerator() {
   };
 
   useEffect(() => {
+    let isMounted = true;
+    getPartnerCompanies().then((companies) => {
+      if (isMounted) setPartnerCompanies(companies);
+      if (isMounted) setPartnerCompaniesLoading(false);
+    });
+    return () => { isMounted = false; };
+  }, []);
+
+  useEffect(() => {
+    const queryText = clientName.trim();
+    if (step !== 2 || queryText.length < 2 || selectedClientId) {
+      setClientSuggestions([]);
+      setIsSearchingClients(false);
+      return undefined;
+    }
+
+    const timer = setTimeout(async () => {
+      setIsSearchingClients(true);
+      const results = await searchClients(queryText);
+      setClientSuggestions(results.slice(0, 6));
+      setIsSearchingClients(false);
+    }, 250);
+
+    return () => clearTimeout(timer);
+  }, [clientName, selectedClientId, step]);
+
+  useEffect(() => {
     if (step === 4) {
       generatePDF();
     }
@@ -345,20 +379,42 @@ export default function InvoiceGenerator() {
           <h2 className="text-xl font-bold text-slate-900 dark:text-white text-center mb-4">
             Client Details
           </h2>
-          <input
-            type="text"
-            placeholder="Client Name"
-            value={clientName}
-            onChange={(e) => setClientName(e.target.value)}
-            className="w-full mb-3 px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
-          />
-          <input
-            type="text"
-            placeholder="Company Name"
+          <div className="relative mb-3">
+            <input
+              type="text"
+              placeholder="Client name or phone number"
+              value={clientName}
+              onChange={(e) => { setClientName(e.target.value); setSelectedClientId(''); }}
+              className="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+              autoComplete="off"
+            />
+            {(isSearchingClients || clientSuggestions.length > 0) && !selectedClientId && (
+              <div className="absolute left-0 right-0 top-full z-30 mt-1 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-900">
+                {isSearchingClients && <div className="px-4 py-3 text-xs text-slate-500">Searching clients...</div>}
+                {!isSearchingClients && clientSuggestions.map((client) => (
+                  <button
+                    key={client.id}
+                    type="button"
+                    onClick={() => { setSelectedClientId(client.id); setClientName(client.name || ''); setPhone(client.phoneNumber || ''); }}
+                    className="block w-full border-b border-slate-100 px-4 py-3 text-left last:border-0 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800"
+                  >
+                    <span className="block text-sm font-semibold text-slate-800 dark:text-white">{client.name}</span>
+                    <span className="block text-xs text-slate-500">{client.phoneNumber || 'No phone number'}</span>
+                  </button>
+                ))}
+                {!isSearchingClients && clientSuggestions.length === 0 && <div className="px-4 py-3 text-xs text-slate-500">No matching client found. You can continue manually.</div>}
+              </div>
+            )}
+          </div>
+          <select
             value={company}
             onChange={(e) => setCompany(e.target.value)}
+            disabled={partnerCompaniesLoading}
             className="w-full mb-3 px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
-          />
+          >
+            <option value="">Self-pay / no company</option>
+            {partnerCompanies.map((partnerCompany) => <option key={partnerCompany.id} value={partnerCompany.name}>{partnerCompany.name}</option>)}
+          </select>
           <input
             type="text"
             placeholder="Phone Number"

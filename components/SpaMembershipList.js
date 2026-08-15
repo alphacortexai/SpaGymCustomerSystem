@@ -6,6 +6,7 @@ import { db } from '@/lib/firebase';
 import { format } from 'date-fns';
 import MembershipDetailsModal from './MembershipDetailsModal';
 import { getAllBranches } from '@/lib/branches';
+import LoadingState from '@/components/LoadingState';
 
 export default function SpaMembershipList() {
   const [enrollments, setEnrollments] = useState([]);
@@ -77,15 +78,7 @@ export default function SpaMembershipList() {
   }, [searchTerm, selectedBranch]);
 
   if (loading && enrollments.length === 0) {
-    return (
-      <div className="bg-white dark:bg-slate-900 p-12 rounded-2xl border border-slate-200 dark:border-slate-800 text-center">
-        <div className="flex flex-col items-center justify-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mb-4"></div>
-          <h3 className="text-lg font-medium text-slate-900 dark:text-white">Loading spa memberships...</h3>
-          <p className="text-slate-500 mt-1">Please wait while we fetch the records.</p>
-        </div>
-      </div>
-    );
+    return <LoadingState title="Loading spa memberships" description="Preparing spa membership records." />;
   }
 
   const StatusBadge = ({ enrollment }) => {

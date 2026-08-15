@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { getAllUsers, updateUserRole, updateUserStatus, updateUserPermissions, updateUserBranches, ROLES, ROLE_PERMISSIONS } from '@/lib/users';
 import { getAllBranches } from '@/lib/branches';
 import { useNotifications } from '@/contexts/NotificationContext';
+import LoadingState from '@/components/LoadingState';
 import { format } from 'date-fns';
 
 export default function UserManagement() {
@@ -87,7 +88,7 @@ export default function UserManagement() {
     setUpdating(null);
   };
 
-  if (loading) return <div className="text-center py-10">Loading users...</div>;
+  if (loading) return <LoadingState title="Loading users" description="Preparing user access settings." />;
 
   return (
     <div className="space-y-6">

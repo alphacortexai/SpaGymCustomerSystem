@@ -26,6 +26,7 @@ const UnrecognizedClientsList = dynamic(() => import('@/components/UnrecognizedC
 const UploadHistory = dynamic(() => import('@/components/UploadHistory'), { loading: LazySectionFallback });
 const MembershipForm = dynamic(() => import('@/components/MembershipForm'), { loading: LazySectionFallback });
 const MembershipTypeManager = dynamic(() => import('@/components/MembershipTypeManager'), { loading: LazySectionFallback });
+const PartnerCompanyManager = dynamic(() => import('@/components/PartnerCompanyManager'), { loading: LazySectionFallback });
 const EnrollmentForm = dynamic(() => import('@/components/EnrollmentForm'), { loading: LazySectionFallback });
 const MembershipList = dynamic(() => import('@/components/MembershipList'), { loading: LazySectionFallback });
 const SpaMembershipForm = dynamic(() => import('@/components/SpaMembershipForm'), { loading: LazySectionFallback });
@@ -633,18 +634,18 @@ export default function Home() {
             <NviewDashboard />
           ) : activeTab === 'home' && (
             <div className="dashboard-reveal min-w-0 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <section className="dashboard-hero relative overflow-hidden p-5 sm:p-6 lg:p-7">
+              {!showAdminSection && <section className="dashboard-hero relative overflow-hidden p-5 sm:p-6 lg:p-7">
                 <div className="relative z-10 flex items-center justify-between gap-4">
                   <div className="min-w-0">
                     <h1 className="text-xl font-black tracking-tight text-slate-950 dark:text-white sm:text-3xl lg:text-4xl">Good to see you, <span className="text-blue-600 dark:text-blue-400">{user?.displayName?.split(' ')[0] || 'there'}</span>.</h1>
                   </div>
                   <div className="dashboard-date-card shrink-0 rounded-xl border border-slate-200/80 bg-white/80 px-3 py-2 text-right shadow-sm dark:border-slate-700 dark:bg-slate-900/70"><div className="text-[9px] font-black uppercase tracking-[0.16em] text-slate-400">Today</div><div className="mt-0.5 text-sm font-bold text-slate-800 dark:text-white sm:text-base">{new Date().toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</div></div>
                 </div>
-              </section>
+              </section>}
 
-              <div className="mobile-quick-actions">
+              {!showAdminSection && <div className="mobile-quick-actions">
                 <WorkspaceRail activeTab={activeTab} setActiveTab={setActiveTab} profile={profile} showAdminSection={showAdminSection} setShowAdminSection={setShowAdminSection} activeNotesCount={activeNotesCount} />
-              </div>
+              </div>}
 
                   {!showAdminSection ? (
                 <>
@@ -726,7 +727,7 @@ export default function Home() {
                   </div>
                 </div>
               )}
-                <div className="dashboard-quote mt-1 rounded-2xl border border-slate-200/80 bg-white/70 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/50"><div className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-600 dark:text-blue-300">Power quote</div><p className="mt-1 text-sm font-semibold italic leading-6 text-slate-600 dark:text-slate-200">“{currentAffirmation}”</p></div>
+                {!showAdminSection && <div className="dashboard-quote mt-1 rounded-2xl border border-slate-200/80 bg-white/70 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/50"><div className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-600 dark:text-blue-300">Power quote</div><p className="mt-1 text-sm font-semibold italic leading-6 text-slate-600 dark:text-slate-200">“{currentAffirmation}”</p></div>}
               </div>
           )}
 
@@ -1049,6 +1050,7 @@ export default function Home() {
                   <p className="text-slate-500">
                     {gymSubTab === 'overview' ? 'Manage membership types and client enrollments.' : 
                      gymSubTab === 'create-type' ? 'Define new membership packages.' :
+                     gymSubTab === 'partner-companies' ? 'Manage companies available on invoices.' :
                      gymSubTab === 'enroll' ? 'Register a client for a membership.' : 'View active gym members.'}
                   </p>
                 </div>
@@ -1070,6 +1072,14 @@ export default function Home() {
                       icon="⚙️" 
                       title="Manage Types" 
                       description="Edit or delete membership types." 
+                    />
+                  )}
+                  {profile?.role === 'Admin' && (
+                    <NavCard
+                      onClick={() => setGymSubTab('partner-companies')}
+                      icon="🏢"
+                      title="Partner Companies"
+                      description="Manage invoice company options."
                     />
                   )}
                   {profile?.permissions?.gym?.add !== false && (
@@ -1099,6 +1109,11 @@ export default function Home() {
                   {gymSubTab === 'manage-types' && (
                     <div className="max-w-4xl mx-auto">
                       <MembershipTypeManager />
+                    </div>
+                  )}
+                  {gymSubTab === 'partner-companies' && (
+                    <div className="max-w-4xl mx-auto">
+                      <PartnerCompanyManager />
                     </div>
                   )}
                   {gymSubTab === 'enroll' && (

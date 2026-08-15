@@ -5,6 +5,7 @@ import { getAllClients, deleteClient } from '@/lib/clients';
 import { extractAllPhoneNumbers } from '@/lib/phoneUtils';
 import EditClientModal from './EditClientModal';
 import { useAuth } from '@/contexts/AuthContext';
+import LoadingState from '@/components/LoadingState';
 
 export default function DuplicateSearch() {
   const { user, profile } = useAuth();
@@ -81,12 +82,7 @@ export default function DuplicateSearch() {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center p-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-        <span className="ml-3 text-slate-600 dark:text-slate-400">Searching for duplicates...</span>
-      </div>
-    );
+    return <LoadingState title="Searching for duplicates" description="Checking client records for matching phone numbers." />;
   }
 
   return (
