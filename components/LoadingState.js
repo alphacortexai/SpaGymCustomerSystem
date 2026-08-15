@@ -8,7 +8,7 @@ export default function LoadingState({ title = 'Loading data...', description = 
       aria-live="polite"
       aria-label={title}
     >
-      <div className="mx-auto flex w-fit items-center gap-2" aria-hidden="true">
+      <div className="mx-auto flex w-fit items-center gap-1.5" aria-hidden="true">
         <span className="loading-orb loading-orb-blue" />
         <span className="loading-orb loading-orb-pink" />
         <span className="loading-orb loading-orb-purple" />

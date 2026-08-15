@@ -741,8 +741,8 @@ button { @apply transition-all duration-200 active:scale-95; }
 
 .loading-orb {
   display: block;
-  width: 0.8rem;
-  height: 0.8rem;
+  width: 0.55rem;
+  height: 0.55rem;
   border-radius: 9999px;
   animation: loading-orb-bounce 1.15s ease-in-out infinite;
 }

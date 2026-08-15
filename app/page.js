@@ -11,6 +11,7 @@ import { searchClients } from '@/lib/clients';
 import { affirmations } from '@/lib/affirmations';
 import { getActiveNotesCount } from '@/lib/notes';
 import ProtectedRoute from '@/components/ProtectedRoute';
+import LoadingState from '@/components/LoadingState';
 
 const LazySectionFallback = () => (
   <div className="card-bg-doc rounded-2xl border border-slate-200 dark:border-slate-800 p-8 text-center text-slate-500 dark:text-slate-400">
@@ -620,6 +621,11 @@ export default function Home() {
         </header>
 
         <main className="mx-auto max-w-[1280px] px-4 py-5 sm:px-6 lg:px-8 lg:py-7">
+          {isInitialLoading ? (
+            <div className="mx-auto max-w-2xl py-16">
+              <LoadingState title="Preparing your dashboard..." description="Loading your workspaces and latest information." />
+            </div>
+          ) : (
           <div className="dashboard-page-layout grid gap-5 lg:grid-cols-[188px_minmax(0,1fr)]">
             <WorkspaceRail activeTab={activeTab} setActiveTab={setActiveTab} profile={profile} showAdminSection={showAdminSection} setShowAdminSection={setShowAdminSection} activeNotesCount={activeNotesCount} />
             <div className="dashboard-page-content min-w-0">
@@ -1210,6 +1216,7 @@ export default function Home() {
           )}
             </div>
           </div>
+          )}
         </main>
       </div>
     </ProtectedRoute>
