@@ -140,7 +140,7 @@ const WorkspaceRail = ({ activeTab, setActiveTab, profile, showAdminSection, set
     <div className="dashboard-rail-group operations-group space-y-1">
       <button type="button" onClick={() => setActiveTab('invoice')} className={`dashboard-rail-link ${activeTab === 'invoice' ? 'is-active' : ''}`} aria-label="Invoices"><span className="dashboard-rail-icon">▤</span><span className="dashboard-rail-label">Invoices</span></button>
       {(profile?.role === 'Admin' || profile?.role === 'Manager') && <button type="button" onClick={() => setActiveTab('invoice-tracking')} className={`dashboard-rail-link ${activeTab === 'invoice-tracking' ? 'is-active' : ''}`} aria-label="Invoice tracking"><span className="dashboard-rail-icon">↗</span><span className="dashboard-rail-label">Tracking</span></button>}
-      {profile?.role === 'Admin' && <button type="button" onClick={() => { setActiveTab('home'); setShowAdminSection(true); }} className={`dashboard-rail-link ${showAdminSection ? 'is-active' : ''}`} aria-label="Admin"><span className="dashboard-rail-icon">⚙</span><span className="dashboard-rail-label">Admin</span></button>}
+      {profile?.role === 'Admin' && <button type="button" onClick={() => { setReturnToAdmin(false); setActiveTab('home'); setShowAdminSection(true); }} className={`dashboard-rail-link ${showAdminSection ? 'is-active' : ''}`} aria-label="Admin"><span className="dashboard-rail-icon">⚙</span><span className="dashboard-rail-label">Admin</span></button>}
     </div>
   </aside>
 );
@@ -234,6 +234,7 @@ export default function Home() {
   const [currentPage, setCurrentPage] = useState(1);
   const clientsPerPage = 20;
   const [showAdminSection, setShowAdminSection] = useState(false);
+  const [returnToAdmin, setReturnToAdmin] = useState(false);
   const [showBranchPrompt, setShowBranchPrompt] = useState(false);
   const [allBirthdays, setAllBirthdays] = useState([]);
   const [currentAffirmation, setCurrentAffirmation] = useState('');
@@ -333,8 +334,20 @@ export default function Home() {
     return () => clearInterval(interval);
   }, []);
 
+  const openAdminTool = (tab) => {
+    setReturnToAdmin(true);
+    setActiveTab(tab);
+  };
+
+  const goBackFromSection = () => {
+    const shouldReturnToAdmin = returnToAdmin;
+    setActiveTab('home');
+    setShowAdminSection(shouldReturnToAdmin);
+    setReturnToAdmin(false);
+  };
+
   useEffect(() => {
-    if (activeTab !== 'home') setShowAdminSection(false);
+    if (activeTab !== 'home' && !returnToAdmin) setShowAdminSection(false);
     
     if (activeTab === 'birthdays') {
       const defaultBranch = localStorage.getItem('defaultBirthdayBranch');
@@ -701,28 +714,28 @@ export default function Home() {
                   </div>
                   <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                     {profile?.permissions?.clients?.add !== false && (
-                      <NavCard onClick={() => setActiveTab('upload')} icon="📤" title="Upload" description="Bulk data import." accent="blue" eyebrow="Import" />
+                      <NavCard onClick={() => openAdminTool('upload')} icon="📤" title="Upload" description="Bulk data import." accent="blue" eyebrow="Import" />
                     )}
                     {profile?.permissions?.clients?.edit !== false && (
-                      <NavCard onClick={() => setActiveTab('unrecognized')} icon="⚠️" title="Issues" description="Fix failed imports." accent="amber" eyebrow="Review" />
+                      <NavCard onClick={() => openAdminTool('unrecognized')} icon="⚠️" title="Issues" description="Fix failed imports." accent="amber" eyebrow="Review" />
                     )}
                     {profile?.permissions?.clients?.view !== false && (
-                      <NavCard onClick={() => setActiveTab('history')} icon="📜" title="History" description="View upload logs." accent="slate" eyebrow="Audit" />
+                      <NavCard onClick={() => openAdminTool('history')} icon="📜" title="History" description="View upload logs." accent="slate" eyebrow="Audit" />
                     )}
                     {profile?.permissions?.users?.view !== false && (
-                      <NavCard onClick={() => setActiveTab('users')} icon="👥" title="Users" description="Manage roles." accent="violet" eyebrow="Access" />
+                      <NavCard onClick={() => openAdminTool('users')} icon="👥" title="Users" description="Manage roles." accent="violet" eyebrow="Access" />
                     )}
                     {profile?.permissions?.branches?.view !== false && (
-                      <NavCard onClick={() => setActiveTab('branches')} icon="🏢" title="Branches" description="Manage locations." badge={dataLoaded ? branches.length : undefined} accent="emerald" eyebrow="Network" />
+                      <NavCard onClick={() => openAdminTool('branches')} icon="🏢" title="Branches" description="Manage locations." badge={dataLoaded ? branches.length : undefined} accent="emerald" eyebrow="Network" />
                     )}
                     {profile?.role === 'Admin' && (
-                      <NavCard onClick={() => setActiveTab('duplicates')} icon="🔍" title="Duplicates" description="Find duplicate phones." accent="rose" eyebrow="Cleanse" />
+                      <NavCard onClick={() => openAdminTool('duplicates')} icon="🔍" title="Duplicates" description="Find duplicate phones." accent="rose" eyebrow="Cleanse" />
                     )}
                     {profile?.role === 'Admin' && (
-                      <NavCard onClick={() => setActiveTab('timeline')} icon="🕒" title="Timeline" description="Activity logs." accent="blue" eyebrow="Monitor" />
+                      <NavCard onClick={() => openAdminTool('timeline')} icon="🕒" title="Timeline" description="Activity logs." accent="blue" eyebrow="Monitor" />
                     )}
                     {profile?.role === 'Admin' && (
-                      <NavCard onClick={() => setActiveTab('invoice-list')} icon="🧾" title="All Invoices" description="View, search and recreate PDFs." accent="emerald" eyebrow="Finance" />
+                      <NavCard onClick={() => openAdminTool('invoice-list')} icon="🧾" title="All Invoices" description="View, search and recreate PDFs." accent="emerald" eyebrow="Finance" />
                     )}
                   </div>
                 </div>
@@ -743,7 +756,7 @@ export default function Home() {
                   <p className="text-slate-500 mt-1">View invoice records, search by number, client or phone, and recreate PDFs. Admin only.</p>
                 </div>
                 <button
-                  onClick={() => { setActiveTab('home'); setShowAdminSection(true); }}
+                  onClick={goBackFromSection}
                   className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-sm font-medium"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
@@ -762,10 +775,10 @@ export default function Home() {
                   <p className="text-slate-500 mt-1">Import invoices, track status (Issued, Sent to client, Completed) and upload proof of payment. Managers and Admins.</p>
                 </div>
                 <button
-                  onClick={() => setActiveTab('home')}
+                  onClick={goBackFromSection}
                   className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-sm font-medium"
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
                   Back to Dashboard
                 </button>
               </div>
@@ -1219,10 +1232,10 @@ export default function Home() {
                   <p className="text-slate-500 mt-1">Create invoices for GYM and SPA (PE &amp; SSS).</p>
                 </div>
                 <button
-                  onClick={() => setActiveTab('home')}
+                  onClick={goBackFromSection}
                   className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-sm font-medium"
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
                   Back to Dashboard
                 </button>
               </div>
