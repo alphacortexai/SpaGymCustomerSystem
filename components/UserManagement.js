@@ -4,17 +4,21 @@ import { useState, useEffect } from 'react';
 import { getAllUsers, updateUserRole, updateUserStatus, updateUserPermissions, updateUserBranches, ROLES, ROLE_PERMISSIONS } from '@/lib/users';
 import { getAllBranches } from '@/lib/branches';
 import { useNotifications } from '@/contexts/NotificationContext';
+import { useAuth } from '@/contexts/AuthContext';
 import LoadingState from '@/components/LoadingState';
 import { format } from 'date-fns';
 
 export default function UserManagement() {
   const { toast } = useNotifications();
+  const { profile } = useAuth();
+  const canManageUsers = profile?.role === ROLES.ADMIN && profile?.status === 'approved';
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(null);
   const [branches, setBranches] = useState([]);
 
   const loadUsers = async () => {
+    if (!canManageUsers) return;
     setLoading(true);
     const [data, branchList] = await Promise.all([getAllUsers(), getAllBranches()]);
     setUsers(data);
@@ -23,10 +27,23 @@ export default function UserManagement() {
   };
 
   useEffect(() => {
-    loadUsers();
-  }, []);
+    if (!canManageUsers) return undefined;
+    let cancelled = false;
+    const fetchUsers = async () => {
+      setLoading(true);
+      const [data, branchList] = await Promise.all([getAllUsers(), getAllBranches()]);
+      if (!cancelled) {
+        setUsers(data);
+        setBranches(branchList);
+        setLoading(false);
+      }
+    };
+    fetchUsers();
+    return () => { cancelled = true; };
+  }, [canManageUsers]);
 
   const handleRoleChange = async (uid, newRole) => {
+    if (!canManageUsers) return;
     setUpdating(uid);
     const result = await updateUserRole(uid, newRole);
     if (result.success) {
@@ -38,6 +55,7 @@ export default function UserManagement() {
   };
 
   const handleBranchChange = async (uid, event) => {
+    if (!canManageUsers) return;
     const assignedBranches = Array.from(event.target.selectedOptions, (option) => option.value);
     setUpdating(uid);
     const result = await updateUserBranches(uid, assignedBranches);
@@ -50,6 +68,7 @@ export default function UserManagement() {
   };
 
   const handleStatusChange = async (uid, newStatus) => {
+    if (!canManageUsers) return;
     setUpdating(uid);
     const result = await updateUserStatus(uid, newStatus);
     if (result.success) {
@@ -61,6 +80,7 @@ export default function UserManagement() {
   };
 
   const togglePermission = async (user, category, action) => {
+    if (!canManageUsers) return;
     const newPermissions = { ...user.permissions };
     if (!newPermissions[category]) {
       newPermissions[category] = { view: false, edit: false, delete: false, add: false };
@@ -87,6 +107,10 @@ export default function UserManagement() {
     }
     setUpdating(null);
   };
+
+  if (!canManageUsers) {
+    return <div className="rounded-2xl border border-rose-200 bg-rose-50 p-6 text-sm font-medium text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-300">You do not have permission to manage user access.</div>;
+  }
 
   if (loading) return <LoadingState title="Loading users" description="Preparing user access settings." />;
 
@@ -209,6 +233,7 @@ export default function UserManagement() {
                   >
                     <option value="approved">Approved</option>
                     <option value="pending">Pending</option>
+                    <option value="disabled">Disabled</option>
                   </select>
                 </td>
                 <td className="px-6 py-4 text-sm text-slate-500">

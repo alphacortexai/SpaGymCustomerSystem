@@ -1,0 +1,143 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function userDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function approved() {
+      return signedIn() && userDoc().status == 'approved';
+    }
+
+    function isAdmin() {
+      return approved() && userDoc().role == 'Admin';
+    }
+
+    function isManagerOrAdmin() {
+      return approved() && (userDoc().role == 'Admin' || userDoc().role == 'Manager');
+    }
+
+    function can(category, action) {
+      return isAdmin() || (
+        approved() &&
+        userDoc().permissions[category][action] == true
+      );
+    }
+
+    match /users/{uid} {
+      allow create: if signedIn() && request.auth.uid == uid;
+      allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
+      allow update: if isAdmin() || (
+        signedIn() && request.auth.uid == uid &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'displayName', 'photoURL', 'preferences', 'updatedAt'
+        ])
+      );
+      allow delete: if isAdmin();
+    }
+
+    match /clients/{clientId} {
+      allow read: if can('clients', 'view');
+      allow create: if can('clients', 'add');
+      allow update: if can('clients', 'edit');
+      allow delete: if can('clients', 'delete');
+    }
+
+    match /branches/{branchId} {
+      allow read: if can('branches', 'view') || isManagerOrAdmin();
+      allow create: if can('branches', 'add');
+      allow update: if can('branches', 'edit');
+      allow delete: if can('branches', 'delete');
+    }
+
+    match /notes/{noteId} {
+      allow read: if approved() && (
+        resource.data.createdBy == request.auth.uid ||
+        resource.data.visibility == 'all' ||
+        (resource.data.visibility == 'branch' && resource.data.branch in userDoc().assignedBranches)
+      );
+      allow create: if approved() && request.resource.data.createdBy == request.auth.uid;
+      allow update: if approved() && resource.data.createdBy == request.auth.uid;
+      allow delete: if approved() && resource.data.createdBy == request.auth.uid;
+    }
+
+    match /invoices/{invoiceId} {
+      allow read: if isManagerOrAdmin();
+      allow create: if approved();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /invoiceTracking/{trackingId} {
+      allow read: if isManagerOrAdmin();
+      allow create, update: if isManagerOrAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /partnerCompanies/{companyId} {
+      allow read: if isManagerOrAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /memberships/{membershipId} {
+      allow read: if can('gym', 'view') || can('spa', 'view');
+      allow create, update: if can('gym', 'edit') || can('spa', 'edit');
+      allow delete: if can('gym', 'delete') || can('spa', 'delete');
+    }
+
+    match /enrollments/{enrollmentId} {
+      allow read: if can('gym', 'view') || can('spa', 'view');
+      allow create: if can('gym', 'add') || can('spa', 'add');
+      allow update: if can('gym', 'edit') || can('spa', 'edit');
+      allow delete: if can('gym', 'delete') || can('spa', 'delete');
+    }
+
+    match /spaMemberships/{membershipId} {
+      allow read: if can('spa', 'view');
+      allow create, update: if can('spa', 'edit');
+      allow delete: if can('spa', 'delete');
+    }
+
+    match /spaEnrollments/{enrollmentId} {
+      allow read: if can('spa', 'view');
+      allow create: if can('spa', 'add');
+      allow update: if can('spa', 'edit');
+      allow delete: if can('spa', 'delete');
+    }
+
+    match /importJobs/{jobId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /timeline/{entryId} {
+      allow read: if isAdmin();
+      allow create: if approved();
+      allow update, delete: if isAdmin();
+    }
+
+    match /userActivity/{entryId} {
+      allow read: if isAdmin();
+      allow create: if approved() && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+
+    match /userSessions/{entryId} {
+      allow read: if isAdmin();
+      allow create: if approved() && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+
+    match /counters/{counterId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
