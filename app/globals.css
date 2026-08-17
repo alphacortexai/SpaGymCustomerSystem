@@ -778,6 +778,9 @@ button { @apply transition-all duration-200 active:scale-95; }
   display: none;
 }
 @media (max-width: 1023px) {
+  .dashboard-desktop-rail {
+    display: none !important;
+  }
   .dashboard-page-layout > .dashboard-rail {
     display: none;
   }

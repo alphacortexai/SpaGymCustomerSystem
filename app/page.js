@@ -772,7 +772,6 @@ export default function Home() {
                   if (tab === 'gym' && profile?.permissions?.gym?.view === false) return null;
                   if (tab === 'spa' && profile?.permissions?.spa?.view === false) return null;
 
-                  const navIcon = tab === 'dashboard' ? 'clients' : tab === 'profile' ? 'users' : tab;
                   const navLabel = tab === 'gym' ? 'GYM' : tab === 'spa' ? 'SPA' : tab.charAt(0).toUpperCase() + tab.slice(1);
                   return (
                     <button
@@ -780,7 +779,6 @@ export default function Home() {
                       onClick={() => setActiveTab(tab)}
                       className={`mobile-primary-nav-link px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === tab ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400' : 'text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'}`}
                     >
-                      <span className="mobile-primary-nav-icon" aria-hidden="true"><QuickActionIcon name={navIcon} /></span>
                       <span className="mobile-primary-nav-label">{navLabel}</span>
                     </button>
                   );
