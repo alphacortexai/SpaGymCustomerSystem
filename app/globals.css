@@ -317,8 +317,13 @@ button { @apply transition-all duration-200 active:scale-95; }
 .dashboard-home-shell > .dashboard-desktop-rail {
   display: none;
 }
+.dashboard-home-top-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 276px;
+  align-items: start;
+  gap: 1.25rem;
+}
 .dashboard-desktop-quick-actions {
-  flex: 0 0 276px;
   min-width: 0;
 }
 .dashboard-desktop-quick-actions .dashboard-rail {
@@ -849,5 +854,11 @@ button { @apply transition-all duration-200 active:scale-95; }
   .loading-orb {
     animation: none;
     opacity: 0.8;
+  }
+}
+
+@media (max-width: 1023px) {
+  .dashboard-home-top-row {
+    grid-template-columns: minmax(0, 1fr);
   }
 }

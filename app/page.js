@@ -848,27 +848,25 @@ export default function Home() {
             <NviewDashboard />
           ) : activeTab === 'home' && (
             <div className="dashboard-reveal min-w-0 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-              {!showAdminSection && <section className="dashboard-hero relative overflow-hidden p-5 sm:p-6 lg:p-7">
-                <div className="relative z-10 flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="min-w-0">
-                        {birthdayReminderIndex === null ? (
-                          <TypedGreeting firstName={user?.displayName?.split(' ')[0] || 'there'} />
-                        ) : (
-                          <div key={`${birthdayReminderMessages[birthdayReminderIndex].branchName}-${birthdayReminderMessages[birthdayReminderIndex].count}`} className="animate-in fade-in duration-500" aria-live="polite">
-                            <TypedBirthdayReminder count={birthdayReminderMessages[birthdayReminderIndex].count} branchName={birthdayReminderMessages[birthdayReminderIndex].branchName} />
-                          </div>
-                        )}
-                      </div>
-                      <div className="dashboard-date-card shrink-0 rounded-xl border border-slate-200/80 bg-white/80 px-3 py-2 text-right shadow-sm dark:border-slate-700 dark:bg-slate-900/70"><div className="text-[9px] font-black uppercase tracking-[0.16em] text-slate-400">Today</div><div className="mt-0.5 text-sm font-bold text-slate-800 dark:text-white sm:text-base">{new Date().toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</div></div>
+              {!showAdminSection && <div className="dashboard-home-top-row">
+                <section className="dashboard-hero relative overflow-hidden p-5 sm:p-6 lg:p-7">
+                  <div className="relative z-10 flex items-start justify-between gap-4">
+                    <div className="min-w-0">
+                      {birthdayReminderIndex === null ? (
+                        <TypedGreeting firstName={user?.displayName?.split(' ')[0] || 'there'} />
+                      ) : (
+                        <div key={`${birthdayReminderMessages[birthdayReminderIndex].branchName}-${birthdayReminderMessages[birthdayReminderIndex].count}`} className="animate-in fade-in duration-500" aria-live="polite">
+                          <TypedBirthdayReminder count={birthdayReminderMessages[birthdayReminderIndex].count} branchName={birthdayReminderMessages[birthdayReminderIndex].branchName} />
+                        </div>
+                      )}
                     </div>
+                    <div className="dashboard-date-card shrink-0 rounded-xl border border-slate-200/80 bg-white/80 px-3 py-2 text-right shadow-sm dark:border-slate-700 dark:bg-slate-900/70"><div className="text-[9px] font-black uppercase tracking-[0.16em] text-slate-400">Today</div><div className="mt-0.5 text-sm font-bold text-slate-800 dark:text-white sm:text-base">{new Date().toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</div></div>
                   </div>
-                  <div className="dashboard-desktop-quick-actions hidden lg:block">
-                    <WorkspaceRail activeTab={activeTab} setActiveTab={setActiveTab} profile={profile} showAdminSection={showAdminSection} onOpenAdmin={openAdminOverview} activeNotesCount={activeNotesCount} />
-                  </div>
+                </section>
+                <div className="dashboard-desktop-quick-actions hidden lg:block">
+                  <WorkspaceRail activeTab={activeTab} setActiveTab={setActiveTab} profile={profile} showAdminSection={showAdminSection} onOpenAdmin={openAdminOverview} activeNotesCount={activeNotesCount} />
                 </div>
-              </section>}
+              </div>}
 
               {!showAdminSection && <div className="mobile-quick-actions">
                 <WorkspaceRail activeTab={activeTab} setActiveTab={setActiveTab} profile={profile} showAdminSection={showAdminSection} onOpenAdmin={openAdminOverview} activeNotesCount={activeNotesCount} />
