@@ -242,7 +242,7 @@ const QuickActionIcon = ({ name }) => {
 };
 
 const WorkspaceRail = ({ activeTab, setActiveTab, profile, showAdminSection, onOpenAdmin, activeNotesCount }) => (
-  <aside className="dashboard-rail dashboard-surface h-fit rounded-2xl p-3 lg:sticky lg:top-24">
+  <aside className="dashboard-rail quick-actions-glass dashboard-surface h-fit rounded-2xl p-3 lg:sticky lg:top-24">
     <div className="mb-5 px-2"><span className="text-sm font-black tracking-tight text-slate-900 dark:text-white">Quick Actions</span></div>
     <div className="dashboard-rail-group manage-group space-y-1">
       <button type="button" onClick={() => setActiveTab('home')} className={`dashboard-rail-link ${activeTab === 'home' ? 'is-active' : ''}`} aria-label="Home"><span className="dashboard-rail-icon"><QuickActionIcon name="home" /></span><span className="dashboard-rail-label">Home</span></button>
