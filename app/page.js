@@ -53,8 +53,8 @@ const NavCard = ({ onClick, icon, title, description, badge, isImage, fullBg, ce
     const interval = setInterval(() => {
       setShowPreview(true);
       clearTimeout(hideTimer);
-      hideTimer = setTimeout(() => setShowPreview(false), 8000);
-    }, 60000);
+      hideTimer = setTimeout(() => setShowPreview(false), 5000);
+    }, 20000);
     return () => {
       clearInterval(interval);
       clearTimeout(hideTimer);
@@ -139,7 +139,7 @@ const NavCard = ({ onClick, icon, title, description, badge, isImage, fullBg, ce
           </div>
         </div>
       )}
-      {badge !== undefined && (
+      {!showPreview && badge !== undefined && (
         <div className={centerBadge 
           ? "absolute inset-0 flex items-center justify-center z-10 pointer-events-none" 
           : `absolute top-3 right-3 min-w-[22px] h-6 px-2 flex items-center justify-center ${selectedAccent.badge} text-white text-[10px] font-bold rounded-full shadow-lg z-10 ring-2 ring-white/80 dark:ring-slate-950/80`
@@ -152,11 +152,11 @@ const NavCard = ({ onClick, icon, title, description, badge, isImage, fullBg, ce
           </div>
         </div>
       )}
-      <div className={`relative z-20 ${fullBg ? 'mt-auto' : ''} w-full`}>
+      {!showPreview && <div className={`relative z-20 ${fullBg ? 'mt-auto' : ''} w-full`}>
         {eyebrow && <div className="mb-1 text-[10px] font-black uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">{eyebrow}</div>}
         <div className="mb-3 flex items-center justify-between gap-3">{!fullBg && <span className={`inline-flex h-9 w-9 items-center justify-center rounded-xl border text-sm shadow-sm ${selectedAccent.icon}`}>{isImage ? <span className="relative h-5 w-5"><Image src={icon} alt="" fill className="object-contain" /></span> : <span>{icon}</span>}</span>}</div><h3 className={`text-lg font-bold ${fullBg ? 'text-white' : 'text-slate-900 dark:text-white'} mb-1`}>{title}</h3>
         <p className={`text-sm ${fullBg ? 'text-slate-200' : 'text-slate-500 dark:text-slate-400'} leading-tight line-clamp-2 px-1`}>{description}</p>
-      </div>
+      </div>}
     </button>
   );
 };
