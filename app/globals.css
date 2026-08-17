@@ -346,6 +346,12 @@ button { @apply transition-all duration-200 active:scale-95; }
   color: #1d4ed8;
   box-shadow: 0 5px 12px rgba(30, 64, 175, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.9);
 }
+
+@media (min-width: 1024px) {
+  .quick-actions-glass .operations-group {
+    margin-top: 0.55rem;
+  }
+}
 .quick-actions-glass .dashboard-rail-link:hover {
   border-color: rgba(147, 197, 253, 0.9);
   background: rgba(239, 246, 255, 0.9);
