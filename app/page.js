@@ -43,7 +43,24 @@ const InvoiceList = dynamic(() => import('@/components/InvoiceList'), { loading:
 const InvoiceTracking = dynamic(() => import('@/components/InvoiceTracking'), { loading: LazySectionFallback });
 const NotesSection = dynamic(() => import('@/components/NotesSection'), { loading: LazySectionFallback });
 
-const NavCard = ({ onClick, icon, title, description, badge, isImage, fullBg, centerBadge, accent = 'blue', eyebrow }) => {
+const NavCard = ({ onClick, icon, title, description, badge, isImage, fullBg, centerBadge, accent = 'blue', eyebrow, previewItems = [], previewLabel = 'Latest updates' }) => {
+  const [showPreview, setShowPreview] = useState(false);
+  const hasPreview = previewItems.length > 0;
+
+  useEffect(() => {
+    if (!hasPreview) return undefined;
+    let hideTimer;
+    const interval = setInterval(() => {
+      setShowPreview(true);
+      clearTimeout(hideTimer);
+      hideTimer = setTimeout(() => setShowPreview(false), 8000);
+    }, 60000);
+    return () => {
+      clearInterval(interval);
+      clearTimeout(hideTimer);
+    };
+  }, [hasPreview, previewItems.length]);
+
   const accentStyles = {
     blue: {
       gradient: 'from-blue-500/16 via-sky-400/10 to-cyan-300/12',
@@ -103,6 +120,24 @@ const NavCard = ({ onClick, icon, title, description, badge, isImage, fullBg, ce
           <div className={`absolute -right-8 -top-8 h-24 w-24 rounded-full blur-2xl ${selectedAccent.glow} transition-transform duration-500 group-hover:scale-125`} />
           <div className="absolute inset-x-5 top-0 h-px bg-gradient-to-r from-transparent via-white/80 to-transparent" />
         </>
+      )}
+      {hasPreview && (
+        <div className={`absolute inset-0 z-20 rounded-[24px] bg-slate-950/88 p-4 text-white transition-all duration-700 ${showPreview ? 'pointer-events-auto [transform:rotateY(0deg)] opacity-100' : 'pointer-events-none [transform:rotateY(180deg)] opacity-0'}`}>
+          <div className="flex h-full flex-col justify-between">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[9px] font-black uppercase tracking-[0.18em] text-cyan-200">{previewLabel}</span>
+              <span className="text-[9px] font-semibold text-white/55">auto preview</span>
+            </div>
+            <div className="space-y-2">
+              {previewItems.slice(0, 3).map((item, index) => (
+                <div key={`${item}-${index}`} className="rounded-xl border border-white/10 bg-white/10 px-3 py-2 text-xs font-semibold leading-tight text-white/90">
+                  {item}
+                </div>
+              ))}
+            </div>
+            <p className="text-[9px] font-medium text-white/55">Returning to overview shortly</p>
+          </div>
+        </div>
       )}
       {badge !== undefined && (
         <div className={centerBadge 
@@ -254,41 +289,15 @@ export default function Home() {
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [activeNotesCount, setActiveNotesCount] = useState(0);
   const [latestNotes, setLatestNotes] = useState([]);
-  const [greetingHighlightIndex, setGreetingHighlightIndex] = useState(0);
 
   useEffect(() => {
     if (!user) return;
     getAllNotes(user, profile).then((notes) => {
       const activeNotes = notes.filter((note) => note.status === 'active');
       setActiveNotesCount(activeNotes.length);
-      setLatestNotes(activeNotes.slice(0, 2));
+      setLatestNotes(activeNotes.slice(0, 3));
     });
   }, [profile, user]);
-
-  const greetingHighlights = useMemo(() => {
-    const clientName = (client) => client?.name || 'Unnamed client';
-    const birthdayItems = todaysBirthdays.slice(0, 3).map((client) => `${clientName(client)}${client.birthDay ? ` · Day ${client.birthDay}` : ''}`);
-    const clientSource = globalClients.length ? globalClients : cachedGlobalClients;
-    const latestClientItems = [...clientSource]
-      .sort((a, b) => (b.createdAt?.getTime?.() || 0) - (a.createdAt?.getTime?.() || 0))
-      .slice(0, 3)
-      .map((client) => `${clientName(client)}${client.branch ? ` · ${client.branch}` : ''}`);
-    return [
-      latestNotes.length > 0 && { label: 'Latest notes', items: latestNotes.map((note) => `${note.title}: ${note.content}`) },
-      birthdayItems.length > 0 && { label: "Today's birthday babies", items: birthdayItems },
-      latestClientItems.length > 0 && { label: 'Latest added clients', items: latestClientItems },
-    ].filter(Boolean);
-  }, [cachedGlobalClients, globalClients, latestNotes, todaysBirthdays]);
-
-  useEffect(() => {
-    if (!greetingHighlights.length) return undefined;
-    const interval = setInterval(() => {
-      setGreetingHighlightIndex((previousIndex) => (previousIndex + 1) % greetingHighlights.length);
-    }, 30000);
-    return () => clearInterval(interval);
-  }, [greetingHighlights.length]);
-
-  const activeGreetingHighlight = greetingHighlights[greetingHighlightIndex];
 
   // Sync with cached data from DataContext (single source of truth). Branch filter applied client-side.
   useEffect(() => {
@@ -706,16 +715,6 @@ export default function Home() {
                 <div className="relative z-10 flex items-center justify-between gap-4">
                   <div className="min-w-0">
                     <h1 className="text-xl font-black tracking-tight text-slate-950 dark:text-white sm:text-3xl lg:text-4xl">Good to see you, <span className="text-blue-600 dark:text-blue-400">{user?.displayName?.split(' ')[0] || 'there'}</span>.</h1>
-                    {activeGreetingHighlight && (
-                      <div className="mt-3 max-w-2xl animate-in fade-in duration-500">
-                        <div className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-600 dark:text-blue-300">{activeGreetingHighlight.label}</div>
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          {activeGreetingHighlight.items.map((item, index) => (
-                            <span key={`${item}-${index}`} className="rounded-xl border border-blue-100 bg-white/75 px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-200">{item}</span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
                   </div>
                   <div className="dashboard-date-card shrink-0 rounded-xl border border-slate-200/80 bg-white/80 px-3 py-2 text-right shadow-sm dark:border-slate-700 dark:bg-slate-900/70"><div className="text-[9px] font-black uppercase tracking-[0.16em] text-slate-400">Today</div><div className="mt-0.5 text-sm font-bold text-slate-800 dark:text-white sm:text-base">{new Date().toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</div></div>
                 </div>
@@ -730,10 +729,10 @@ export default function Home() {
                 <section>
                   <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
                   {profile?.permissions?.clients?.view !== false && (
-                    <NavCard onClick={() => setActiveTab('dashboard')} icon="/clients_bg.png" title="Clients Database" description="Manage" badge={cachedClientCounts ? clientBadgeTotal : (dataLoaded ? '...' : undefined)} isImage={true} fullBg={true} />
+                    <NavCard onClick={() => setActiveTab('dashboard')} icon="/clients_bg.png" title="Clients Database" description="Manage" badge={cachedClientCounts ? clientBadgeTotal : (dataLoaded ? '...' : undefined)} isImage={true} fullBg={true} previewLabel="Recent clients" previewItems={(globalClients.length ? globalClients : cachedGlobalClients).slice(0, 3).map((client) => `New client: ${client.name || 'Unnamed client'}`)} />
                   )}
                   {profile?.permissions?.birthdays?.view !== false && (
-                    <NavCard onClick={() => setActiveTab('birthdays')} icon="/birthday.png" title="Today's Birthdays" description="Celebrations" badge={cachedBirthdayCounts ? birthdayBadgeTotal : (dataLoaded ? '...' : undefined)} isImage={true} fullBg={true} />
+                    <NavCard onClick={() => setActiveTab('birthdays')} icon="/birthday.png" title="Today's Birthdays" description="Celebrations" badge={cachedBirthdayCounts ? birthdayBadgeTotal : (dataLoaded ? '...' : undefined)} isImage={true} fullBg={true} previewLabel="Birthday details" previewItems={todaysBirthdays.slice(0, 3).map((client) => `${client.name || 'Unnamed client'} · ${client.birthDay ? `Day ${client.birthDay}` : 'Today'}`)} />
                   )}
                   {profile?.permissions?.gym?.view !== false && (
                     <NavCard 
@@ -757,7 +756,7 @@ export default function Home() {
                       badge={dataLoaded ? activeSpaMembers : undefined}
                     />
                   )}
-                  <NavCard onClick={() => setActiveTab('notes')} icon="📝" title="Notes" description="Reference reminders." badge={activeNotesCount} accent="violet" />
+                  <NavCard onClick={() => setActiveTab('notes')} icon="📝" title="Notes" description="Reference reminders." badge={activeNotesCount} accent="violet" previewLabel="Latest notes" previewItems={latestNotes.map((note) => `${note.title}: ${note.content}`)} />
                   </div>
                 </section>
                 <div className="hidden md:block">
