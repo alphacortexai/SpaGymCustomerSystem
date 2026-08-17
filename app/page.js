@@ -885,7 +885,7 @@ export default function Home() {
                     <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                       <div>
                         <div className="text-xs font-black uppercase tracking-[0.24em] text-blue-600 dark:text-blue-400">Control Center</div>
-                        <h2 className="mt-1 text-2xl font-black tracking-tight text-slate-900 dark:text-white">Admin Tools</h2>
+                        <div className="mt-1 flex items-center gap-3"><SectionBackArrow onClick={() => setShowAdminSection(false)} label="Back to Home" /><h2 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">Admin Tools</h2></div>
                         <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">Operate imports, audits, locations, users, and billing from one polished workspace.</p>
                       </div>
                       <button onClick={() => setShowAdminSection(false)} className="inline-flex items-center justify-center rounded-2xl border border-blue-200/70 bg-white/80 px-4 py-2 text-sm font-bold text-blue-700 shadow-sm backdrop-blur hover:bg-blue-50 hover:shadow-md dark:border-blue-900/50 dark:bg-slate-900/80 dark:text-blue-300 dark:hover:bg-blue-950/40">Back to main</button>
