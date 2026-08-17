@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { isValidElement, useState, useEffect, useMemo } from 'react';
 import Image from 'next/image';
 import * as XLSX from 'xlsx';
 import dynamic from 'next/dynamic';
@@ -120,7 +120,7 @@ const NavCard = ({ onClick, icon, title, titleLines, description, badge, isImage
       )}
       <div className={`relative z-20 ${fullBg ? 'mt-auto' : ''} w-full`}>
         {eyebrow && <div className="mb-1 text-[10px] font-black uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">{eyebrow}</div>}
-        <div className="mb-3 flex items-center justify-between gap-3">{!fullBg && <span className={`inline-flex h-9 w-9 items-center justify-center rounded-xl border text-sm shadow-sm ${selectedAccent.icon}`}>{isImage ? <span className="relative h-5 w-5"><Image src={icon} alt="" fill className="object-contain" /></span> : <span>{icon}</span>}</span>}</div><h3 className={`${titleLines ? 'text-2xl leading-[1.15] sm:text-3xl' : 'text-lg'} font-bold ${fullBg ? 'text-white' : 'text-slate-900 dark:text-white'} mb-1`}>{titleLines ? titleLines.map((line) => <span key={line} className="block mb-1.5 last:mb-0">{line}</span>) : title}</h3>
+        <div className="mb-3 flex items-center justify-between gap-3">{!fullBg && <span className={`inline-flex h-9 w-9 items-center justify-center rounded-xl border text-sm shadow-sm ${selectedAccent.icon}`}>{isImage ? <span className="relative h-5 w-5"><Image src={icon} alt="" fill className="object-contain" /></span> : isValidElement(icon) ? icon : <span>{icon}</span>}</span>}</div><h3 className={`${titleLines ? 'text-2xl leading-[1.15] sm:text-3xl' : 'text-lg'} font-bold ${fullBg ? 'text-white' : 'text-slate-900 dark:text-white'} mb-1`}>{titleLines ? titleLines.map((line) => <span key={line} className="block mb-1.5 last:mb-0">{line}</span>) : title}</h3>
         <p className={`text-sm ${fullBg ? 'text-slate-200' : 'text-slate-500 dark:text-slate-400'} leading-tight line-clamp-2 px-1`}>{description}</p>
       </div>
     </button>
@@ -238,7 +238,7 @@ const QuickActionIcon = ({ name }) => {
     enroll: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M19 8v6M16 11h6',
     active: 'M20 6 9 17l-5-5',
   };
-  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={paths[name]} /></svg>;
+  return <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={paths[name]} /></svg>;
 };
 
 const WorkspaceRail = ({ activeTab, setActiveTab, profile, showAdminSection, onOpenAdmin, activeNotesCount }) => (
