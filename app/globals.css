@@ -349,7 +349,7 @@ button { @apply transition-all duration-200 active:scale-95; }
 
 @media (min-width: 1024px) {
   .quick-actions-glass .operations-group {
-    margin-top: 0.9rem;
+    margin-top: 0.25rem;
   }
 }
 .quick-actions-glass .dashboard-rail-link:hover {
