@@ -1257,14 +1257,8 @@ export default function Home() {
             <div className="space-y-8 animate-in fade-in duration-300">
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <button 
-                      onClick={() => gymSubTab === 'overview' ? setActiveTab('home') : setGymSubTab('overview')}
-                      className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500 transition-colors"
-                      title={gymSubTab === 'overview' ? 'Back to Home' : 'Back to Overview'}
-                    >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
-                    </button>
+                  <div className="flex items-center gap-3">
+                    <SectionBackArrow onClick={() => gymSubTab === 'overview' ? setActiveTab('home') : setGymSubTab('overview')} label={gymSubTab === 'overview' ? 'Back to Home' : 'Back to Overview'} />
                     <h2 className="text-3xl font-bold text-slate-900 dark:text-white">GYM Memberships</h2>
                   </div>
                   <p className="text-slate-500">
@@ -1353,14 +1347,8 @@ export default function Home() {
             <div className="space-y-8 animate-in fade-in duration-300">
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <button 
-                      onClick={() => spaSubTab === 'overview' ? setActiveTab('home') : setSpaSubTab('overview')}
-                      className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500 transition-colors"
-                      title={spaSubTab === 'overview' ? 'Back to Home' : 'Back to Overview'}
-                    >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
-                    </button>
+                  <div className="flex items-center gap-3">
+                    <SectionBackArrow onClick={() => spaSubTab === 'overview' ? setActiveTab('home') : setSpaSubTab('overview')} label={spaSubTab === 'overview' ? 'Back to Home' : 'Back to Overview'} />
                     <h2 className="text-3xl font-bold text-slate-900 dark:text-white">SPA Memberships</h2>
                   </div>
                   <p className="text-slate-500">
