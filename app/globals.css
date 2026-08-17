@@ -946,3 +946,18 @@ button { @apply transition-all duration-200 active:scale-95; }
     padding-right: 0;
   }
 }
+
+@media (min-width: 1024px) {
+  .dashboard-page-layout > .dashboard-desktop-rail,
+  .dashboard-page-layout > .dashboard-desktop-rail .dashboard-rail {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .dashboard-page-layout > .dashboard-desktop-rail::-webkit-scrollbar,
+  .dashboard-page-layout > .dashboard-desktop-rail .dashboard-rail::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+  }
+}
