@@ -245,11 +245,11 @@ const WorkspaceRail = ({ activeTab, setActiveTab, profile, showAdminSection, onO
   <aside className="dashboard-rail quick-actions-glass dashboard-surface h-fit rounded-2xl p-3 lg:sticky lg:top-24">
     <div className="mb-5 px-2"><span className="text-sm font-black tracking-tight text-slate-900 dark:text-white">Quick Actions</span></div>
     <div className="dashboard-rail-group manage-group space-y-1">
-      <button type="button" onClick={() => setActiveTab('home')} className={`dashboard-rail-link ${activeTab === 'home' ? 'is-active' : ''}`} aria-label="Home"><span className="dashboard-rail-icon"><QuickActionIcon name="home" /></span><span className="dashboard-rail-label mobile-hide-label">Home</span></button>
-      {profile?.permissions?.clients?.view !== false && <button type="button" onClick={() => setActiveTab('dashboard')} className={`dashboard-rail-link ${activeTab === 'dashboard' ? 'is-active' : ''}`} aria-label="Clients"><span className="dashboard-rail-icon"><QuickActionIcon name="clients" /></span><span className="dashboard-rail-label mobile-hide-label">Clients</span></button>}
-      {profile?.permissions?.birthdays?.view !== false && <button type="button" onClick={() => setActiveTab('birthdays')} className={`dashboard-rail-link ${activeTab === 'birthdays' ? 'is-active' : ''}`} aria-label="Birthdays"><span className="dashboard-rail-icon"><QuickActionIcon name="birthdays" /></span><span className="dashboard-rail-label mobile-hide-label">Birthdays</span></button>}
-      {profile?.permissions?.gym?.view !== false && <button type="button" onClick={() => setActiveTab('gym')} className={`dashboard-rail-link ${activeTab === 'gym' ? 'is-active' : ''}`} aria-label="Gym"><span className="dashboard-rail-icon"><QuickActionIcon name="gym" /></span><span className="dashboard-rail-label mobile-hide-label">GYM</span></button>}
-      {profile?.permissions?.spa?.view !== false && <button type="button" onClick={() => setActiveTab('spa')} className={`dashboard-rail-link ${activeTab === 'spa' ? 'is-active' : ''}`} aria-label="Spa"><span className="dashboard-rail-icon"><QuickActionIcon name="spa" /></span><span className="dashboard-rail-label mobile-hide-label">SPA</span></button>}
+      <button type="button" onClick={() => setActiveTab('home')} className={`dashboard-rail-link ${activeTab === 'home' ? 'is-active' : ''}`} aria-label="Home"><span className="dashboard-rail-icon"><QuickActionIcon name="home" /></span><span className="dashboard-rail-label">Home</span></button>
+      {profile?.permissions?.clients?.view !== false && <button type="button" onClick={() => setActiveTab('dashboard')} className={`dashboard-rail-link ${activeTab === 'dashboard' ? 'is-active' : ''}`} aria-label="Clients"><span className="dashboard-rail-icon"><QuickActionIcon name="clients" /></span><span className="dashboard-rail-label">Clients</span></button>}
+      {profile?.permissions?.birthdays?.view !== false && <button type="button" onClick={() => setActiveTab('birthdays')} className={`dashboard-rail-link ${activeTab === 'birthdays' ? 'is-active' : ''}`} aria-label="Birthdays"><span className="dashboard-rail-icon"><QuickActionIcon name="birthdays" /></span><span className="dashboard-rail-label">Birthdays</span></button>}
+      {profile?.permissions?.gym?.view !== false && <button type="button" onClick={() => setActiveTab('gym')} className={`dashboard-rail-link ${activeTab === 'gym' ? 'is-active' : ''}`} aria-label="Gym"><span className="dashboard-rail-icon"><QuickActionIcon name="gym" /></span><span className="dashboard-rail-label">GYM</span></button>}
+      {profile?.permissions?.spa?.view !== false && <button type="button" onClick={() => setActiveTab('spa')} className={`dashboard-rail-link ${activeTab === 'spa' ? 'is-active' : ''}`} aria-label="Spa"><span className="dashboard-rail-icon"><QuickActionIcon name="spa" /></span><span className="dashboard-rail-label">SPA</span></button>}
       <button type="button" onClick={() => setActiveTab('notes')} className={`dashboard-rail-link ${activeTab === 'notes' ? 'is-active' : ''}`} aria-label="Notes"><span className="dashboard-rail-icon"><QuickActionIcon name="notes" /></span><span className="dashboard-rail-label">Notes</span>{activeNotesCount > 0 && <span className="ml-auto inline-flex min-w-5 items-center justify-center rounded-full bg-blue-600 px-1.5 py-0.5 text-[10px] font-black text-white">{activeNotesCount}</span>}</button>
     </div>
     <div className="dashboard-rail-group operations-group space-y-1">
@@ -772,13 +772,16 @@ export default function Home() {
                   if (tab === 'gym' && profile?.permissions?.gym?.view === false) return null;
                   if (tab === 'spa' && profile?.permissions?.spa?.view === false) return null;
 
+                  const navIcon = tab === 'dashboard' ? 'clients' : tab === 'profile' ? 'users' : tab;
+                  const navLabel = tab === 'gym' ? 'GYM' : tab === 'spa' ? 'SPA' : tab.charAt(0).toUpperCase() + tab.slice(1);
                   return (
                     <button
                       key={tab}
                       onClick={() => setActiveTab(tab)}
-                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === tab ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400' : 'text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+                      className={`mobile-primary-nav-link px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === tab ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400' : 'text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'}`}
                     >
-                      {tab === 'gym' ? 'GYM' : tab === 'spa' ? 'SPA' : tab.charAt(0).toUpperCase() + tab.slice(1)}
+                      <span className="mobile-primary-nav-icon" aria-hidden="true"><QuickActionIcon name={navIcon} /></span>
+                      <span className="mobile-primary-nav-label">{navLabel}</span>
                     </button>
                   );
                 })}
