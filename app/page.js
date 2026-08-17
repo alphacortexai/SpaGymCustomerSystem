@@ -158,6 +158,27 @@ const WorkspaceRail = ({ activeTab, setActiveTab, profile, showAdminSection, onO
 
 
 
+const AnimatedCount = ({ value }) => {
+  const targetValue = Number(value) || 0;
+  const [displayValue, setDisplayValue] = useState(0);
+
+  useEffect(() => {
+    const duration = 900;
+    const startTime = performance.now();
+    let frameId;
+    const animate = (currentTime) => {
+      const progress = Math.min((currentTime - startTime) / duration, 1);
+      const easedProgress = 1 - ((1 - progress) ** 3);
+      setDisplayValue(Math.round(targetValue * easedProgress));
+      if (progress < 1) frameId = requestAnimationFrame(animate);
+    };
+    frameId = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(frameId);
+  }, [targetValue]);
+
+  return <span aria-live="polite">{displayValue.toLocaleString()}</span>;
+};
+
 const SummaryPanel = ({ clients, branches, loading }) => {
   const now = new Date();
   const [birthdayMonth, setBirthdayMonth] = useState(now.getMonth() + 1);
@@ -197,11 +218,11 @@ const SummaryPanel = ({ clients, branches, loading }) => {
         <div className="mt-5 grid gap-4 md:grid-cols-2">
           <div className="rounded-2xl border border-pink-100 bg-pink-50/70 p-4 dark:border-pink-900/40 dark:bg-pink-950/20">
             <h3 className="font-bold text-slate-900 dark:text-white">Birthday babies</h3>
-            <p className="mt-5 text-5xl font-black tracking-tight text-pink-600 dark:text-pink-300">{birthdayClients.length}</p><p className="mt-1 text-xs font-bold uppercase tracking-wider text-slate-500">Birthday babies in {new Date(2000, birthdayMonth - 1, 1).toLocaleDateString(undefined, { month: 'long' })}</p>
+            <p className="mt-5 text-5xl font-black tracking-tight text-pink-600 dark:text-pink-300"><AnimatedCount value={birthdayClients.length} /></p><p className="mt-1 text-xs font-bold uppercase tracking-wider text-slate-500">Birthday babies in {new Date(2000, birthdayMonth - 1, 1).toLocaleDateString(undefined, { month: 'long' })}</p>
           </div>
           <div className="rounded-2xl border border-blue-100 bg-blue-50/70 p-4 dark:border-blue-900/40 dark:bg-blue-950/20">
             <h3 className="font-bold text-slate-900 dark:text-white">New client additions</h3>
-            <p className="mt-5 text-5xl font-black tracking-tight text-blue-600 dark:text-blue-300">{recentClients.length}</p><p className="mt-1 text-xs font-bold uppercase tracking-wider text-slate-500">New client additions in the last {recentDays} days</p>
+            <p className="mt-5 text-5xl font-black tracking-tight text-blue-600 dark:text-blue-300"><AnimatedCount value={recentClients.length} /></p><p className="mt-1 text-xs font-bold uppercase tracking-wider text-slate-500">New client additions in the last {recentDays} days</p>
           </div>
         </div>
       )}
