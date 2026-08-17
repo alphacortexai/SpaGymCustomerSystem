@@ -155,6 +155,29 @@ const TypedGreeting = ({ firstName }) => {
   );
 };
 
+const TypedBirthdayReminder = ({ count, branchName }) => {
+  const message = `You have ${count} Birthday Babies to call today for ${branchName}`;
+  const [typedLength, setTypedLength] = useState(0);
+  const isComplete = typedLength >= message.length;
+
+  useEffect(() => {
+    let currentLength = 0;
+    const typingTimer = setInterval(() => {
+      currentLength += 1;
+      setTypedLength(currentLength);
+      if (currentLength >= message.length) clearInterval(typingTimer);
+    }, 32);
+    return () => clearInterval(typingTimer);
+  }, [message]);
+
+  return (
+    <h1 className="text-lg font-black leading-tight tracking-tight text-slate-950 dark:text-white sm:text-3xl lg:text-4xl" aria-label={message}>
+      {message.slice(0, typedLength)}
+      {!isComplete && <span className="ml-0.5 inline-block h-[1em] w-0.5 align-[-0.12em] bg-blue-600 dark:bg-blue-400" aria-hidden="true" />}
+    </h1>
+  );
+};
+
 const AdminBackButton = ({ onBack }) => (
   <button
     type="button"
@@ -366,8 +389,8 @@ export default function Home() {
     if (activeTab !== 'home' || birthdayReminderMessages.length === 0) return undefined;
     const reminderTimers = birthdayReminderMessages.map((_, index) => setTimeout(() => {
       setBirthdayReminderIndex(index);
-    }, 20000 + (index * 5000)));
-    const finishTimer = setTimeout(() => setBirthdayReminderIndex(null), 20000 + (birthdayReminderMessages.length * 5000));
+    }, 20000 + (index * 15000)));
+    const finishTimer = setTimeout(() => setBirthdayReminderIndex(null), 20000 + (birthdayReminderMessages.length * 15000));
     return () => {
       reminderTimers.forEach(clearTimeout);
       clearTimeout(finishTimer);
@@ -780,9 +803,7 @@ export default function Home() {
                       <TypedGreeting firstName={user?.displayName?.split(' ')[0] || 'there'} />
                     ) : (
                       <div key={`${birthdayReminderMessages[birthdayReminderIndex].branchName}-${birthdayReminderMessages[birthdayReminderIndex].count}`} className="animate-in fade-in duration-500" aria-live="polite">
-                        <h1 className="text-lg font-black leading-tight tracking-tight text-slate-950 dark:text-white sm:text-3xl lg:text-4xl">
-                          You have <span className="text-blue-600 dark:text-blue-400">{birthdayReminderMessages[birthdayReminderIndex].count}</span> Birthday Babies to call today for <span className="text-blue-600 dark:text-blue-400">{birthdayReminderMessages[birthdayReminderIndex].branchName}</span>
-                        </h1>
+                        <TypedBirthdayReminder count={birthdayReminderMessages[birthdayReminderIndex].count} branchName={birthdayReminderMessages[birthdayReminderIndex].branchName} />
                       </div>
                     )}
                   </div>
