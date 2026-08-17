@@ -827,6 +827,15 @@ button { @apply transition-all duration-200 active:scale-95; }
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+  .mobile-quick-actions .mobile-hide-label {
+    display: none;
+  }
+  .mobile-quick-actions .dashboard-rail-link:has(.mobile-hide-label) {
+    gap: 0;
+  }
+  .mobile-quick-actions .dashboard-rail-link:has(.mobile-hide-label) .dashboard-rail-icon {
+    margin: 0 auto;
+  }
 }
 
 @media (max-width: 1023px) {
