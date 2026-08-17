@@ -309,18 +309,20 @@ export default function Home() {
     if (!isRootAdmin) return;
     const exportableClients = globalClients.length ? globalClients : cachedGlobalClients;
     if (!exportableClients.length) return;
-    const serializeValue = (value) => {
-      if (value?.toDate) return value.toDate().toISOString();
-      if (value instanceof Date) return value.toISOString();
-      if (Array.isArray(value)) return value.join(', ');
-      if (value && typeof value === 'object') return JSON.stringify(value);
-      return value ?? '';
+    const formatDateOfBirth = (client) => {
+      const month = Number(client.birthMonth);
+      const day = Number(client.birthDay);
+      if (!month || !day) return 'Not provided';
+      return new Date(2000, month - 1, day).toLocaleDateString(undefined, { month: 'long', day: 'numeric' });
     };
-    const rows = exportableClients.map((client) => Object.fromEntries(
-      Object.entries(client).map(([key, value]) => [key, serializeValue(value)])
-    ));
+    const rows = exportableClients.map((client) => ({
+      'Name of Client': client.name || 'Not provided',
+      'Date of Birth': formatDateOfBirth(client),
+      Branch: client.branch || 'Not provided',
+      'Phone Number': client.phoneNumber || 'Not provided',
+    }));
     const worksheet = XLSX.utils.json_to_sheet(rows);
-    worksheet['!cols'] = Object.keys(rows[0] || {}).map(() => ({ wch: 20 }));
+    worksheet['!cols'] = [{ wch: 28 }, { wch: 20 }, { wch: 24 }, { wch: 20 }];
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'All Clients');
     XLSX.writeFile(workbook, `clients-database-${new Date().toISOString().slice(0, 10)}.xlsx`);
