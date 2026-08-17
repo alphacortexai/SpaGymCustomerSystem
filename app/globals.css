@@ -831,6 +831,9 @@ button { @apply transition-all duration-200 active:scale-95; }
 }
 
 @media (max-width: 1023px) {
+  .mobile-primary-nav {
+    display: none !important;
+  }
   .mobile-primary-nav button:last-child {
     display: none;
   }
