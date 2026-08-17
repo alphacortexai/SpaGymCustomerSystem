@@ -914,3 +914,35 @@ button { @apply transition-all duration-200 active:scale-95; }
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+
+@media (min-width: 1024px) {
+  .dashboard-page-layout {
+    align-items: start;
+    min-height: calc(100vh - 8rem);
+  }
+
+  .dashboard-page-layout > .dashboard-desktop-rail {
+    position: sticky !important;
+    top: 0;
+    align-self: start;
+    height: fit-content;
+  }
+
+  .dashboard-page-content {
+    height: calc(100vh - 8rem);
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+    padding-right: 0.35rem;
+  }
+}
+
+@media (max-width: 1023px) {
+  .dashboard-page-content {
+    height: auto;
+    overflow: visible;
+    padding-right: 0;
+  }
+}
