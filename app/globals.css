@@ -316,7 +316,7 @@ button { @apply transition-all duration-200 active:scale-95; }
 }
 .dashboard-home-shell > .dashboard-desktop-rail {
   position: sticky;
-  top: 1.5rem;
+  top: 0;
   align-self: start;
   display: block;
 }
