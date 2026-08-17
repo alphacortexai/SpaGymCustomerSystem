@@ -303,6 +303,7 @@ export default function Home() {
   const [dataLoaded, setDataLoaded] = useState(false);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [activeNotesCount, setActiveNotesCount] = useState(0);
+  const [birthdayReminderIndex, setBirthdayReminderIndex] = useState(null);
   const isRootAdmin = user?.email?.toLowerCase() === 'alphacortexai@gmail.com';
 
   const handleExportAllClients = () => {
@@ -345,6 +346,33 @@ export default function Home() {
       setDataLoaded(true);
     }
   }, [isDataLoading, cachedBranches, cachedAllBirthdays, cachedGlobalClients, cachedAllClients, cachedTodaysBirthdays, selectedBranch]);
+
+  const birthdayReminderMessages = useMemo(() => {
+    const assignedBranches = Array.isArray(profile?.assignedBranches) ? profile.assignedBranches.filter(Boolean) : [];
+    const branchNames = assignedBranches.length > 0
+      ? assignedBranches
+      : isRootAdmin
+        ? branches.map((branch) => branch.name).filter(Boolean)
+        : [];
+    const birthdaySource = allBirthdays.length ? allBirthdays : cachedAllBirthdays;
+    return branchNames.map((branchName) => ({
+      branchName,
+      count: birthdaySource.filter((client) => client.branch === branchName).length,
+    })).filter((message) => message.count > 0);
+  }, [allBirthdays, branches, cachedAllBirthdays, isRootAdmin, profile?.assignedBranches]);
+
+  useEffect(() => {
+    setBirthdayReminderIndex(null);
+    if (activeTab !== 'home' || birthdayReminderMessages.length === 0) return undefined;
+    const reminderTimers = birthdayReminderMessages.map((_, index) => setTimeout(() => {
+      setBirthdayReminderIndex(index);
+    }, 20000 + (index * 5000)));
+    const finishTimer = setTimeout(() => setBirthdayReminderIndex(null), 20000 + (birthdayReminderMessages.length * 5000));
+    return () => {
+      reminderTimers.forEach(clearTimeout);
+      clearTimeout(finishTimer);
+    };
+  }, [activeTab, birthdayReminderMessages]);
 
   // Handle back button
   useEffect(() => {
@@ -748,7 +776,15 @@ export default function Home() {
               {!showAdminSection && <section className="dashboard-hero relative overflow-hidden p-5 sm:p-6 lg:p-7">
                 <div className="relative z-10 flex items-center justify-between gap-4">
                   <div className="min-w-0">
-                    <TypedGreeting firstName={user?.displayName?.split(' ')[0] || 'there'} />
+                    {birthdayReminderIndex === null ? (
+                      <TypedGreeting firstName={user?.displayName?.split(' ')[0] || 'there'} />
+                    ) : (
+                      <div key={`${birthdayReminderMessages[birthdayReminderIndex].branchName}-${birthdayReminderMessages[birthdayReminderIndex].count}`} className="animate-in fade-in duration-500" aria-live="polite">
+                        <h1 className="text-lg font-black leading-tight tracking-tight text-slate-950 dark:text-white sm:text-3xl lg:text-4xl">
+                          You have <span className="text-blue-600 dark:text-blue-400">{birthdayReminderMessages[birthdayReminderIndex].count}</span> Birthday Babies to call today for <span className="text-blue-600 dark:text-blue-400">{birthdayReminderMessages[birthdayReminderIndex].branchName}</span>
+                        </h1>
+                      </div>
+                    )}
                   </div>
                   <div className="dashboard-date-card shrink-0 rounded-xl border border-slate-200/80 bg-white/80 px-3 py-2 text-right shadow-sm dark:border-slate-700 dark:bg-slate-900/70"><div className="text-[9px] font-black uppercase tracking-[0.16em] text-slate-400">Today</div><div className="mt-0.5 text-sm font-bold text-slate-800 dark:text-white sm:text-base">{new Date().toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</div></div>
                 </div>
