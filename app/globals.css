@@ -312,10 +312,13 @@ button { @apply transition-all duration-200 active:scale-95; }
   z-index: 1;
 }
 .dashboard-home-shell {
-  grid-template-columns: minmax(0, 1fr) !important;
+  grid-template-columns: 188px minmax(0, 1fr) !important;
 }
 .dashboard-home-shell > .dashboard-desktop-rail {
-  display: none;
+  position: sticky;
+  top: 1.5rem;
+  align-self: start;
+  display: block;
 }
 .dashboard-home-top-row {
   display: grid;
@@ -858,6 +861,12 @@ button { @apply transition-all duration-200 active:scale-95; }
 }
 
 @media (max-width: 1023px) {
+  .dashboard-home-shell {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+  .dashboard-home-shell > .dashboard-desktop-rail {
+    display: none;
+  }
   .dashboard-home-top-row {
     grid-template-columns: minmax(0, 1fr);
   }
