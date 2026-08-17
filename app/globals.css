@@ -311,18 +311,39 @@ button { @apply transition-all duration-200 active:scale-95; }
   position: relative;
   z-index: 1;
 }
+.dashboard-home-shell {
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+.dashboard-home-shell > .dashboard-desktop-rail {
+  display: none;
+}
+.dashboard-desktop-quick-actions {
+  flex: 0 0 276px;
+  min-width: 0;
+}
+.dashboard-desktop-quick-actions .dashboard-rail {
+  position: static;
+  width: 100%;
+}
 .quick-actions-glass .dashboard-rail-link {
-  border: 1px solid transparent;
+  min-height: 2.8rem;
+  border: 1px solid rgba(255, 255, 255, 0.78);
+  background: rgba(255, 255, 255, 0.58);
+  color: #1d4ed8;
+  box-shadow: 0 5px 12px rgba(30, 64, 175, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.9);
 }
 .quick-actions-glass .dashboard-rail-link:hover {
-  border-color: rgba(255, 255, 255, 0.65);
-  background: rgba(255, 255, 255, 0.48);
-  box-shadow: 0 8px 20px rgba(59, 130, 246, 0.08);
+  border-color: rgba(147, 197, 253, 0.9);
+  background: rgba(239, 246, 255, 0.9);
+  color: #1e40af;
+  box-shadow: 0 9px 18px rgba(37, 99, 235, 0.18), inset 0 1px 0 rgba(255, 255, 255, 1);
+  transform: translateY(-1px);
 }
 .quick-actions-glass .dashboard-rail-link.is-active {
-  border-color: rgba(255, 255, 255, 0.42);
-  background: linear-gradient(135deg, rgba(37, 99, 235, 0.9), rgba(59, 130, 246, 0.72));
-  box-shadow: 0 8px 22px rgba(37, 99, 235, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.28);
+  border-color: rgba(191, 219, 254, 0.95);
+  background: linear-gradient(135deg, #1d4ed8, #2563eb 62%, #3b82f6);
+  color: #ffffff;
+  box-shadow: 0 10px 24px rgba(29, 78, 216, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.38);
 }
 .dark .quick-actions-glass {
   background: linear-gradient(145deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.46));
@@ -332,9 +353,21 @@ button { @apply transition-all duration-200 active:scale-95; }
 .dark .quick-actions-glass::before {
   background: linear-gradient(120deg, rgba(255, 255, 255, 0.12), transparent 38%, rgba(96, 165, 250, 0.12));
 }
+.dark .quick-actions-glass .dashboard-rail-link {
+  border-color: rgba(147, 197, 253, 0.2);
+  background: rgba(30, 64, 175, 0.22);
+  color: #bfdbfe;
+  box-shadow: 0 5px 14px rgba(2, 6, 23, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
 .dark .quick-actions-glass .dashboard-rail-link:hover {
-  border-color: rgba(148, 163, 184, 0.28);
-  background: rgba(51, 65, 85, 0.52);
+  border-color: rgba(96, 165, 250, 0.55);
+  background: rgba(37, 99, 235, 0.4);
+  color: #dbeafe;
+}
+.dark .quick-actions-glass .dashboard-rail-link.is-active {
+  border-color: rgba(147, 197, 253, 0.72);
+  background: linear-gradient(135deg, #1d4ed8, #2563eb 62%, #3b82f6);
+  color: #ffffff;
 }
 .dashboard-rail-link {
   display: flex;
