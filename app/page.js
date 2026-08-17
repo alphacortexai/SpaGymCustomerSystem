@@ -170,9 +170,21 @@ const TypedBirthdayReminder = ({ count, branchName }) => {
     return () => clearInterval(typingTimer);
   }, [message]);
 
+  const countStart = 'You have '.length;
+  const countEnd = countStart + String(count).length;
+  const branchStart = message.length - branchName.length;
+  const renderSegment = (start, end, className = '') => {
+    const visibleLength = Math.min(Math.max(typedLength - start, 0), end - start);
+    if (visibleLength <= 0) return null;
+    return <span className={className}>{message.slice(start, start + visibleLength)}</span>;
+  };
+
   return (
     <h1 className="text-lg font-black leading-tight tracking-tight text-slate-950 dark:text-white sm:text-3xl lg:text-4xl" aria-label={message}>
-      {message.slice(0, typedLength)}
+      {renderSegment(0, countStart)}
+      {renderSegment(countStart, countEnd, 'text-blue-600 dark:text-blue-400')}
+      {renderSegment(countEnd, branchStart)}
+      {renderSegment(branchStart, message.length, 'text-blue-600 dark:text-blue-400')}
       {!isComplete && <span className="ml-0.5 inline-block h-[1em] w-0.5 align-[-0.12em] bg-blue-600 dark:bg-blue-400" aria-hidden="true" />}
     </h1>
   );
