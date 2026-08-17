@@ -126,6 +126,34 @@ const NavCard = ({ onClick, icon, title, titleLines, description, badge, isImage
   );
 };
 
+const TypedGreeting = ({ firstName }) => {
+  const prefix = 'Good to see you, ';
+  const fullGreeting = `${prefix}${firstName}.`;
+  const [typedLength, setTypedLength] = useState(0);
+  const typedGreeting = fullGreeting.slice(0, typedLength);
+  const prefixText = typedGreeting.slice(0, prefix.length);
+  const nameText = typedGreeting.slice(prefix.length);
+  const isComplete = typedLength >= fullGreeting.length;
+
+  useEffect(() => {
+    let currentLength = 0;
+    const typingTimer = setInterval(() => {
+      currentLength += 1;
+      setTypedLength(currentLength);
+      if (currentLength >= fullGreeting.length) clearInterval(typingTimer);
+    }, 42);
+    return () => clearInterval(typingTimer);
+  }, [fullGreeting]);
+
+  return (
+    <h1 className="text-xl font-black tracking-tight text-slate-950 dark:text-white sm:text-3xl lg:text-4xl" aria-label={fullGreeting}>
+      {prefixText}
+      {nameText && <span className="text-blue-600 dark:text-blue-400">{nameText}</span>}
+      <span className={`ml-0.5 inline-block h-[1em] w-0.5 align-[-0.12em] bg-blue-600 dark:bg-blue-400 ${isComplete ? 'animate-pulse' : ''}`} aria-hidden="true" />
+    </h1>
+  );
+};
+
 const AdminBackButton = ({ onBack }) => (
   <button
     type="button"
@@ -695,7 +723,7 @@ export default function Home() {
               {!showAdminSection && <section className="dashboard-hero relative overflow-hidden p-5 sm:p-6 lg:p-7">
                 <div className="relative z-10 flex items-center justify-between gap-4">
                   <div className="min-w-0">
-                    <h1 className="text-xl font-black tracking-tight text-slate-950 dark:text-white sm:text-3xl lg:text-4xl">Good to see you, <span className="text-blue-600 dark:text-blue-400">{user?.displayName?.split(' ')[0] || 'there'}</span>.</h1>
+                    <TypedGreeting firstName={user?.displayName?.split(' ')[0] || 'there'} />
                   </div>
                   <div className="dashboard-date-card shrink-0 rounded-xl border border-slate-200/80 bg-white/80 px-3 py-2 text-right shadow-sm dark:border-slate-700 dark:bg-slate-900/70"><div className="text-[9px] font-black uppercase tracking-[0.16em] text-slate-400">Today</div><div className="mt-0.5 text-sm font-bold text-slate-800 dark:text-white sm:text-base">{new Date().toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</div></div>
                 </div>
