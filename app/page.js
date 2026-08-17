@@ -845,6 +845,9 @@ export default function Home() {
           <div className={`dashboard-page-layout grid gap-5 lg:grid-cols-[188px_minmax(0,1fr)] ${activeTab === 'home' && !showAdminSection && !(profile?.preferences?.nviewEnabled && profile?.role === 'Admin') ? 'dashboard-home-shell' : ''}`}>
             <div className="dashboard-desktop-rail"><WorkspaceRail activeTab={activeTab} setActiveTab={setActiveTab} profile={profile} showAdminSection={showAdminSection} onOpenAdmin={openAdminOverview} activeNotesCount={activeNotesCount} /></div>
             <div className="dashboard-page-content min-w-0">
+          {(activeTab !== 'home' || showAdminSection) && <div className="mobile-quick-actions mobile-quick-actions-global">
+            <WorkspaceRail activeTab={activeTab} setActiveTab={setActiveTab} profile={profile} showAdminSection={showAdminSection} onOpenAdmin={openAdminOverview} activeNotesCount={activeNotesCount} />
+          </div>}
           {activeTab === 'home' && profile?.preferences?.nviewEnabled && profile?.role === 'Admin' ? (
             <NviewDashboard />
           ) : activeTab === 'home' && (

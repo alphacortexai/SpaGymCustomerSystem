@@ -812,6 +812,9 @@ button { @apply transition-all duration-200 active:scale-95; }
   .dashboard-reveal > .mobile-quick-actions {
     margin-top: -0.75rem;
   }
+  .mobile-quick-actions-global {
+    margin-bottom: 1.25rem;
+  }
 }
 
 @media (max-width: 1023px) {
