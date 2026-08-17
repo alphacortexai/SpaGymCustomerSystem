@@ -106,11 +106,11 @@ const NavCard = ({ onClick, icon, title, titleLines, description, badge, isImage
         </>
       )}
       {badge !== undefined && (
-        <div className={centerBadge 
-          ? "absolute inset-0 flex items-center justify-center z-10 pointer-events-none" 
+        <div className={centerBadge
+          ? "absolute inset-0 flex items-center justify-center z-10 pointer-events-none"
           : `absolute top-3 right-3 min-w-[22px] h-6 px-2 flex items-center justify-center ${selectedAccent.badge} text-white text-[10px] font-bold rounded-full shadow-lg z-10 ring-2 ring-white/80 dark:ring-slate-950/80`
         }>
-          <div className={centerBadge 
+          <div className={centerBadge
             ? "text-white text-4xl md:text-5xl font-black drop-shadow-lg"
             : ""
           }>
@@ -224,6 +224,19 @@ const QuickActionIcon = ({ name }) => {
     invoices: 'M6 2h9l3 3v17H6zM15 2v4h4M9 11h6M9 15h6M9 19h4',
     tracking: 'M4 19 20 5M10 5h10v10M4 5h.01M4 12h.01M4 19h.01',
     admin: 'M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8ZM4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4M2 12h2M20 12h2M12 2v2M12 20v2',
+    upload: 'M12 16V3M7 8l5-5 5 5M4 14v6h16v-6',
+    issues: 'M12 9v4M12 17h.01M10.3 3h3.4L21 16.5a2 2 0 0 1-1.7 3H4.7a2 2 0 0 1-1.7-3L10.3 3Z',
+    history: 'M3 12a9 9 0 1 0 3-6.7M3 4v5h5M12 7v5l3 2',
+    users: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
+    branches: 'M6 3v18M18 3v18M6 7h12M6 17h12M12 7v10',
+    duplicates: 'm3 7 4-4 4 4M7 3v11M21 17l-4 4-4-4M17 21V10',
+    timeline: 'M4 19V5M4 19h16M8 16v-3M12 16V8M16 16v-6M20 16v-9',
+    export: 'M12 3v12M7 10l5 5 5-5M4 20h16',
+    create: 'M12 5v14M5 12h14',
+    manage: 'M12 8a4 4 0 1 0 0 8 4 4 0 0 0-8ZM4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4M2 12h2M20 12h2M12 2v2M12 20v2',
+    partner: 'M8 12h8M12 8v8M5 5h5v5H5zM14 14h5v5h-5z',
+    enroll: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M19 8v6M16 11h6',
+    active: 'M20 6 9 17l-5-5',
   };
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={paths[name]} /></svg>;
 };
@@ -323,11 +336,11 @@ const SummaryPanel = ({ clients, branches, loading }) => {
 
 export default function Home() {
   const { user, profile } = useAuth();
-  const { 
-    allClients: cachedAllClients, 
-    globalClients: cachedGlobalClients, 
-    branches: cachedBranches, 
-    todaysBirthdays: cachedTodaysBirthdays, 
+  const {
+    allClients: cachedAllClients,
+    globalClients: cachedGlobalClients,
+    branches: cachedBranches,
+    todaysBirthdays: cachedTodaysBirthdays,
     allBirthdays: cachedAllBirthdays,
     gymEnrollments: cachedGymEnrollments,
     spaEnrollments: cachedSpaEnrollments,
@@ -536,7 +549,7 @@ export default function Home() {
 
   useEffect(() => {
     if (activeTab !== 'home' && !returnToAdmin) setShowAdminSection(false);
-    
+
     if (activeTab === 'birthdays') {
       const defaultBranch = localStorage.getItem('defaultBirthdayBranch');
       if (defaultBranch && !selectedBranch) {
@@ -545,7 +558,7 @@ export default function Home() {
         setShowBranchPrompt(true);
       }
     }
-    
+
     // Only reset page if we're actually switching to a list view
     if (['dashboard', 'birthdays', 'unrecognized'].includes(activeTab)) {
       setCurrentPage(1);
@@ -624,7 +637,7 @@ export default function Home() {
     if (cachedClientCounts && Object.keys(cachedClientCounts).length > 0) {
       return Object.values(cachedClientCounts).reduce((sum, count) => sum + count, 0).toString();
     }
-    
+
     // Fallback to counting from array
     return globalClients.length.toString();
   }, [cachedClientCounts, globalClients]);
@@ -640,12 +653,12 @@ export default function Home() {
         .filter(Boolean)
         .join(', ') || '0';
     }
-    
+
     // Fallback to counting from array (slower, but works if counts not loaded)
     if (!branches.length || !globalClients.length) {
       return globalClients.length.toString();
     }
-    
+
     const counts = {};
     branches.forEach(b => { counts[b.name] = 0; });
     globalClients.forEach(c => {
@@ -662,7 +675,7 @@ export default function Home() {
     if (cachedBirthdayCounts && Object.keys(cachedBirthdayCounts).length > 0) {
       return Object.values(cachedBirthdayCounts).reduce((sum, count) => sum + count, 0).toString();
     }
-    
+
     // Fallback to counting from array
     return allBirthdays.length.toString();
   }, [cachedBirthdayCounts, allBirthdays]);
@@ -678,12 +691,12 @@ export default function Home() {
         .filter(Boolean)
         .join(', ') || '0';
     }
-    
+
     // Fallback to counting from array (slower)
     if (!branches.length || !allBirthdays.length) {
       return allBirthdays.length.toString();
     }
-    
+
     const counts = {};
     branches.forEach(b => { counts[b.name] = 0; });
     allBirthdays.forEach(c => {
@@ -758,7 +771,7 @@ export default function Home() {
                   if (tab === 'birthdays' && profile?.permissions?.birthdays?.view === false) return null;
                   if (tab === 'gym' && profile?.permissions?.gym?.view === false) return null;
                   if (tab === 'spa' && profile?.permissions?.spa?.view === false) return null;
-                  
+
                   return (
                     <button
                       key={tab}
@@ -865,24 +878,24 @@ export default function Home() {
                     <NavCard onClick={() => setActiveTab('birthdays')} icon="/birthday.png" title="Today's Birthdays" description="Celebrations" badge={cachedBirthdayCounts ? birthdayBadgeTotal : (dataLoaded ? '...' : undefined)} isImage={true} fullBg={true} />
                   )}
                   {profile?.permissions?.gym?.view !== false && (
-                    <NavCard 
-                      onClick={() => setActiveTab('gym')} 
-                      icon="/gym_bg.jpg" 
-                      title="GYM" 
-                      description="Memberships." 
-                      isImage={true} 
-                      fullBg={true} 
+                    <NavCard
+                      onClick={() => setActiveTab('gym')}
+                      icon="/gym_bg.jpg"
+                      title="GYM"
+                      description="Memberships."
+                      isImage={true}
+                      fullBg={true}
                       badge={dataLoaded ? activeGymMembers : undefined}
                     />
                   )}
                   {profile?.permissions?.spa?.view !== false && (
-                    <NavCard 
-                      onClick={() => setActiveTab('spa')} 
-                      icon="/spa_bg.jpg" 
-                      title="SPA" 
-                      description="Memberships." 
-                      isImage={true} 
-                      fullBg={true} 
+                    <NavCard
+                      onClick={() => setActiveTab('spa')}
+                      icon="/spa_bg.jpg"
+                      title="SPA"
+                      description="Memberships."
+                      isImage={true}
+                      fullBg={true}
                       badge={dataLoaded ? activeSpaMembers : undefined}
                     />
                   )}
@@ -908,31 +921,31 @@ export default function Home() {
                   </div>
                   <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                     {profile?.permissions?.clients?.add !== false && (
-                      <NavCard onClick={() => openAdminTool('upload')} icon="📤" title="Upload" description="Bulk data import." accent="blue" eyebrow="Import" />
+                      <NavCard onClick={() => openAdminTool('upload')} icon={<QuickActionIcon name="upload" />} title="Upload" description="Bulk data import." accent="blue" eyebrow="Import" />
                     )}
                     {profile?.permissions?.clients?.edit !== false && (
-                      <NavCard onClick={() => openAdminTool('unrecognized')} icon="⚠️" title="Issues" description="Fix failed imports." accent="amber" eyebrow="Review" />
+                      <NavCard onClick={() => openAdminTool('unrecognized')} icon={<QuickActionIcon name="issues" />} title="Issues" description="Fix failed imports." accent="amber" eyebrow="Review" />
                     )}
                     {profile?.permissions?.clients?.view !== false && (
-                      <NavCard onClick={() => openAdminTool('history')} icon="📜" title="History" description="View upload logs." accent="slate" eyebrow="Audit" />
+                      <NavCard onClick={() => openAdminTool('history')} icon={<QuickActionIcon name="history" />} title="History" description="View upload logs." accent="slate" eyebrow="Audit" />
                     )}
                     {profile?.permissions?.users?.view !== false && (
-                      <NavCard onClick={() => openAdminTool('users')} icon="👥" title="Users" description="Manage roles." accent="violet" eyebrow="Access" />
+                      <NavCard onClick={() => openAdminTool('users')} icon={<QuickActionIcon name="users" />} title="Users" description="Manage roles." accent="violet" eyebrow="Access" />
                     )}
                     {profile?.permissions?.branches?.view !== false && (
-                      <NavCard onClick={() => openAdminTool('branches')} icon="🏢" title="Branches" description="Manage locations." badge={dataLoaded ? branches.length : undefined} accent="emerald" eyebrow="Network" />
+                      <NavCard onClick={() => openAdminTool('branches')} icon={<QuickActionIcon name="branches" />} title="Branches" description="Manage locations." badge={dataLoaded ? branches.length : undefined} accent="emerald" eyebrow="Network" />
                     )}
                     {profile?.role === 'Admin' && (
-                      <NavCard onClick={() => openAdminTool('duplicates')} icon="🔍" title="Duplicates" description="Find duplicate phones." accent="rose" eyebrow="Cleanse" />
+                      <NavCard onClick={() => openAdminTool('duplicates')} icon={<QuickActionIcon name="duplicates" />} title="Duplicates" description="Find duplicate phones." accent="rose" eyebrow="Cleanse" />
                     )}
                     {profile?.role === 'Admin' && (
-                      <NavCard onClick={() => openAdminTool('timeline')} icon="🕒" title="Timeline" description="Activity logs." accent="blue" eyebrow="Monitor" />
+                      <NavCard onClick={() => openAdminTool('timeline')} icon={<QuickActionIcon name="timeline" />} title="Timeline" description="Activity logs." accent="blue" eyebrow="Monitor" />
                     )}
                     {profile?.role === 'Admin' && (
-                      <NavCard onClick={() => openAdminTool('invoice-list')} icon="🧾" title="All Invoices" description="View, search and recreate PDFs." accent="emerald" eyebrow="Finance" />
+                      <NavCard onClick={() => openAdminTool('invoice-list')} icon={<QuickActionIcon name="invoices" />} title="All Invoices" description="View, search and recreate PDFs." accent="emerald" eyebrow="Finance" />
                     )}
                     {isRootAdmin && (
-                      <NavCard onClick={handleExportAllClients} icon="📊" title="Export Clients" description="Download the complete database." accent="blue" eyebrow="Root admin only" badge={globalClients.length ? globalClients.length : undefined} />
+                      <NavCard onClick={handleExportAllClients} icon={<QuickActionIcon name="export" />} title="Export Clients" description="Download the complete database." accent="blue" eyebrow="Root admin only" badge={globalClients.length ? globalClients.length : undefined} />
                     )}
                   </div>
                 </div>
@@ -1277,54 +1290,54 @@ export default function Home() {
                     <h2 className="text-3xl font-bold text-slate-900 dark:text-white">GYM Memberships</h2>
                   </div>
                   <p className="text-slate-500">
-                    {gymSubTab === 'overview' ? 'Manage membership types and client enrollments.' : 
+                    {gymSubTab === 'overview' ? 'Manage membership types and client enrollments.' :
                      gymSubTab === 'create-type' ? 'Define new membership packages.' :
                      gymSubTab === 'partner-companies' ? 'Manage companies available on invoices.' :
                      gymSubTab === 'enroll' ? 'Register a client for a membership.' : 'View active gym members.'}
                   </p>
                 </div>
               </div>
-              
+
               {gymSubTab === 'overview' ? (
                 <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                   {profile?.permissions?.gym?.add !== false && (
-                    <NavCard 
-                      onClick={() => setGymSubTab('create-type')} 
-                      icon="📋" 
-                      title="Create Type" 
-                      description="Define new membership packages." 
+                    <NavCard
+                      onClick={() => setGymSubTab('create-type')}
+                      icon={<QuickActionIcon name="create" />}
+                      title="Create Type"
+                      description="Define new membership packages."
                     />
                   )}
                   {profile?.role === 'Admin' && (
-                    <NavCard 
-                      onClick={() => setGymSubTab('manage-types')} 
-                      icon="⚙️" 
-                      title="Manage Types" 
-                      description="Edit or delete membership types." 
+                    <NavCard
+                      onClick={() => setGymSubTab('manage-types')}
+                      icon={<QuickActionIcon name="manage" />}
+                      title="Manage Types"
+                      description="Edit or delete membership types."
                     />
                   )}
                   {profile?.role === 'Admin' && (
                     <NavCard
                       onClick={() => setGymSubTab('partner-companies')}
-                      icon="🏢"
+                      icon={<QuickActionIcon name="partner" />}
                       title="Partner Companies"
                       description="Manage invoice company options."
                     />
                   )}
                   {profile?.permissions?.gym?.add !== false && (
-                    <NavCard 
-                      onClick={() => setGymSubTab('enroll')} 
-                      icon="✍️" 
-                      title="Enroll Client" 
-                      description="Enroll a client in a Membership." 
+                    <NavCard
+                      onClick={() => setGymSubTab('enroll')}
+                      icon={<QuickActionIcon name="enroll" />}
+                      title="Enroll Client"
+                      description="Enroll a client in a Membership."
                     />
                   )}
                   {profile?.permissions?.gym?.view !== false && (
-                    <NavCard 
-                      onClick={() => setGymSubTab('active-members')} 
-                      icon="🏃" 
-                      title="Active Members" 
-                      description="View and manage active memberships." 
+                    <NavCard
+                      onClick={() => setGymSubTab('active-members')}
+                      icon={<QuickActionIcon name="active" />}
+                      title="Active Members"
+                      description="View and manage active memberships."
                     />
                   )}
                 </div>
@@ -1367,45 +1380,45 @@ export default function Home() {
                     <h2 className="text-3xl font-bold text-slate-900 dark:text-white">SPA Memberships</h2>
                   </div>
                   <p className="text-slate-500">
-                    {spaSubTab === 'overview' ? 'Manage spa membership types and client enrollments.' : 
+                    {spaSubTab === 'overview' ? 'Manage spa membership types and client enrollments.' :
                      spaSubTab === 'create-type' ? 'Define new spa membership packages.' :
                      spaSubTab === 'enroll' ? 'Register a client for a spa membership.' : 'View active spa members.'}
                   </p>
                 </div>
               </div>
-              
+
               {spaSubTab === 'overview' ? (
                 <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                   {profile?.permissions?.spa?.add !== false && (
-                    <NavCard 
-                      onClick={() => setSpaSubTab('create-type')} 
-                      icon="💆‍♀️" 
-                      title="Create Type" 
-                      description="Define new spa membership packages." 
+                    <NavCard
+                      onClick={() => setSpaSubTab('create-type')}
+                      icon={<QuickActionIcon name="spa" />}
+                      title="Create Type"
+                      description="Define new spa membership packages."
                     />
                   )}
                   {profile?.role === 'Admin' && (
-                    <NavCard 
-                      onClick={() => setSpaSubTab('manage-types')} 
-                      icon="⚙️" 
-                      title="Manage Types" 
-                      description="Edit or delete spa membership types." 
+                    <NavCard
+                      onClick={() => setSpaSubTab('manage-types')}
+                      icon={<QuickActionIcon name="manage" />}
+                      title="Manage Types"
+                      description="Edit or delete spa membership types."
                     />
                   )}
                   {profile?.permissions?.spa?.add !== false && (
-                    <NavCard 
-                      onClick={() => setSpaSubTab('enroll')} 
-                      icon="✍️" 
-                      title="Enroll Client" 
-                      description="Enroll a client in a spa membership." 
+                    <NavCard
+                      onClick={() => setSpaSubTab('enroll')}
+                      icon={<QuickActionIcon name="enroll" />}
+                      title="Enroll Client"
+                      description="Enroll a client in a spa membership."
                     />
                   )}
                   {profile?.permissions?.spa?.view !== false && (
-                    <NavCard 
-                      onClick={() => setSpaSubTab('active-members')} 
-                      icon="✨" 
-                      title="Active Members" 
-                      description="View and manage active spa memberships." 
+                    <NavCard
+                      onClick={() => setSpaSubTab('active-members')}
+                      icon={<QuickActionIcon name="active" />}
+                      title="Active Members"
+                      description="View and manage active spa memberships."
                     />
                   )}
                 </div>
