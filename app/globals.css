@@ -315,9 +315,6 @@ button { @apply transition-all duration-200 active:scale-95; }
   grid-template-columns: 188px minmax(0, 1fr) !important;
 }
 .dashboard-home-shell > .dashboard-desktop-rail {
-  position: sticky;
-  top: 0;
-  align-self: start;
   display: block;
 }
 .dashboard-home-top-row {
@@ -878,5 +875,27 @@ button { @apply transition-all duration-200 active:scale-95; }
   }
   .dashboard-home-top-row {
     grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .dashboard-desktop-rail {
+    position: fixed;
+    top: 1.5rem;
+    left: max(1rem, calc((100vw - 1280px) / 2 + 2rem));
+    z-index: 30;
+    width: 188px;
+    max-height: calc(100vh - 3rem);
+    overflow-y: auto;
+    scrollbar-width: thin;
+  }
+  .dashboard-desktop-rail .quick-actions-glass {
+    width: 100%;
+  }
+}
+
+@media (max-width: 1023px) {
+  .dashboard-desktop-rail {
+    display: none;
   }
 }
