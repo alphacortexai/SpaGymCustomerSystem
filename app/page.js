@@ -119,7 +119,7 @@ const NavCard = ({ onClick, icon, title, titleLines, description, badge, isImage
       )}
       <div className={`relative z-20 ${fullBg ? 'mt-auto' : ''} w-full`}>
         {eyebrow && <div className="mb-1 text-[10px] font-black uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">{eyebrow}</div>}
-        <div className="mb-3 flex items-center justify-between gap-3">{!fullBg && <span className={`inline-flex h-9 w-9 items-center justify-center rounded-xl border text-sm shadow-sm ${selectedAccent.icon}`}>{isImage ? <span className="relative h-5 w-5"><Image src={icon} alt="" fill className="object-contain" /></span> : <span>{icon}</span>}</span>}</div><h3 className={`${titleLines ? 'text-xl leading-[0.95] sm:text-2xl' : 'text-lg'} font-bold ${fullBg ? 'text-white' : 'text-slate-900 dark:text-white'} mb-1`}>{titleLines ? titleLines.map((line) => <span key={line} className="block">{line}</span>) : title}</h3>
+        <div className="mb-3 flex items-center justify-between gap-3">{!fullBg && <span className={`inline-flex h-9 w-9 items-center justify-center rounded-xl border text-sm shadow-sm ${selectedAccent.icon}`}>{isImage ? <span className="relative h-5 w-5"><Image src={icon} alt="" fill className="object-contain" /></span> : <span>{icon}</span>}</span>}</div><h3 className={`${titleLines ? 'text-2xl leading-[1.15] sm:text-3xl' : 'text-lg'} font-bold ${fullBg ? 'text-white' : 'text-slate-900 dark:text-white'} mb-1`}>{titleLines ? titleLines.map((line) => <span key={line} className="block mb-1.5 last:mb-0">{line}</span>) : title}</h3>
         <p className={`text-sm ${fullBg ? 'text-slate-200' : 'text-slate-500 dark:text-slate-400'} leading-tight line-clamp-2 px-1`}>{description}</p>
       </div>
     </button>
