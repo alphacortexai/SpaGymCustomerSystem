@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import Image from 'next/image';
+import * as XLSX from 'xlsx';
 import dynamic from 'next/dynamic';
 import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
@@ -302,6 +303,28 @@ export default function Home() {
   const [dataLoaded, setDataLoaded] = useState(false);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [activeNotesCount, setActiveNotesCount] = useState(0);
+  const isRootAdmin = user?.email?.toLowerCase() === 'alphacortexai@gmail.com';
+
+  const handleExportAllClients = () => {
+    if (!isRootAdmin) return;
+    const exportableClients = globalClients.length ? globalClients : cachedGlobalClients;
+    if (!exportableClients.length) return;
+    const serializeValue = (value) => {
+      if (value?.toDate) return value.toDate().toISOString();
+      if (value instanceof Date) return value.toISOString();
+      if (Array.isArray(value)) return value.join(', ');
+      if (value && typeof value === 'object') return JSON.stringify(value);
+      return value ?? '';
+    };
+    const rows = exportableClients.map((client) => Object.fromEntries(
+      Object.entries(client).map(([key, value]) => [key, serializeValue(value)])
+    ));
+    const worksheet = XLSX.utils.json_to_sheet(rows);
+    worksheet['!cols'] = Object.keys(rows[0] || {}).map(() => ({ wch: 20 }));
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'All Clients');
+    XLSX.writeFile(workbook, `clients-database-${new Date().toISOString().slice(0, 10)}.xlsx`);
+  };
 
   useEffect(() => {
     if (!user) return;
@@ -809,6 +832,9 @@ export default function Home() {
                     )}
                     {profile?.role === 'Admin' && (
                       <NavCard onClick={() => openAdminTool('invoice-list')} icon="🧾" title="All Invoices" description="View, search and recreate PDFs." accent="emerald" eyebrow="Finance" />
+                    )}
+                    {isRootAdmin && (
+                      <NavCard onClick={handleExportAllClients} icon="📊" title="Export Clients" description="Download the complete database." accent="blue" eyebrow="Root admin only" badge={globalClients.length ? globalClients.length : undefined} />
                     )}
                   </div>
                 </div>
