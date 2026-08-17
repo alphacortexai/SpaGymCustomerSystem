@@ -317,6 +317,15 @@ button { @apply transition-all duration-200 active:scale-95; }
 .dashboard-home-shell > .dashboard-desktop-rail {
   display: block;
 }
+
+@media (min-width: 1024px) {
+  .dashboard-home-shell > .dashboard-desktop-rail {
+    position: static !important;
+    top: auto !important;
+    margin-top: 0 !important;
+    align-self: start;
+  }
+}
 .dashboard-home-top-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 276px;
