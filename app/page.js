@@ -190,6 +190,18 @@ const TypedBirthdayReminder = ({ count, branchName }) => {
   );
 };
 
+const SectionBackArrow = ({ onClick, label }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    aria-label={label}
+    title={label}
+    className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 text-slate-500 transition hover:bg-slate-100 hover:text-blue-600 dark:border-slate-800 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-blue-400"
+  >
+    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+  </button>
+);
+
 const AdminBackButton = ({ onBack }) => (
   <button
     type="button"
@@ -915,7 +927,7 @@ export default function Home() {
           )}
 
           {activeTab === 'notes' && (
-            <NotesSection onActiveCountChange={setActiveNotesCount} />
+            <NotesSection onActiveCountChange={setActiveNotesCount} onBack={goBackFromSection} />
           )}
 
           {activeTab === 'invoice-list' && (
@@ -941,7 +953,7 @@ export default function Home() {
             <div className="space-y-8 animate-in fade-in duration-300">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                  <h2 className="text-3xl font-bold text-slate-900 dark:text-white">Invoice Tracking</h2>
+                  <div className="flex items-center gap-3"><SectionBackArrow onClick={goBackFromSection} label="Back to Admin" /><h2 className="text-3xl font-bold text-slate-900 dark:text-white">Invoice Tracking</h2></div>
                   <p className="text-slate-500 mt-1">Import invoices, track status (Issued, Sent to client, Completed) and upload proof of payment. Managers and Admins.</p>
                 </div>
                 <button
@@ -959,7 +971,7 @@ export default function Home() {
           {activeTab === 'dashboard' && (
             <div className="space-y-8 animate-in fade-in duration-300">
               <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-                <div><p className="text-[11px] font-black uppercase tracking-[0.2em] text-blue-600 dark:text-blue-400">Client workspace</p><h2 className="mt-1 text-3xl font-black tracking-tight text-slate-900 dark:text-white">Client Database</h2><p className="mt-2 max-w-xl text-sm font-medium text-slate-500 dark:text-slate-400">Search, filter, and manage every client record from one place.</p></div>
+                <div><p className="text-[11px] font-black uppercase tracking-[0.2em] text-blue-600 dark:text-blue-400">Client workspace</p><div className="mt-1 flex items-center gap-3"><SectionBackArrow onClick={goBackFromSection} label="Back to Home" /><h2 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white">Client Database</h2></div><p className="mt-2 max-w-xl text-sm font-medium text-slate-500 dark:text-slate-400">Search, filter, and manage every client record from one place.</p></div>
                 <div className="flex flex-wrap items-center gap-3">
                   <select
                     value={selectedBranch}
@@ -1071,7 +1083,7 @@ export default function Home() {
               )}
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div>
-                  <h2 className="text-3xl font-bold text-slate-900 dark:text-white">Birthdays</h2>
+                  <div className="flex items-center gap-3"><SectionBackArrow onClick={goBackFromSection} label="Back to Home" /><h2 className="text-3xl font-bold text-slate-900 dark:text-white">Birthdays</h2></div>
                   <p className="text-slate-500 mt-1">Celebrate with your customers.</p>
                 </div>
                 <div className="flex flex-col md:flex-row md:items-center gap-3 w-full md:w-auto">
@@ -1423,7 +1435,7 @@ export default function Home() {
             <div className="space-y-8 animate-in fade-in duration-300">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                  <h2 className="text-3xl font-bold text-slate-900 dark:text-white">Proforma Invoice Generator</h2>
+                  <div className="flex items-center gap-3"><SectionBackArrow onClick={goBackFromSection} label="Back to Admin" /><h2 className="text-3xl font-bold text-slate-900 dark:text-white">Proforma Invoice Generator</h2></div>
                   <p className="text-slate-500 mt-1">Create invoices for GYM and SPA (PE &amp; SSS).</p>
                 </div>
                 <button

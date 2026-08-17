@@ -24,7 +24,7 @@ const visibilityLabel = (note) => {
   return note.branch || 'Assigned branch';
 };
 
-export default function NotesSection({ onActiveCountChange }) {
+export default function NotesSection({ onActiveCountChange, onBack }) {
   const { user, profile } = useAuth();
   const { branches = [] } = useData();
   const [notes, setNotes] = useState([]);
@@ -138,7 +138,14 @@ export default function NotesSection({ onActiveCountChange }) {
     <div className="space-y-5 animate-in fade-in duration-300">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white">Notes</h2>
+          <div className="flex items-center gap-3">
+            {onBack && (
+              <button type="button" onClick={onBack} aria-label="Back to Home" title="Back to Home" className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 text-slate-500 transition hover:bg-slate-100 hover:text-blue-600 dark:border-slate-800 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-blue-400">
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+              </button>
+            )}
+            <h2 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white">Notes</h2>
+          </div>
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Keep reminders and references in one place.</p>
         </div>
         <button type="button" onClick={openCreateComposer} className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-blue-500/20 transition hover:bg-blue-700">
