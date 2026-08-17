@@ -49,37 +49,37 @@ const NavCard = ({ onClick, icon, title, titleLines, description, badge, isImage
       gradient: 'from-blue-500/16 via-sky-400/10 to-cyan-300/12',
       icon: 'bg-blue-50 text-blue-600 border-blue-100 shadow-blue-500/10 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-900/70',
       glow: 'bg-blue-500/20',
-      badge: 'bg-violet-700 shadow-violet-700/30',
+      badge: 'bg-pink-600 shadow-pink-600/30',
     },
     amber: {
       gradient: 'from-amber-400/18 via-orange-300/10 to-yellow-200/14',
       icon: 'bg-amber-50 text-amber-700 border-amber-100 shadow-amber-500/10 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900/60',
       glow: 'bg-amber-400/20',
-      badge: 'bg-violet-700 shadow-violet-700/30',
+      badge: 'bg-pink-600 shadow-pink-600/30',
     },
     violet: {
       gradient: 'from-violet-500/16 via-fuchsia-400/10 to-pink-300/12',
       icon: 'bg-violet-50 text-violet-600 border-violet-100 shadow-violet-500/10 dark:bg-violet-950/40 dark:text-violet-300 dark:border-violet-900/60',
       glow: 'bg-violet-500/20',
-      badge: 'bg-violet-700 shadow-violet-700/30',
+      badge: 'bg-pink-600 shadow-pink-600/30',
     },
     emerald: {
       gradient: 'from-emerald-500/16 via-teal-400/10 to-lime-300/12',
       icon: 'bg-emerald-50 text-emerald-600 border-emerald-100 shadow-emerald-500/10 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900/60',
       glow: 'bg-emerald-500/20',
-      badge: 'bg-violet-700 shadow-violet-700/30',
+      badge: 'bg-pink-600 shadow-pink-600/30',
     },
     rose: {
       gradient: 'from-rose-500/16 via-pink-400/10 to-orange-300/12',
       icon: 'bg-rose-50 text-rose-600 border-rose-100 shadow-rose-500/10 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-900/60',
       glow: 'bg-rose-500/20',
-      badge: 'bg-violet-700 shadow-violet-700/30',
+      badge: 'bg-pink-600 shadow-pink-600/30',
     },
     slate: {
       gradient: 'from-slate-500/14 via-slate-300/10 to-slate-100/20',
       icon: 'bg-slate-50 text-slate-600 border-slate-100 shadow-slate-500/10 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700',
       glow: 'bg-slate-400/20',
-      badge: 'bg-violet-700 shadow-violet-700/30',
+      badge: 'bg-pink-600 shadow-pink-600/30',
     },
   };
   const selectedAccent = accentStyles[accent] || accentStyles.blue;
