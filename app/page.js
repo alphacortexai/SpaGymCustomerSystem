@@ -9,7 +9,7 @@ import { signOut } from '@/lib/auth';
 import ClientList from '@/components/ClientList';
 import { searchClients } from '@/lib/clients';
 import { affirmations } from '@/lib/affirmations';
-import { getActiveNotesCount } from '@/lib/notes';
+import { getAllNotes } from '@/lib/notes';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import LoadingState from '@/components/LoadingState';
 
@@ -43,7 +43,24 @@ const InvoiceList = dynamic(() => import('@/components/InvoiceList'), { loading:
 const InvoiceTracking = dynamic(() => import('@/components/InvoiceTracking'), { loading: LazySectionFallback });
 const NotesSection = dynamic(() => import('@/components/NotesSection'), { loading: LazySectionFallback });
 
-const NavCard = ({ onClick, icon, title, description, badge, isImage, fullBg, centerBadge, accent = 'blue', eyebrow }) => {
+const NavCard = ({ onClick, icon, title, description, badge, isImage, fullBg, centerBadge, accent = 'blue', eyebrow, previewItems = [], previewLabel = 'Latest updates' }) => {
+  const [showPreview, setShowPreview] = useState(false);
+  const hasPreview = previewItems.length > 0;
+
+  useEffect(() => {
+    if (!hasPreview) return undefined;
+    let hideTimer;
+    const interval = setInterval(() => {
+      setShowPreview(true);
+      clearTimeout(hideTimer);
+      hideTimer = setTimeout(() => setShowPreview(false), 8000);
+    }, 60000);
+    return () => {
+      clearInterval(interval);
+      clearTimeout(hideTimer);
+    };
+  }, [hasPreview, previewItems.length]);
+
   const accentStyles = {
     blue: {
       gradient: 'from-blue-500/16 via-sky-400/10 to-cyan-300/12',
@@ -103,6 +120,24 @@ const NavCard = ({ onClick, icon, title, description, badge, isImage, fullBg, ce
           <div className={`absolute -right-8 -top-8 h-24 w-24 rounded-full blur-2xl ${selectedAccent.glow} transition-transform duration-500 group-hover:scale-125`} />
           <div className="absolute inset-x-5 top-0 h-px bg-gradient-to-r from-transparent via-white/80 to-transparent" />
         </>
+      )}
+      {hasPreview && (
+        <div className={`absolute inset-0 z-20 rounded-[24px] bg-slate-950/88 p-4 text-white transition-all duration-700 ${showPreview ? 'pointer-events-auto [transform:rotateY(0deg)] opacity-100' : 'pointer-events-none [transform:rotateY(180deg)] opacity-0'}`}>
+          <div className="flex h-full flex-col justify-between">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[9px] font-black uppercase tracking-[0.18em] text-cyan-200">{previewLabel}</span>
+              <span className="text-[9px] font-semibold text-white/55">auto preview</span>
+            </div>
+            <div className="space-y-2">
+              {previewItems.slice(0, 3).map((item, index) => (
+                <div key={`${item}-${index}`} className="rounded-xl border border-white/10 bg-white/10 px-3 py-2 text-xs font-semibold leading-tight text-white/90">
+                  {item}
+                </div>
+              ))}
+            </div>
+            <p className="text-[9px] font-medium text-white/55">Returning to overview shortly</p>
+          </div>
+        </div>
       )}
       {badge !== undefined && (
         <div className={centerBadge 
@@ -253,10 +288,15 @@ export default function Home() {
   const [dataLoaded, setDataLoaded] = useState(false);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [activeNotesCount, setActiveNotesCount] = useState(0);
+  const [latestNotes, setLatestNotes] = useState([]);
 
   useEffect(() => {
     if (!user) return;
-    getActiveNotesCount(user, profile).then(setActiveNotesCount);
+    getAllNotes(user, profile).then((notes) => {
+      const activeNotes = notes.filter((note) => note.status === 'active');
+      setActiveNotesCount(activeNotes.length);
+      setLatestNotes(activeNotes.slice(0, 3));
+    });
   }, [profile, user]);
 
   // Sync with cached data from DataContext (single source of truth). Branch filter applied client-side.
@@ -689,10 +729,10 @@ export default function Home() {
                 <section>
                   <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
                   {profile?.permissions?.clients?.view !== false && (
-                    <NavCard onClick={() => setActiveTab('dashboard')} icon="/clients_bg.png" title="Clients Database" description="Manage" badge={cachedClientCounts ? clientBadgeTotal : (dataLoaded ? '...' : undefined)} isImage={true} fullBg={true} />
+                    <NavCard onClick={() => setActiveTab('dashboard')} icon="/clients_bg.png" title="Clients Database" description="Manage" badge={cachedClientCounts ? clientBadgeTotal : (dataLoaded ? '...' : undefined)} isImage={true} fullBg={true} previewLabel="Recent clients" previewItems={(globalClients.length ? globalClients : cachedGlobalClients).slice(0, 3).map((client) => `New client: ${client.name || 'Unnamed client'}`)} />
                   )}
                   {profile?.permissions?.birthdays?.view !== false && (
-                    <NavCard onClick={() => setActiveTab('birthdays')} icon="/birthday.png" title="Today's Birthdays" description="Celebrations" badge={cachedBirthdayCounts ? birthdayBadgeTotal : (dataLoaded ? '...' : undefined)} isImage={true} fullBg={true} />
+                    <NavCard onClick={() => setActiveTab('birthdays')} icon="/birthday.png" title="Today's Birthdays" description="Celebrations" badge={cachedBirthdayCounts ? birthdayBadgeTotal : (dataLoaded ? '...' : undefined)} isImage={true} fullBg={true} previewLabel="Birthday details" previewItems={todaysBirthdays.slice(0, 3).map((client) => `${client.name || 'Unnamed client'} · ${client.birthDay ? `Day ${client.birthDay}` : 'Today'}`)} />
                   )}
                   {profile?.permissions?.gym?.view !== false && (
                     <NavCard 
@@ -716,7 +756,7 @@ export default function Home() {
                       badge={dataLoaded ? activeSpaMembers : undefined}
                     />
                   )}
-                  <NavCard onClick={() => setActiveTab('notes')} icon="📝" title="Notes" description="Reference reminders." badge={activeNotesCount} accent="violet" />
+                  <NavCard onClick={() => setActiveTab('notes')} icon="📝" title="Notes" description="Reference reminders." badge={activeNotesCount} accent="violet" previewLabel="Latest notes" previewItems={latestNotes.map((note) => `${note.title}: ${note.content}`)} />
                   </div>
                 </section>
                 <div className="hidden md:block">
