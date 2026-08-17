@@ -309,7 +309,7 @@ button { @apply transition-all duration-200 active:scale-95; }
   color: #1d1d1f;
 }
 .dashboard-rail-link.is-active {
-  background: #db2777;
+  background: #2563eb;
   color: #ffffff;
 }
 .dashboard-rail-icon {
@@ -330,7 +330,7 @@ button { @apply transition-all duration-200 active:scale-95; }
   color: #ffffff;
 }
 .dark .dashboard-rail-link.is-active {
-  background: #db2777;
+  background: #2563eb;
   color: #ffffff;
 }
 @media (max-width: 1023px) {
@@ -426,7 +426,7 @@ button { @apply transition-all duration-200 active:scale-95; }
     font-size: 0;
   }
   .dashboard-rail-link.is-active {
-    border-color: #db2777;
+    border-color: #2563eb;
   }
   .dashboard-rail-icon {
     width: auto;
@@ -441,7 +441,7 @@ button { @apply transition-all duration-200 active:scale-95; }
     border-color: rgba(255, 255, 255, 0.1);
   }
   .dark .dashboard-rail-link.is-active {
-    border-color: #f472b6;
+    border-color: #60a5fa;
   }
 }
 
