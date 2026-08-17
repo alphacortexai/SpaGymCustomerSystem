@@ -314,12 +314,22 @@ button { @apply transition-all duration-200 active:scale-95; }
 }
 .dashboard-rail-icon {
   display: inline-flex;
-  width: 1.25rem;
+  width: 1.5rem;
+  height: 1.5rem;
+  flex: 0 0 1.5rem;
   align-items: center;
   justify-content: center;
   color: currentColor;
-  font-size: 0.9rem;
-  font-weight: 700;
+}
+.dashboard-rail-icon svg {
+  width: 1.2rem;
+  height: 1.2rem;
+  display: block;
+  transition: transform 160ms ease;
+}
+.dashboard-rail-link:hover .dashboard-rail-icon svg,
+.dashboard-rail-link.is-active .dashboard-rail-icon svg {
+  transform: scale(1.06);
 }
 .dark .dashboard-rail {
   background: rgba(28, 28, 30, 0.88);
