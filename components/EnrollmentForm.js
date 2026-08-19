@@ -8,6 +8,7 @@ import { searchClients } from '@/lib/clients';
 
 export default function EnrollmentForm({ onEnrolled }) {
   const { user, profile } = useAuth();
+  const { toast } = useNotifications();
   const canAdd = profile?.permissions?.gym?.add !== false;
   const [loading, setLoading] = useState(false);
   const [membershipTypes, setMembershipTypes] = useState([]);
@@ -76,6 +77,7 @@ export default function EnrollmentForm({ onEnrolled }) {
       const popDoc = await uploadDocument(popFile, 'pop', selectedClient.id);
       
       const selectedType = membershipTypes.find(t => t.id === formData.membershipTypeId);
+      if (!selectedType) throw new Error('The selected membership type is no longer available. Refresh the list and try again.');
       const isReducingBalance = selectedType.isReducingBalance || false;
       const enrollmentPrice = isReducingBalance ? formData.price : selectedType.price;
       
@@ -177,7 +179,16 @@ export default function EnrollmentForm({ onEnrolled }) {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className={membershipTypes.find(t => t.id === formData.membershipTypeId)?.isReducingBalance ? "md:col-span-2" : ""}>
-          <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Membership Type</label>
+          <div className="flex items-center justify-between mb-1">
+            <label className="block text-xs font-medium text-slate-500 dark:text-slate-400">Membership Type</label>
+            <button
+              type="button"
+              onClick={async () => setMembershipTypes(await getMembershipTypes())}
+              className="text-xs font-semibold text-blue-600 hover:underline"
+            >
+              Refresh types
+            </button>
+          </div>
           <select
             required
             value={formData.membershipTypeId}
@@ -194,7 +205,7 @@ export default function EnrollmentForm({ onEnrolled }) {
             <option value="">Select Type</option>
             {membershipTypes.map(type => (
               <option key={type.id} value={type.id}>
-                {type.type} {type.isReducingBalance ? '(Reducing Balance)' : `- $${type.price}`}
+                {type.type} {type.isReducingBalance ? '(Reducing Balance)' : `- ${(type.currency || 'USD') === 'UGX' ? 'UGX ' : '$'}${Number(type.price || 0).toLocaleString()}`}
               </option>
             ))}
           </select>

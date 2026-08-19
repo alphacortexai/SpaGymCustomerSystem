@@ -7,6 +7,7 @@ import { useNotifications } from '@/contexts/NotificationContext';
 
 export default function MembershipTypeManager() {
   const { user, profile } = useAuth();
+  const { toast, showConfirm } = useNotifications();
   const isAdmin = profile?.role === 'Admin';
   const [types, setTypes] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -29,7 +30,13 @@ export default function MembershipTypeManager() {
   };
 
   useEffect(() => {
-    loadTypes();
+    let cancelled = false;
+    getMembershipTypes().then((data) => {
+      if (cancelled) return;
+      setTypes(data);
+      setLoading(false);
+    });
+    return () => { cancelled = true; };
   }, []);
 
   const handleEdit = (type) => {

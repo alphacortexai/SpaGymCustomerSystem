@@ -84,16 +84,52 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
-    match /memberships/{membershipId} {
-      allow read: if can('gym', 'view') || can('spa', 'view');
-      allow create, update: if can('gym', 'edit') || can('spa', 'edit');
-      allow delete: if can('gym', 'delete') || can('spa', 'delete');
+    // Current application collections. Keep these separate by service so a
+    // gym permission cannot accidentally grant access to spa records.
+    match /membership_types/{membershipId} {
+      allow read: if can('gym', 'view');
+      allow create: if can('gym', 'add');
+      allow update: if can('gym', 'edit');
+      allow delete: if can('gym', 'delete');
+    }
+
+    match /spa_membership_types/{membershipId} {
+      allow read: if can('spa', 'view');
+      allow create: if can('spa', 'add');
+      allow update: if can('spa', 'edit');
+      allow delete: if can('spa', 'delete');
     }
 
     match /enrollments/{enrollmentId} {
+      allow read: if can('gym', 'view');
+      allow create: if can('gym', 'add');
+      allow update: if can('gym', 'edit');
+      allow delete: if can('gym', 'delete');
+    }
+
+    match /spa_enrollments/{enrollmentId} {
+      allow read: if can('spa', 'view');
+      allow create: if can('spa', 'add');
+      allow update: if can('spa', 'edit');
+      allow delete: if can('spa', 'delete');
+    }
+
+    match /access_logs/{logId} {
+      allow read: if can('gym', 'view');
+      allow create, update: if can('gym', 'add') || can('gym', 'edit');
+      allow delete: if can('gym', 'delete');
+    }
+
+    match /spa_access_logs/{logId} {
+      allow read: if can('spa', 'view');
+      allow create, update: if can('spa', 'add') || can('spa', 'edit');
+      allow delete: if can('spa', 'delete');
+    }
+
+    // Legacy collection paths retained for backward compatibility.
+    match /memberships/{membershipId} {
       allow read: if can('gym', 'view') || can('spa', 'view');
-      allow create: if can('gym', 'add') || can('spa', 'add');
-      allow update: if can('gym', 'edit') || can('spa', 'edit');
+      allow create, update: if can('gym', 'edit') || can('spa', 'edit');
       allow delete: if can('gym', 'delete') || can('spa', 'delete');
     }
 
@@ -133,7 +169,12 @@ service cloud.firestore {
     }
 
     match /counters/{counterId} {
-      allow read, write: if isAdmin();
+      // Invoice generation is available to approved staff. The counter may
+      // only be initialized once and may only advance by one per transaction.
+      allow read: if approved();
+      allow create: if approved() && counterId == 'invoiceCounter' && request.resource.data.current == 100000;
+      allow update: if approved() && counterId == 'invoiceCounter' && request.resource.data.current == resource.data.current + 1;
+      allow delete: if isAdmin();
     }
 
     match /{document=**} {

@@ -123,21 +123,20 @@ export default function InvoiceGenerator() {
   /** @param {boolean} consume - If true, increment counter and return new number. If false, return current without incrementing (for preview). */
   const getInvoiceNumber = async (consume = false) => {
     const invoiceCounterRef = doc(db, 'counters', 'invoiceCounter');
+    const firstInvoiceNumber = 100000;
     let result = null;
     await runTransaction(db, async (transaction) => {
       const counterDoc = await transaction.get(invoiceCounterRef);
       if (!counterDoc.exists()) {
-        result = 100000;
-        transaction.set(invoiceCounterRef, { current: result });
-      } else {
-        const current = counterDoc.data().current;
-        if (consume) {
-          result = current + 1;
-          transaction.update(invoiceCounterRef, { current: result });
-        } else {
-          result = current;
-        }
+        result = firstInvoiceNumber;
+        if (consume) transaction.set(invoiceCounterRef, { current: result });
+        return;
       }
+
+      const current = Number(counterDoc.data().current);
+      const nextNumber = Number.isFinite(current) ? current + 1 : firstInvoiceNumber;
+      result = nextNumber;
+      if (consume) transaction.update(invoiceCounterRef, { current: nextNumber });
     });
     return result;
   };
@@ -145,8 +144,10 @@ export default function InvoiceGenerator() {
   const saveInvoiceDetails = async (invoiceData) => {
     try {
       await addDoc(collection(db, 'invoices'), invoiceData);
+      return { success: true };
     } catch (error) {
       console.error('Error saving invoice: ', error);
+      return { success: false, error: error.message || 'Unable to save the invoice.' };
     }
   };
 
@@ -224,20 +225,22 @@ export default function InvoiceGenerator() {
 
   useEffect(() => {
     const queryText = clientName.trim();
-    if (step !== 2 || queryText.length < 2 || selectedClientId) {
-      setClientSuggestions([]);
-      setIsSearchingClients(false);
-      return undefined;
-    }
+    if (step !== 2 || queryText.length < 2 || selectedClientId) return undefined;
 
+    let cancelled = false;
     const timer = setTimeout(async () => {
       setIsSearchingClients(true);
       const results = await searchClients(queryText);
-      setClientSuggestions(results.slice(0, 6));
-      setIsSearchingClients(false);
+      if (!cancelled) {
+        setClientSuggestions(results.slice(0, 6));
+        setIsSearchingClients(false);
+      }
     }, 250);
 
-    return () => clearTimeout(timer);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
   }, [clientName, selectedClientId, step]);
 
   useEffect(() => {
@@ -289,7 +292,11 @@ export default function InvoiceGenerator() {
         totalAmount,
         createdAt: serverTimestamp(),
       };
-      await saveInvoiceDetails(invoiceData);
+      const saveResult = await saveInvoiceDetails(invoiceData);
+      if (!saveResult.success) {
+        setValidationError(`Invoice could not be saved: ${saveResult.error}`);
+        return;
+      }
       const a = document.createElement('a');
       a.href = pdfData;
       a.download = `invoice_${currentInvoiceNumber}.pdf`;
@@ -407,7 +414,7 @@ export default function InvoiceGenerator() {
               className="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
               autoComplete="off"
             />
-            {(isSearchingClients || clientSuggestions.length > 0) && !selectedClientId && (
+            {(isSearchingClients || (clientName.trim().length >= 2 && clientSuggestions.length > 0)) && !selectedClientId && (
               <div className="absolute left-0 right-0 top-full z-30 mt-1 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-900">
                 {isSearchingClients && <div className="px-4 py-3 text-xs text-slate-500">Searching clients...</div>}
                 {!isSearchingClients && clientSuggestions.map((client) => (

@@ -30,7 +30,13 @@ export default function SpaMembershipTypeManager() {
   };
 
   useEffect(() => {
-    loadTypes();
+    let cancelled = false;
+    getMembershipTypes(true).then((data) => {
+      if (cancelled) return;
+      setTypes(data);
+      setLoading(false);
+    });
+    return () => { cancelled = true; };
   }, []);
 
   const handleEdit = (type) => {

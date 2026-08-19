@@ -205,6 +205,8 @@ export default function MembershipDetailsModal({ enrollment, onClose, onUpdate, 
     }
   };
 
+  const invoiceDocument = enrollment.documents?.invoice || enrollment.documents?.contract;
+
   return (
     <>
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
@@ -488,9 +490,9 @@ export default function MembershipDetailsModal({ enrollment, onClose, onUpdate, 
                 <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-3">Documents</h3>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    {enrollment.documents?.contract ? (
+                    {invoiceDocument ? (
                       <a 
-                        href={enrollment.documents.contract.url} 
+                        href={invoiceDocument.url}
                         target="_blank" 
                         rel="noopener noreferrer"
                         className="flex items-center justify-between p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800 hover:border-blue-500 transition-all group overflow-hidden"
@@ -501,7 +503,7 @@ export default function MembershipDetailsModal({ enrollment, onClose, onUpdate, 
                           </div>
                           <div className="text-xs min-w-0">
                             <div className="font-bold text-slate-900 dark:text-white">Invoice</div>
-                            <div className="text-slate-500 truncate">{enrollment.documents.contract.name}</div>
+                            <div className="text-slate-500 truncate">{invoiceDocument.name}</div>
                           </div>
                         </div>
                         <svg className="w-4 h-4 text-slate-400 group-hover:text-blue-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
@@ -513,7 +515,7 @@ export default function MembershipDetailsModal({ enrollment, onClose, onUpdate, 
                     )}
                     <div className="flex items-center gap-2">
                       <label className="text-[10px] font-medium text-slate-500 cursor-pointer hover:text-blue-600 transition-colors">
-                        {uploading ? 'Uploading...' : enrollment.documents?.contract ? 'Replace Invoice' : 'Upload Invoice'}
+                        {uploading ? 'Uploading...' : invoiceDocument ? 'Replace Invoice' : 'Upload Invoice'}
                         <input type="file" className="hidden" accept="application/pdf,image/*" onChange={(e) => handleFileUpload(e, 'contract')} disabled={uploading} />
                       </label>
                     </div>
