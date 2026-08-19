@@ -4,10 +4,9 @@ import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { collection, getDocs, query, where, limit, doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { redeemEntitlement, getAccessLogs, logAccess, cancelEnrollment, deleteEnrollment, logTreatment, updateEnrollmentDocuments, updateEnrollment, getMembershipTypes, transferGymEnrollmentToSpa } from '@/lib/memberships';
+import { redeemEntitlement, getAccessLogs, logAccess, cancelEnrollment, deleteEnrollment, logTreatment, updateEnrollmentDocuments, updateEnrollment, transferGymEnrollmentToSpa } from '@/lib/memberships';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNotifications } from '@/contexts/NotificationContext';
-import { getAllBranches } from '@/lib/branches';
 import ViewInvoiceModal from '@/components/ViewInvoiceModal';
 import LinkInvoiceModal from '@/components/LinkInvoiceModal';
 
@@ -28,11 +27,7 @@ export default function MembershipDetailsModal({ enrollment, onClose, onUpdate, 
   const [viewInvoiceLoading, setViewInvoiceLoading] = useState(false);
 
   // Gym-to-spa transfer
-  const [transferOpen, setTransferOpen] = useState(false);
   const [transferLoading, setTransferLoading] = useState(false);
-  const [spaMembershipTypes, setSpaMembershipTypes] = useState([]);
-  const [spaBranches, setSpaBranches] = useState([]);
-  const [transferForm, setTransferForm] = useState({ membershipTypeId: '', branch: '', balance: '' });
 
   // Fallback: when enrollment has no currency, fetch from membership type
   const [fetchedCurrency, setFetchedCurrency] = useState(null);
@@ -126,34 +121,10 @@ export default function MembershipDetailsModal({ enrollment, onClose, onUpdate, 
     setLoading(false);
   };
 
-  const handleOpenTransfer = async () => {
-    setTransferOpen(true);
-    setTransferLoading(true);
-    const [types, branches] = await Promise.all([getMembershipTypes(true), getAllBranches()]);
-    setSpaMembershipTypes(types);
-    setSpaBranches(branches);
-    setTransferLoading(false);
-  };
-
-  const handleTransferTypeChange = (membershipTypeId) => {
-    const selectedType = spaMembershipTypes.find((type) => type.id === membershipTypeId);
-    setTransferForm({
-      ...transferForm,
-      membershipTypeId,
-      balance: selectedType?.isReducingBalance
-        ? String(enrollment.isReducingBalance ? enrollment.balance || 0 : selectedType.price || '')
-        : '',
-    });
-  };
-
-  const handleTransfer = async (e) => {
-    e.preventDefault();
-    const selectedType = spaMembershipTypes.find((type) => type.id === transferForm.membershipTypeId);
-    if (!selectedType || !transferForm.branch) return;
-
+  const handleTransfer = async () => {
     const ok = await showConfirm({
-      message: `Move ${enrollment.clientName}'s gym membership to ${selectedType.type} at ${transferForm.branch}? The gym record will be retained as transferred and the spa membership will keep the current expiry date.`,
-      confirmLabel: 'Transfer Membership',
+      message: `Move ${enrollment.clientName}'s existing gym membership to spa without changing its type, amount, dates, documents, or other details? The gym record will be retained as transferred.`,
+      confirmLabel: 'Transfer Existing Membership',
     });
     if (!ok) return;
 
@@ -161,14 +132,10 @@ export default function MembershipDetailsModal({ enrollment, onClose, onUpdate, 
     const actor = user || profile;
     const result = await transferGymEnrollmentToSpa(
       enrollment.id,
-      transferForm.membershipTypeId,
-      transferForm.branch,
-      selectedType.isReducingBalance ? transferForm.balance : null,
       actor ? { uid: actor.uid, displayName: actor.displayName || actor.name, email: actor.email } : null,
     );
     if (result.success) {
-      toast('Membership transferred to spa successfully.', 'success');
-      setTransferOpen(false);
+      toast('Existing membership transferred to spa successfully.', 'success');
       onUpdate();
       onClose();
     } else {
@@ -432,78 +399,19 @@ export default function MembershipDetailsModal({ enrollment, onClose, onUpdate, 
               </div>
 
               {!isSpa && enrollment.status === 'active' && canEdit && profile?.permissions?.spa?.add !== false && (
-                <div className="space-y-3 rounded-2xl border border-indigo-200 bg-indigo-50/70 p-4 dark:border-indigo-900/70 dark:bg-indigo-950/20">
-                  {!transferOpen ? (
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                      <div>
-                        <h3 className="text-sm font-bold text-indigo-900 dark:text-indigo-200">Move to Spa</h3>
-                        <p className="text-xs text-indigo-700 dark:text-indigo-300">Transfer this active gym membership while retaining its gym history.</p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={handleOpenTransfer}
-                        disabled={transferLoading}
-                        className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-indigo-700 disabled:opacity-50"
-                      >
-                        {transferLoading ? 'Loading...' : 'Move to Spa'}
-                      </button>
-                    </div>
-                  ) : (
-                    <form onSubmit={handleTransfer} className="space-y-3">
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <h3 className="text-sm font-bold text-indigo-900 dark:text-indigo-200">Transfer to Spa</h3>
-                          <p className="text-xs text-indigo-700 dark:text-indigo-300">The spa membership will retain the current gym expiry date.</p>
-                        </div>
-                        <button type="button" onClick={() => setTransferOpen(false)} className="text-xs font-semibold text-slate-500 hover:text-slate-800 dark:hover:text-white">Close</button>
-                      </div>
-                      {transferLoading ? (
-                        <p className="rounded-xl bg-white/70 px-3 py-3 text-sm text-slate-500 dark:bg-slate-900/40 dark:text-slate-300">Loading spa membership types and branches...</p>
-                      ) : (
-                        <>
-                          <select
-                            required
-                            value={transferForm.membershipTypeId}
-                            onChange={(e) => handleTransferTypeChange(e.target.value)}
-                            className="w-full rounded-xl border border-indigo-200 bg-white px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500 dark:border-indigo-900 dark:bg-slate-900"
-                          >
-                            <option value="">Select spa membership type</option>
-                            {spaMembershipTypes.map((type) => (
-                              <option key={type.id} value={type.id}>
-                                {type.type} · {(type.currency || 'USD') === 'UGX' ? 'UGX ' : '$'}{Number(type.price || 0).toLocaleString()}
-                              </option>
-                            ))}
-                          </select>
-                          <select
-                            required
-                            value={transferForm.branch}
-                            onChange={(e) => setTransferForm({ ...transferForm, branch: e.target.value })}
-                            className="w-full rounded-xl border border-indigo-200 bg-white px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500 dark:border-indigo-900 dark:bg-slate-900"
-                          >
-                            <option value="">Select spa branch</option>
-                            {spaBranches.map((branch) => <option key={branch.id} value={branch.name}>{branch.name}</option>)}
-                          </select>
-                          {spaMembershipTypes.find((type) => type.id === transferForm.membershipTypeId)?.isReducingBalance && (
-                            <input
-                              required
-                              type="number"
-                              min="0"
-                              value={transferForm.balance}
-                              onChange={(e) => setTransferForm({ ...transferForm, balance: e.target.value })}
-                              placeholder="Spa balance amount"
-                              className="w-full rounded-xl border border-indigo-200 bg-white px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500 dark:border-indigo-900 dark:bg-slate-900"
-                            />
-                          )}
-                          {spaMembershipTypes.length === 0 && <p className="text-xs text-amber-700 dark:text-amber-300">No spa membership types are available.</p>}
-                          {spaBranches.length === 0 && <p className="text-xs text-amber-700 dark:text-amber-300">No spa branches are available.</p>}
-                          <div className="flex gap-2">
-                            <button type="button" onClick={() => setTransferOpen(false)} className="flex-1 rounded-xl bg-white px-3 py-2 text-sm font-bold text-slate-600 hover:bg-slate-100 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800">Cancel</button>
-                            <button type="submit" disabled={transferLoading || !spaMembershipTypes.length || !spaBranches.length} className="flex-1 rounded-xl bg-indigo-600 px-3 py-2 text-sm font-bold text-white hover:bg-indigo-700 disabled:opacity-50">Transfer</button>
-                          </div>
-                        </>
-                      )}
-                    </form>
-                  )}
+                <div className="flex flex-col gap-3 rounded-2xl border border-indigo-200 bg-indigo-50/70 p-4 dark:border-indigo-900/70 dark:bg-indigo-950/20 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <h3 className="text-sm font-bold text-indigo-900 dark:text-indigo-200">Move to Spa</h3>
+                    <p className="text-xs text-indigo-700 dark:text-indigo-300">Move this membership exactly as it is. Type, amount, dates, documents, and other details will be preserved.</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleTransfer}
+                    disabled={transferLoading}
+                    className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-indigo-700 disabled:opacity-50"
+                  >
+                    {transferLoading ? 'Transferring...' : 'Move Existing Membership'}
+                  </button>
                 </div>
               )}
 
