@@ -63,12 +63,17 @@ export default function MembershipList() {
   const StatusBadge = ({ enrollment }) => {
     const isExpired = new Date() > enrollment.expiryDate;
     const isCancelled = enrollment.status === 'cancelled';
+    const isTransferred = enrollment.status === 'transferred';
     
     let bgColor = 'bg-green-50 dark:bg-green-900/20';
     let textColor = 'text-green-600 dark:text-green-400';
     let label = 'Active';
 
-    if (isCancelled) {
+    if (isTransferred) {
+      bgColor = 'bg-indigo-50 dark:bg-indigo-900/20';
+      textColor = 'text-indigo-600 dark:text-indigo-400';
+      label = 'Transferred to Spa';
+    } else if (isCancelled) {
       bgColor = 'bg-amber-50 dark:bg-amber-900/20';
       textColor = 'text-amber-600 dark:text-amber-400';
       label = 'Cancelled';
