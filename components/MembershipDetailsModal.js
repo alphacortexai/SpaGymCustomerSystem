@@ -130,18 +130,27 @@ export default function MembershipDetailsModal({ enrollment, onClose, onUpdate, 
 
     setTransferLoading(true);
     const actor = user || profile;
-    const result = await transferGymEnrollmentToSpa(
-      enrollment.id,
-      actor ? { uid: actor.uid, displayName: actor.displayName || actor.name, email: actor.email } : null,
-    );
-    if (result.success) {
-      toast('Existing membership transferred to spa successfully.', 'success');
-      onUpdate();
-      onClose();
-    } else {
-      toast('Transfer error: ' + result.error, 'error');
+    const transferUser = actor?.uid ? {
+      uid: actor.uid,
+      displayName: actor.displayName || actor.name || actor.email || 'System',
+      email: actor.email || '',
+    } : null;
+
+    try {
+      const result = await transferGymEnrollmentToSpa(enrollment?.id, transferUser);
+      if (result?.success) {
+        toast('Existing membership transferred to spa successfully.', 'success');
+        await onUpdate?.();
+        onClose?.();
+      } else {
+        toast('Transfer error: ' + (result?.error || 'The membership could not be transferred.'), 'error');
+      }
+    } catch (error) {
+      console.error('Transfer UI error:', error);
+      toast('Transfer error: ' + (error?.message || 'The membership could not be transferred.'), 'error');
+    } finally {
+      setTransferLoading(false);
     }
-    setTransferLoading(false);
   };
 
   const handleAdminUpdate = async (e) => {
