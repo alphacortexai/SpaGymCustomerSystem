@@ -108,7 +108,13 @@ export default function MembershipDetailsModal({ enrollment, onClose, onUpdate, 
   };
 
   const handleDelete = async () => {
-    const ok = await showConfirm({ message: 'Are you sure you want to PERMANENTLY DELETE this membership record? This cannot be undone.', confirmLabel: 'Delete' });
+    const hasLinkedTransfer = Boolean(enrollment.transferredToEnrollmentId || enrollment.transferredFromEnrollmentId);
+    const ok = await showConfirm({
+      message: hasLinkedTransfer
+        ? 'This membership was transferred between Gym and Spa. Permanently deleting it will remove both linked membership records. This cannot be undone.'
+        : 'Are you sure you want to PERMANENTLY DELETE this membership record? This cannot be undone.',
+      confirmLabel: hasLinkedTransfer ? 'Delete Both Records' : 'Delete',
+    });
     if (!ok) return;
     setLoading(true);
     const result = await deleteEnrollment(enrollment.id, profile ? { uid: profile.uid, displayName: profile.name, email: profile.email } : null, isSpa);
