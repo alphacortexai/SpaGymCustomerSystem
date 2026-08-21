@@ -39,6 +39,13 @@ function getMethod(client) {
   );
 }
 
+function isOfferRedeemed(client, year) {
+  if (client?.birthdayOfferRedeemed === true || client?.birthdayOfferRedeemed === 'true') return true;
+  const redeemedAt = asDate(client?.birthdayOfferRedeemedAt);
+  if (redeemedAt) return redeemedAt.getFullYear() === year;
+  return Number(client?.birthdayOfferRedeemedYear) === year;
+}
+
 function birthdayInYear(client, year) {
   const month = Number(client.birthMonth);
   const day = Number(client.birthDay);
@@ -105,7 +112,7 @@ export default function BirthdayCommunicationsAnalytics({ clients = [], branches
         if (branch && client.branch !== branch) return null;
         const method = getMethod(client);
         const contactedAt = asDate(client.birthdayCalledAt);
-        const redeemed = Number(client.birthdayOfferRedeemedYear) === today.getFullYear();
+        const redeemed = isOfferRedeemed(client, today.getFullYear());
         return {
           ...client,
           birthdayDate,

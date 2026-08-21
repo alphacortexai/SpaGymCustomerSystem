@@ -45,15 +45,18 @@ export function DataProvider({ children }) {
   const refreshBirthdayData = useCallback(async () => {
     if (!user) return;
     try {
-      const [birthdays, birthdayCallers] = await Promise.all([
+      const [birthdays, birthdayCallers, clients] = await Promise.all([
         getTodaysBirthdays(null),
         getBirthdayCallers(),
+        getAllClients(null),
       ]);
       setData((prev) => ({
         ...prev,
         todaysBirthdays: birthdays,
         allBirthdays: birthdays,
         birthdayCallers,
+        allClients: clients,
+        globalClients: clients,
       }));
     } catch (error) {
       console.error('Error refreshing birthday data:', error);
