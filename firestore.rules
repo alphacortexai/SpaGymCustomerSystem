@@ -47,6 +47,7 @@ service cloud.firestore {
       allow update: if can('clients', 'edit') || (
         can('birthdays', 'view') &&
         request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'birthdayContactMethod',
           'birthdayCallStatus',
           'birthdayCalledById',
           'birthdayCalledByName',

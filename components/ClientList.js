@@ -49,19 +49,33 @@ export default function ClientList({ clients = [], totalCount, title = 'Clients'
     return (words[0][0] + words[1][0]).toUpperCase();
   };
 
-  const handleBirthdayCallChange = async (client, callerId) => {
+  const getContactMethod = (client) => client.birthdayContactMethod || (
+    client.birthdayCallStatus === 'called' || client.birthdayCalledById ? 'called' : 'not_contacted'
+  );
+
+  const getContactMethodLabel = (method) => ({
+    not_contacted: 'Not contacted',
+    called: 'Called',
+    messaged: 'Message sent',
+    both: 'Called + message sent',
+  }[method] || 'Not contacted');
+
+  const handleBirthdayContactChange = async (client, changes) => {
     if (!canVerifyBirthdayCall || updatingCallId === client.id) return;
+    const callerId = changes.calledById === undefined ? client.birthdayCalledById : changes.calledById;
     const caller = birthdayCallers.find((item) => item.id === callerId);
+    const contactMethod = changes.contactMethod || getContactMethod(client);
     setUpdatingCallId(client.id);
     try {
       const result = await updateBirthdayCall(client.id, {
+        contactMethod,
         calledById: caller?.id || null,
         calledByName: caller?.name || null,
         calledByRole: caller?.roleLabel || null,
         clientName: client.name,
       }, user);
       if (!result.success) {
-        console.error(result.error || 'Unable to update birthday call status');
+        console.error(result.error || 'Unable to update birthday contact status');
         return;
       }
       if (onClientUpdated) onClientUpdated();
@@ -191,7 +205,7 @@ export default function ClientList({ clients = [], totalCount, title = 'Clients'
                 <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Contact</th>
                 <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Birthday</th>
                 <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Branch</th>
-                {isBirthdayView && <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Call check</th>}
+                {isBirthdayView && <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Contact verification</th>}
                 <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">Actions</th>
               </tr>
             </thead>
@@ -202,10 +216,11 @@ export default function ClientList({ clients = [], totalCount, title = 'Clients'
                   const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
                   dobDisplay = `${monthNames[client.birthMonth - 1]} ${String(client.birthDay).padStart(2, '0')}`;
                 }
-                const isCalled = client.birthdayCallStatus === 'called' || Boolean(client.birthdayCalledById);
+                const contactMethod = getContactMethod(client);
+                const isContacted = contactMethod !== 'not_contacted';
                 const callDate = getBirthdayCallDate(client);
                 return (
-                  <tr key={client.id} className={`${isCalled ? 'bg-[#fff4f8] dark:bg-pink-950/20' : isBirthdayView ? 'bg-[#f8ffe9] dark:bg-lime-950/15' : ''} hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors`}>
+                  <tr key={client.id} className={`${isContacted ? 'bg-[#fff4f8] dark:bg-pink-950/20' : isBirthdayView ? 'bg-[#f8ffe9] dark:bg-lime-950/15' : ''} hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors`}>
                     <td className="px-6 py-4">
                       <div className="font-medium text-slate-900 dark:text-white flex items-center gap-2">
                         {client.name}
@@ -232,24 +247,36 @@ export default function ClientList({ clients = [], totalCount, title = 'Clients'
                     {isBirthdayView && (
                       <td className="px-6 py-4">
                         {canVerifyBirthdayCall ? (
-                          <div className="min-w-[210px]">
+                          <div className="min-w-[220px]">
+                            <select
+                              value={contactMethod}
+                              onChange={(event) => handleBirthdayContactChange(client, { contactMethod: event.target.value })}
+                              disabled={updatingCallId === client.id}
+                              className={`w-full rounded-xl border px-3 py-2 text-xs font-bold outline-none transition focus:ring-4 ${isContacted ? 'border-pink-200 bg-pink-50 text-pink-700 focus:ring-pink-500/10 dark:border-pink-900/50 dark:bg-pink-950/30 dark:text-pink-200' : 'border-lime-200 bg-lime-50 text-lime-800 focus:ring-lime-500/10 dark:border-lime-900/50 dark:bg-lime-950/20 dark:text-lime-200'}`}
+                              aria-label={`Contact method for ${client.name}`}
+                            >
+                              <option value="not_contacted">Not contacted</option>
+                              <option value="called">Called</option>
+                              <option value="messaged">Message sent</option>
+                              <option value="both">Called + message sent</option>
+                            </select>
                             <select
                               value={client.birthdayCalledById || ''}
-                              onChange={(event) => handleBirthdayCallChange(client, event.target.value)}
-                              disabled={updatingCallId === client.id || birthdayCallers.length === 0}
-                              className={`w-full rounded-xl border px-3 py-2 text-xs font-bold outline-none transition focus:ring-4 ${isCalled ? 'border-pink-200 bg-pink-50 text-pink-700 focus:ring-pink-500/10 dark:border-pink-900/50 dark:bg-pink-950/30 dark:text-pink-200' : 'border-lime-200 bg-lime-50 text-lime-800 focus:ring-lime-500/10 dark:border-lime-900/50 dark:bg-lime-950/20 dark:text-lime-200'}`}
-                              aria-label={`Called by for ${client.name}`}
+                              onChange={(event) => handleBirthdayContactChange(client, { calledById: event.target.value })}
+                              disabled={updatingCallId === client.id || birthdayCallers.length === 0 || !isContacted}
+                              className={`mt-2 w-full rounded-xl border px-3 py-2 text-xs font-bold outline-none transition focus:ring-4 ${isContacted ? 'border-pink-200 bg-pink-50 text-pink-700 focus:ring-pink-500/10 dark:border-pink-900/50 dark:bg-pink-950/30 dark:text-pink-200' : 'border-lime-200 bg-lime-50 text-lime-800 focus:ring-lime-500/10 dark:border-lime-900/50 dark:bg-lime-950/20 dark:text-lime-200'}`}
+                              aria-label={`Contacted by for ${client.name}`}
                             >
-                              <option value="">Not called yet</option>
+                              <option value="">Select contacted by</option>
                               {birthdayCallers.map((caller) => <option key={caller.id} value={caller.id}>{caller.name}{caller.roleLabel ? ` · ${caller.roleLabel}` : ''}</option>)}
                             </select>
-                            <div className={`mt-1 text-[10px] font-bold ${isCalled ? 'text-pink-600 dark:text-pink-300' : 'text-lime-700 dark:text-lime-300'}`}>
-                              {isCalled ? `${client.birthdayCalledByName || 'Called'}${callDate ? ` · ${callDate}` : ''}` : birthdayCallers.length ? 'Select the team member who called' : 'Admin must add caller names'}
+                            <div className={`mt-1 text-[10px] font-bold ${isContacted ? 'text-pink-600 dark:text-pink-300' : 'text-lime-700 dark:text-lime-300'}`}>
+                              {isContacted ? `${getContactMethodLabel(contactMethod)}${client.birthdayCalledByName ? ` by ${client.birthdayCalledByName}` : ''}${callDate ? ` · ${callDate}` : ''}` : birthdayCallers.length ? 'Choose a contact method' : 'Admin must add caller names'}
                             </div>
                           </div>
                         ) : (
-                          <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${isCalled ? 'bg-pink-100 text-pink-700 dark:bg-pink-950/40 dark:text-pink-200' : 'bg-lime-100 text-lime-800 dark:bg-lime-950/30 dark:text-lime-200'}`}>
-                            {isCalled ? `Called by ${client.birthdayCalledByName || 'staff'}` : 'Not called yet'}
+                          <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${isContacted ? 'bg-pink-100 text-pink-700 dark:bg-pink-950/40 dark:text-pink-200' : 'bg-lime-100 text-lime-800 dark:bg-lime-950/30 dark:text-lime-200'}`}>
+                            {isContacted ? `${getContactMethodLabel(contactMethod)}${client.birthdayCalledByName ? ` by ${client.birthdayCalledByName}` : ''}` : 'Not contacted'}
                           </span>
                         )}
                       </td>
@@ -294,10 +321,11 @@ export default function ClientList({ clients = [], totalCount, title = 'Clients'
                 const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
                 dobDisplay = `${monthNames[client.birthMonth - 1]} ${String(client.birthDay).padStart(2, '0')}`;
               }
-                const isCalled = client.birthdayCallStatus === 'called' || Boolean(client.birthdayCalledById);
+                const contactMethod = getContactMethod(client);
+                const isContacted = contactMethod !== 'not_contacted';
                 const callDate = getBirthdayCallDate(client);
                 return (
-                  <div key={client.id} className={`p-5 rounded-2xl border transition-all hover:shadow-md ${isCalled ? 'border-pink-200 bg-[#fff4f8] dark:border-pink-900/50 dark:bg-pink-950/20' : isBirthdayView ? 'border-lime-200 bg-[#f8ffe9] dark:border-lime-900/50 dark:bg-lime-950/15' : 'border-slate-100 dark:border-slate-800 hover:border-blue-200 dark:hover:border-blue-900/50'}`}>
+                  <div key={client.id} className={`p-5 rounded-2xl border transition-all hover:shadow-md ${isContacted ? 'border-pink-200 bg-[#fff4f8] dark:border-pink-900/50 dark:bg-pink-950/20' : isBirthdayView ? 'border-lime-200 bg-[#f8ffe9] dark:border-lime-900/50 dark:bg-lime-950/15' : 'border-slate-100 dark:border-slate-800 hover:border-blue-200 dark:hover:border-blue-900/50'}`}>
                   <div className="flex justify-between items-start mb-4">
                     <div>
                       <h3 className="font-semibold text-slate-900 dark:text-white">{client.name}</h3>
@@ -322,21 +350,35 @@ export default function ClientList({ clients = [], totalCount, title = 'Clients'
                     </div>
                   </div>
                   {isBirthdayView && (
-                    <div className="mt-4 rounded-xl border border-lime-200 bg-lime-50/70 p-3 dark:border-lime-900/50 dark:bg-lime-950/20">
-                      <div className="mb-1 text-[10px] font-black uppercase tracking-wider text-slate-500">Call verification</div>
+                    <div className={`mt-4 rounded-xl border p-3 ${isContacted ? 'border-pink-200 bg-pink-50/70 dark:border-pink-900/50 dark:bg-pink-950/20' : 'border-lime-200 bg-lime-50/70 dark:border-lime-900/50 dark:bg-lime-950/20'}`}>
+                      <div className="mb-1 text-[10px] font-black uppercase tracking-wider text-slate-500">Contact verification</div>
                       {canVerifyBirthdayCall ? (
-                        <select
-                          value={client.birthdayCalledById || ''}
-                          onChange={(event) => handleBirthdayCallChange(client, event.target.value)}
-                          disabled={updatingCallId === client.id || birthdayCallers.length === 0}
-                          className={`w-full rounded-lg border px-2.5 py-2 text-xs font-bold outline-none ${isCalled ? 'border-pink-200 bg-pink-50 text-pink-700 dark:border-pink-900/50 dark:bg-pink-950/30 dark:text-pink-200' : 'border-lime-200 bg-white text-lime-800 dark:border-lime-900/50 dark:bg-slate-900 dark:text-lime-200'}`}
-                          aria-label={`Called by for ${client.name}`}
-                        >
-                          <option value="">Not called yet</option>
-                          {birthdayCallers.map((caller) => <option key={caller.id} value={caller.id}>{caller.name}</option>)}
-                        </select>
+                        <>
+                          <select
+                            value={contactMethod}
+                            onChange={(event) => handleBirthdayContactChange(client, { contactMethod: event.target.value })}
+                            disabled={updatingCallId === client.id}
+                            className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs font-bold text-slate-700 outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                            aria-label={`Contact method for ${client.name}`}
+                          >
+                            <option value="not_contacted">Not contacted</option>
+                            <option value="called">Called</option>
+                            <option value="messaged">Message sent</option>
+                            <option value="both">Called + message sent</option>
+                          </select>
+                          <select
+                            value={client.birthdayCalledById || ''}
+                            onChange={(event) => handleBirthdayContactChange(client, { calledById: event.target.value })}
+                            disabled={updatingCallId === client.id || birthdayCallers.length === 0 || !isContacted}
+                            className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs font-bold text-slate-700 outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                            aria-label={`Contacted by for ${client.name}`}
+                          >
+                            <option value="">Select contacted by</option>
+                            {birthdayCallers.map((caller) => <option key={caller.id} value={caller.id}>{caller.name}</option>)}
+                          </select>
+                        </>
                       ) : (
-                        <div className={`text-xs font-bold ${isCalled ? 'text-pink-700 dark:text-pink-200' : 'text-lime-800 dark:text-lime-200'}`}>{isCalled ? `Called by ${client.birthdayCalledByName || 'staff'}${callDate ? ` · ${callDate}` : ''}` : 'Not called yet'}</div>
+                        <div className={`text-xs font-bold ${isContacted ? 'text-pink-700 dark:text-pink-200' : 'text-lime-800 dark:text-lime-200'}`}>{isContacted ? `${getContactMethodLabel(contactMethod)}${client.birthdayCalledByName ? ` by ${client.birthdayCalledByName}` : ''}${callDate ? ` · ${callDate}` : ''}` : 'Not contacted'}</div>
                       )}
                     </div>
                   )}
@@ -410,10 +452,10 @@ export default function ClientList({ clients = [], totalCount, title = 'Clients'
                   </div>
                 </div>
                 {isBirthdayView && (
-                  <div className={`rounded-xl p-3 ${viewingClient.birthdayCalledById ? 'bg-pink-50 dark:bg-pink-950/20' : 'bg-lime-50 dark:bg-lime-950/20'}`}>
-                    <div className="mb-1 text-[10px] uppercase tracking-wider font-bold text-slate-400">Birthday call verification</div>
+                  <div className={`rounded-xl p-3 ${getContactMethod(viewingClient) !== 'not_contacted' ? 'bg-pink-50 dark:bg-pink-950/20' : 'bg-lime-50 dark:bg-lime-950/20'}`}>
+                    <div className="mb-1 text-[10px] uppercase tracking-wider font-bold text-slate-400">Birthday contact verification</div>
                     <div className="text-sm font-bold">
-                      {viewingClient.birthdayCalledById ? `Called by ${viewingClient.birthdayCalledByName || 'staff'}${getBirthdayCallDate(viewingClient) ? ` on ${getBirthdayCallDate(viewingClient)}` : ''}` : 'Not called yet'}
+                      {getContactMethod(viewingClient) !== 'not_contacted' ? `${getContactMethodLabel(getContactMethod(viewingClient))}${viewingClient.birthdayCalledByName ? ` by ${viewingClient.birthdayCalledByName}` : ''}${getBirthdayCallDate(viewingClient) ? ` on ${getBirthdayCallDate(viewingClient)}` : ''}` : 'Not contacted'}
                     </div>
                   </div>
                 )}
