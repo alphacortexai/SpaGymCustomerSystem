@@ -74,13 +74,14 @@ function EmptyState({ message }) {
   return <div className="rounded-xl border border-dashed border-slate-200 px-5 py-8 text-center text-sm font-medium text-slate-500 dark:border-slate-700 dark:text-slate-400">{message}</div>;
 }
 
-export default function BirthdayCommunicationsAnalytics({ clients = [], branches = [], onBack }) {
+export default function BirthdayCommunicationsAnalytics({ clients = [], branches = [], birthdayCallers = [], onBack }) {
   const [today] = useState(() => new Date());
   const [period, setPeriod] = useState('today');
   const [customStart, setCustomStart] = useState(format(today, 'yyyy-MM-dd'));
   const [customEnd, setCustomEnd] = useState(format(today, 'yyyy-MM-dd'));
   const [branch, setBranch] = useState('');
   const [detailSearch, setDetailSearch] = useState('');
+  const callerNameById = useMemo(() => new Map(birthdayCallers.map((caller) => [caller.id, caller.name])), [birthdayCallers]);
 
   const periodBounds = useMemo(() => {
     const currentDay = startOfDay(today);
@@ -111,13 +112,14 @@ export default function BirthdayCommunicationsAnalytics({ clients = [], branches
           contactedAt,
           method,
           contacted: method !== 'not_contacted',
-          contactedBy: client.birthdayCalledByName || 'Not assigned',
+          contactedById: client.birthdayCalledById || null,
+          contactedBy: callerNameById.get(client.birthdayCalledById) || client.birthdayCalledByName || 'Not assigned',
           redeemed,
         };
       })
       .filter(Boolean)
       .sort((a, b) => a.birthdayDate - b.birthdayDate || (a.name || '').localeCompare(b.name || ''));
-  }, [branch, clients, periodBounds, today]);
+  }, [branch, callerNameById, clients, periodBounds, today]);
 
   const analytics = useMemo(() => {
     const contactedRows = birthdayRows.filter((row) => row.contacted);
@@ -127,10 +129,12 @@ export default function BirthdayCommunicationsAnalytics({ clients = [], branches
       label: METHOD_LABELS[method],
       count: contactedRows.filter((row) => row.method === method).length,
     }));
-    const callerCounts = Object.entries(contactedRows.reduce((result, row) => {
-      result[row.contactedBy] = (result[row.contactedBy] || 0) + 1;
+    const callerCounts = Object.values(contactedRows.reduce((result, row) => {
+      const key = row.contactedById || row.contactedBy;
+      if (!result[key]) result[key] = { name: row.contactedBy, count: 0 };
+      result[key].count += 1;
       return result;
-    }, {})).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+    }, {})).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
 
     const dailyCounts = Object.entries(contactedRows.reduce((result, row) => {
       if (!row.contactedAt) return result;

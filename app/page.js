@@ -1096,6 +1096,7 @@ export default function Home() {
             <BirthdayCommunicationsAnalytics
               clients={globalClients.length ? globalClients : cachedGlobalClients}
               branches={branches.length ? branches : cachedBranches}
+              birthdayCallers={cachedBirthdayCallers}
               onBack={() => setActiveTab('home')}
             />
           )}
