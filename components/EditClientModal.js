@@ -6,7 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { getAllBranches } from '@/lib/branches';
 import { normalizePhoneNumber, extractAllPhoneNumbers } from '@/lib/phoneUtils';
 
-export default function EditClientModal({ client, isOpen, onClose, onClientUpdated }) {
+export default function EditClientModal({ client, isOpen, onClose, onClientUpdated, onClientPatched }) {
   const { user, profile } = useAuth();
   const isGeneralUser = profile?.role === 'General';
   const [formData, setFormData] = useState({
@@ -151,6 +151,15 @@ export default function EditClientModal({ client, isOpen, onClose, onClientUpdat
       }, user);
       
       if (result.success) {
+        if (onClientPatched) onClientPatched(client.id, {
+          name: formData.name,
+          phoneNumber: normalizedPhone,
+          birthMonth: month,
+          birthDay: day,
+          dateOfBirth,
+          nextOfKin: formData.nextOfKin,
+          birthdayOfferRedeemedYear: formData.birthdayOfferRedeemedYear ? new Date().getFullYear() : null,
+        });
         setSuccess('Client updated successfully!');
         setTimeout(() => {
           if (onClientUpdated) {

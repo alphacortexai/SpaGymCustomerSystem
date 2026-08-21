@@ -10,7 +10,7 @@ import LoadingState from './LoadingState';
 
 import { useAuth } from '@/contexts/AuthContext';
 
-export default function ClientList({ clients = [], totalCount, title = 'Clients', onClientUpdated, isLoading = false, birthdayCallers = [], isBirthdayView = false }) {
+export default function ClientList({ clients = [], totalCount, title = 'Clients', onClientUpdated, onClientPatched, isLoading = false, birthdayCallers = [], isBirthdayView = false }) {
   const { user, profile } = useAuth();
   const canEdit = profile?.permissions?.clients?.edit !== false;
   const canDelete = profile?.permissions?.clients?.delete !== false;
@@ -78,7 +78,8 @@ export default function ClientList({ clients = [], totalCount, title = 'Clients'
         console.error(result.error || 'Unable to update birthday contact status');
         return;
       }
-      if (onClientUpdated) onClientUpdated();
+      if (onClientPatched) onClientPatched(client.id, result);
+      if (onClientUpdated) void onClientUpdated();
     } finally {
       setUpdatingCallId(null);
     }
@@ -418,6 +419,7 @@ export default function ClientList({ clients = [], totalCount, title = 'Clients'
             setEditingClient(null);
           }}
           onClientUpdated={onClientUpdated}
+          onClientPatched={onClientPatched}
         />
       )}
 

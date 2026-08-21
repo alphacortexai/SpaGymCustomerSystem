@@ -351,6 +351,8 @@ export default function Home() {
     clientCountsByBranch: cachedClientCounts,
     birthdayCountsByBranch: cachedBirthdayCounts,
     birthdayCallers: cachedBirthdayCallers,
+    patchClient,
+    refreshBirthdayData,
     loading: isDataLoading,
     fullDataLoading: isFullDataLoading,
     activeGymEnrollmentCount,
@@ -1057,6 +1059,7 @@ export default function Home() {
                 totalCount={searchTerm ? searchResults.length : allClients.length}
                 title={searchTerm ? `Search Results for "${searchTerm}"` : "All Clients"}
                 onClientUpdated={refreshData}
+                onClientPatched={patchClient}
                 isLoading={isInitialLoading || isFullDatasetLoading}
               />
 
@@ -1175,7 +1178,8 @@ export default function Home() {
                 clients={getPaginatedClients(filteredBirthdays)}
                 totalCount={filteredBirthdays.length}
                 title={selectedMonth || selectedDay ? "Filtered Birthdays" : "Today's Birthdays"}
-                onClientUpdated={refreshData}
+                onClientUpdated={refreshBirthdayData}
+                onClientPatched={patchClient}
                 birthdayCallers={cachedBirthdayCallers}
                 isBirthdayView
                 isLoading={isInitialLoading || ((selectedMonth || selectedDay) && isFullDatasetLoading)}

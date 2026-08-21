@@ -30,6 +30,36 @@ export function DataProvider({ children }) {
   const [loading, setLoading] = useState(false);
   const [fullDataLoading, setFullDataLoading] = useState(false);
 
+  const patchClient = useCallback((clientId, patch) => {
+    if (!clientId || !patch) return;
+    const mergeClient = (client) => client?.id === clientId ? { ...client, ...patch } : client;
+    setData((prev) => ({
+      ...prev,
+      allClients: prev.allClients.map(mergeClient),
+      globalClients: prev.globalClients.map(mergeClient),
+      todaysBirthdays: prev.todaysBirthdays.map(mergeClient),
+      allBirthdays: prev.allBirthdays.map(mergeClient),
+    }));
+  }, []);
+
+  const refreshBirthdayData = useCallback(async () => {
+    if (!user) return;
+    try {
+      const [birthdays, birthdayCallers] = await Promise.all([
+        getTodaysBirthdays(null),
+        getBirthdayCallers(),
+      ]);
+      setData((prev) => ({
+        ...prev,
+        todaysBirthdays: birthdays,
+        allBirthdays: birthdays,
+        birthdayCallers,
+      }));
+    } catch (error) {
+      console.error('Error refreshing birthday data:', error);
+    }
+  }, [user]);
+
   const loadData = useCallback(async (force = false) => {
     const now = Date.now();
     if (!force && data.lastFetched && (now - data.lastFetched < 5 * 60 * 1000)) {
@@ -108,7 +138,14 @@ export function DataProvider({ children }) {
   }, [user, data.lastFetched, loadData]);
 
   return (
-    <DataContext.Provider value={{ ...data, loading, fullDataLoading, refreshData: () => loadData(true) }}>
+    <DataContext.Provider value={{
+      ...data,
+      loading,
+      fullDataLoading,
+      patchClient,
+      refreshBirthdayData,
+      refreshData: () => loadData(true),
+    }}>
       {children}
     </DataContext.Provider>
   );
