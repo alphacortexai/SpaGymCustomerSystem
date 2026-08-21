@@ -44,6 +44,7 @@ const InvoiceList = dynamic(() => import('@/components/InvoiceList'), { loading:
 const InvoiceTracking = dynamic(() => import('@/components/InvoiceTracking'), { loading: LazySectionFallback });
 const NotesSection = dynamic(() => import('@/components/NotesSection'), { loading: LazySectionFallback });
 const BirthdayCallersManager = dynamic(() => import('@/components/BirthdayCallersManager'), { loading: LazySectionFallback });
+const BirthdayCommunicationsAnalytics = dynamic(() => import('@/components/BirthdayCommunicationsAnalytics'), { loading: LazySectionFallback });
 
 const NavCard = ({ onClick, icon, title, titleLines, description, badge, isImage, fullBg, centerBadge, accent = 'blue', eyebrow }) => {
   const accentStyles = {
@@ -219,6 +220,7 @@ const QuickActionIcon = ({ name }) => {
     home: 'M3 10.5 12 3l9 7.5M5 9v11h14V9M9 20v-6h6v6',
     clients: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
     birthdays: 'M20 12v8H4v-8M2 7h20v5H2zM12 7v13M12 7H8.5a2.5 2.5 0 1 1 0-5C12 2 12 7 12 7ZM12 7h3.5a2.5 2.5 0 1 0 0-5C12 2 12 7 12 7Z',
+    analytics: 'M4 19V5M4 19h16M8 16v-4M12 16V8M16 16v-7M20 16v-10',
     gym: 'M6 4v16M18 4v16M3 8v8M21 8v8M6 12h12',
     spa: 'M12 21c4-3 7-6.5 7-11a7 7 0 0 0-14 0c0 4.5 3 8 7 11ZM9 10c1.5-1.5 4.5-1.5 6 0',
     notes: 'M4 4h16v16H4zM8 8h8M8 12h8M8 16h5',
@@ -249,6 +251,7 @@ const WorkspaceRail = ({ activeTab, setActiveTab, profile, showAdminSection, onO
       <button type="button" onClick={() => setActiveTab('home')} className={`dashboard-rail-link ${activeTab === 'home' ? 'is-active' : ''}`} aria-label="Home"><span className="dashboard-rail-icon"><QuickActionIcon name="home" /></span><span className="dashboard-rail-label">Home</span></button>
       {profile?.permissions?.clients?.view !== false && <button type="button" onClick={() => setActiveTab('dashboard')} className={`dashboard-rail-link ${activeTab === 'dashboard' ? 'is-active' : ''}`} aria-label="Clients"><span className="dashboard-rail-icon"><QuickActionIcon name="clients" /></span><span className="dashboard-rail-label">Clients</span></button>}
       {profile?.permissions?.birthdays?.view !== false && <button type="button" onClick={() => setActiveTab('birthdays')} className={`dashboard-rail-link ${activeTab === 'birthdays' ? 'is-active' : ''}`} aria-label="Birthdays"><span className="dashboard-rail-icon"><QuickActionIcon name="birthdays" /></span><span className="dashboard-rail-label">Birthdays</span></button>}
+      {profile?.permissions?.birthdays?.view !== false && <button type="button" onClick={() => setActiveTab('birthday-analytics')} className={`dashboard-rail-link ${activeTab === 'birthday-analytics' ? 'is-active' : ''}`} aria-label="Birthday communications analytics"><span className="dashboard-rail-icon"><QuickActionIcon name="analytics" /></span><span className="dashboard-rail-label">Birthday analytics</span></button>}
       {profile?.permissions?.gym?.view !== false && <button type="button" onClick={() => setActiveTab('gym')} className={`dashboard-rail-link ${activeTab === 'gym' ? 'is-active' : ''}`} aria-label="Gym"><span className="dashboard-rail-icon"><QuickActionIcon name="gym" /></span><span className="dashboard-rail-label">GYM</span></button>}
       {profile?.permissions?.spa?.view !== false && <button type="button" onClick={() => setActiveTab('spa')} className={`dashboard-rail-link ${activeTab === 'spa' ? 'is-active' : ''}`} aria-label="Spa"><span className="dashboard-rail-icon"><QuickActionIcon name="spa" /></span><span className="dashboard-rail-label">SPA</span></button>}
       <button type="button" onClick={() => setActiveTab('notes')} className={`dashboard-rail-link ${activeTab === 'notes' ? 'is-active' : ''}`} aria-label="Notes"><span className="dashboard-rail-icon"><QuickActionIcon name="notes" /></span><span className="dashboard-rail-label">Notes</span>{activeNotesCount > 0 && <span className="ml-auto inline-flex min-w-5 items-center justify-center rounded-full bg-blue-600 px-1.5 py-0.5 text-[10px] font-black text-white">{activeNotesCount}</span>}</button>
@@ -1079,6 +1082,14 @@ export default function Home() {
                 </div>
               )}
             </div>
+          )}
+
+          {activeTab === 'birthday-analytics' && (
+            <BirthdayCommunicationsAnalytics
+              clients={globalClients.length ? globalClients : cachedGlobalClients}
+              branches={branches.length ? branches : cachedBranches}
+              onBack={() => setActiveTab('home')}
+            />
           )}
 
           {activeTab === 'birthdays' && (
