@@ -40,10 +40,14 @@ function getMethod(client) {
 }
 
 function isOfferRedeemed(client, year) {
-  if (client?.birthdayOfferRedeemed === true || client?.birthdayOfferRedeemed === 'true') return true;
-  const redeemedAt = asDate(client?.birthdayOfferRedeemedAt);
-  if (redeemedAt) return redeemedAt.getFullYear() === year;
-  return Number(client?.birthdayOfferRedeemedYear) === year;
+  const rawValue = client?.birthdayOfferRedeemedYear ?? client?.birthdayOfferRedeemed;
+  if (rawValue === true || ['true', 'yes', 'redeemed'].includes(String(rawValue).trim().toLowerCase())) return true;
+
+  const numericYear = Number(rawValue);
+  if (Number.isFinite(numericYear) && numericYear >= 1900 && numericYear <= 2200) return numericYear === year;
+
+  const dateValue = asDate(client?.birthdayOfferRedeemedAt || client?.birthdayOfferRedeemedDate);
+  return dateValue ? dateValue.getFullYear() === year : false;
 }
 
 function birthdayInYear(client, year) {
@@ -108,10 +112,13 @@ export default function BirthdayCommunicationsAnalytics({ clients = [], branches
     return clients
       .map((client) => {
         const birthdayDate = birthdayInYear(client, today.getFullYear());
-        if (!birthdayDate || !isWithinInterval(birthdayDate, { start, end })) return null;
+        if (!birthdayDate) return null;
         if (branch && client.branch !== branch) return null;
         const method = getMethod(client);
         const contactedAt = asDate(client.birthdayCalledAt);
+        const birthdayInWindow = isWithinInterval(birthdayDate, { start, end });
+        const contactInWindow = contactedAt ? isWithinInterval(contactedAt, { start, end }) : false;
+        if (!birthdayInWindow && !contactInWindow) return null;
         const redeemed = isOfferRedeemed(client, today.getFullYear());
         return {
           ...client,
@@ -211,7 +218,7 @@ export default function BirthdayCommunicationsAnalytics({ clients = [], branches
 
       <div className="flex flex-col gap-1 rounded-2xl border border-slate-200/80 bg-white/75 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/60 sm:flex-row sm:items-center sm:justify-between">
         <div className="text-sm font-bold text-slate-700 dark:text-slate-200">{formatPeriod(periodBounds.start, periodBounds.end)}</div>
-        <div className="text-xs font-semibold text-slate-500">{branch || 'All branches'} · Birthday date window</div>
+        <div className="text-xs font-semibold text-slate-500">{branch || 'All branches'} · Birthday and communication activity window</div>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
