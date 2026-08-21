@@ -15,6 +15,7 @@ const METHOD_LABELS = {
   called: 'Called',
   messaged: 'Message sent',
   both: 'Called + message sent',
+  unavailable: 'Unavailable / Not on WhatsApp',
   not_contacted: 'Not contacted',
 };
 
@@ -22,6 +23,7 @@ const METHOD_STYLES = {
   called: 'bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-200',
   messaged: 'bg-violet-50 text-violet-700 dark:bg-violet-950/30 dark:text-violet-200',
   both: 'bg-pink-50 text-pink-700 dark:bg-pink-950/30 dark:text-pink-200',
+  unavailable: 'bg-amber-50 text-amber-800 dark:bg-amber-950/20 dark:text-amber-200',
   not_contacted: 'bg-lime-50 text-lime-800 dark:bg-lime-950/20 dark:text-lime-200',
 };
 
@@ -120,7 +122,7 @@ export default function BirthdayCommunicationsAnalytics({ clients = [], branches
   const analytics = useMemo(() => {
     const contactedRows = birthdayRows.filter((row) => row.contacted);
     const redeemedRows = birthdayRows.filter((row) => row.redeemed);
-    const methodCounts = ['called', 'messaged', 'both'].map((method) => ({
+    const methodCounts = ['called', 'messaged', 'both', 'unavailable'].map((method) => ({
       method,
       label: METHOD_LABELS[method],
       count: contactedRows.filter((row) => row.method === method).length,
@@ -220,7 +222,7 @@ export default function BirthdayCommunicationsAnalytics({ clients = [], branches
         <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
           <div className="flex items-start justify-between gap-3"><div><h3 className="font-black text-slate-900 dark:text-white">Contact mix</h3><p className="mt-1 text-xs font-medium text-slate-500">How outreach was completed</p></div><span className="text-xs font-black text-pink-600 dark:text-pink-300">{analytics.contacted} total</span></div>
           <div className="mt-6 space-y-4">
-            {analytics.methodCounts.map((item) => <div key={item.method}><div className="mb-1.5 flex items-center justify-between text-xs font-bold text-slate-600 dark:text-slate-300"><span>{item.label}</span><span>{item.count}</span></div><div className="h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800"><div className={`h-full rounded-full ${item.method === 'called' ? 'bg-blue-500' : item.method === 'messaged' ? 'bg-violet-500' : 'bg-pink-500'}`} style={{ width: `${(item.count / maxMethod) * 100}%` }} /></div></div>)}
+            {analytics.methodCounts.map((item) => <div key={item.method}><div className="mb-1.5 flex items-center justify-between text-xs font-bold text-slate-600 dark:text-slate-300"><span>{item.label}</span><span>{item.count}</span></div><div className="h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800"><div className={`h-full rounded-full ${item.method === 'called' ? 'bg-blue-500' : item.method === 'messaged' ? 'bg-violet-500' : item.method === 'both' ? 'bg-pink-500' : 'bg-amber-500'}`} style={{ width: `${(item.count / maxMethod) * 100}%` }} /></div></div>)}
           </div>
         </section>
 

@@ -58,6 +58,7 @@ export default function ClientList({ clients = [], totalCount, title = 'Clients'
     called: 'Called',
     messaged: 'Message sent',
     both: 'Called + message sent',
+    unavailable: 'Unavailable / Not on WhatsApp',
   }[method] || 'Not contacted');
 
   const handleBirthdayContactChange = async (client, changes) => {
@@ -210,9 +211,10 @@ export default function ClientList({ clients = [], totalCount, title = 'Clients'
                 }
                 const contactMethod = getContactMethod(client);
                 const isContacted = contactMethod !== 'not_contacted';
+                const isUnavailable = contactMethod === 'unavailable';
                 const callDate = getBirthdayCallDate(client);
                 return (
-                  <tr key={client.id} className={`${isContacted ? 'bg-[#fff4f8] dark:bg-pink-950/20' : isBirthdayView ? 'bg-[#f8ffe9] dark:bg-lime-950/15' : ''} hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors`}>
+                  <tr key={client.id} className={`${isUnavailable ? 'bg-[#fff9ed] dark:bg-amber-950/15' : isContacted ? 'bg-[#fff4f8] dark:bg-pink-950/20' : isBirthdayView ? 'bg-[#f8ffe9] dark:bg-lime-950/15' : ''} hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors`}>
                     <td className="px-6 py-4">
                       <div className="font-medium text-slate-900 dark:text-white flex items-center gap-2">
                         {client.name}
@@ -251,6 +253,7 @@ export default function ClientList({ clients = [], totalCount, title = 'Clients'
                               <option value="called">Called</option>
                               <option value="messaged">Message sent</option>
                               <option value="both">Called + message sent</option>
+                              <option value="unavailable">Unavailable / Not on WhatsApp</option>
                             </select>
                             <select
                               value={client.birthdayCalledById || ''}
@@ -262,12 +265,12 @@ export default function ClientList({ clients = [], totalCount, title = 'Clients'
                               <option value="">Select contacted by</option>
                               {birthdayCallers.map((caller) => <option key={caller.id} value={caller.id}>{caller.name}{caller.roleLabel ? ` · ${caller.roleLabel}` : ''}</option>)}
                             </select>
-                            <div className={`mt-1 text-[10px] font-bold ${isContacted ? 'text-pink-600 dark:text-pink-300' : 'text-lime-700 dark:text-lime-300'}`}>
+                            <div className={`mt-1 text-[10px] font-bold ${isUnavailable ? 'text-amber-700 dark:text-amber-300' : isContacted ? 'text-pink-600 dark:text-pink-300' : 'text-lime-700 dark:text-lime-300'}`}>
                               {isContacted ? `${getContactMethodLabel(contactMethod)}${client.birthdayCalledByName ? ` by ${client.birthdayCalledByName}` : ''}${callDate ? ` · ${callDate}` : ''}` : birthdayCallers.length ? 'Choose a contact method' : 'Admin must add caller names'}
                             </div>
                           </div>
                         ) : (
-                          <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${isContacted ? 'bg-pink-100 text-pink-700 dark:bg-pink-950/40 dark:text-pink-200' : 'bg-lime-100 text-lime-800 dark:bg-lime-950/30 dark:text-lime-200'}`}>
+                          <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${isUnavailable ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/30 dark:text-amber-200' : isContacted ? 'bg-pink-100 text-pink-700 dark:bg-pink-950/40 dark:text-pink-200' : 'bg-lime-100 text-lime-800 dark:bg-lime-950/30 dark:text-lime-200'}`}>
                             {isContacted ? `${getContactMethodLabel(contactMethod)}${client.birthdayCalledByName ? ` by ${client.birthdayCalledByName}` : ''}` : 'Not contacted'}
                           </span>
                         )}
@@ -315,9 +318,10 @@ export default function ClientList({ clients = [], totalCount, title = 'Clients'
               }
                 const contactMethod = getContactMethod(client);
                 const isContacted = contactMethod !== 'not_contacted';
+                const isUnavailable = contactMethod === 'unavailable';
                 const callDate = getBirthdayCallDate(client);
                 return (
-                  <div key={client.id} className={`p-5 rounded-2xl border transition-all hover:shadow-md ${isContacted ? 'border-pink-200 bg-[#fff4f8] dark:border-pink-900/50 dark:bg-pink-950/20' : isBirthdayView ? 'border-lime-200 bg-[#f8ffe9] dark:border-lime-900/50 dark:bg-lime-950/15' : 'border-slate-100 dark:border-slate-800 hover:border-blue-200 dark:hover:border-blue-900/50'}`}>
+                  <div key={client.id} className={`p-5 rounded-2xl border transition-all hover:shadow-md ${isUnavailable ? 'border-amber-200 bg-[#fff9ed] dark:border-amber-900/50 dark:bg-amber-950/15' : isContacted ? 'border-pink-200 bg-[#fff4f8] dark:border-pink-900/50 dark:bg-pink-950/20' : isBirthdayView ? 'border-lime-200 bg-[#f8ffe9] dark:border-lime-900/50 dark:bg-lime-950/15' : 'border-slate-100 dark:border-slate-800 hover:border-blue-200 dark:hover:border-blue-900/50'}`}>
                   <div className="flex justify-between items-start mb-4">
                     <div>
                       <h3 className="font-semibold text-slate-900 dark:text-white">{client.name}</h3>
@@ -342,7 +346,7 @@ export default function ClientList({ clients = [], totalCount, title = 'Clients'
                     </div>
                   </div>
                   {isBirthdayView && (
-                    <div className={`mt-4 rounded-xl border p-3 ${isContacted ? 'border-pink-200 bg-pink-50/70 dark:border-pink-900/50 dark:bg-pink-950/20' : 'border-lime-200 bg-lime-50/70 dark:border-lime-900/50 dark:bg-lime-950/20'}`}>
+                    <div className={`mt-4 rounded-xl border p-3 ${isUnavailable ? 'border-amber-200 bg-amber-50/70 dark:border-amber-900/50 dark:bg-amber-950/20' : isContacted ? 'border-pink-200 bg-pink-50/70 dark:border-pink-900/50 dark:bg-pink-950/20' : 'border-lime-200 bg-lime-50/70 dark:border-lime-900/50 dark:bg-lime-950/20'}`}>
                       <div className="mb-1 text-[10px] font-black uppercase tracking-wider text-slate-500">Contact verification</div>
                       {canVerifyBirthdayCall ? (
                         <>
@@ -357,6 +361,7 @@ export default function ClientList({ clients = [], totalCount, title = 'Clients'
                             <option value="called">Called</option>
                             <option value="messaged">Message sent</option>
                             <option value="both">Called + message sent</option>
+                            <option value="unavailable">Unavailable / Not on WhatsApp</option>
                           </select>
                           <select
                             value={client.birthdayCalledById || ''}
@@ -370,7 +375,7 @@ export default function ClientList({ clients = [], totalCount, title = 'Clients'
                           </select>
                         </>
                       ) : (
-                        <div className={`text-xs font-bold ${isContacted ? 'text-pink-700 dark:text-pink-200' : 'text-lime-800 dark:text-lime-200'}`}>{isContacted ? `${getContactMethodLabel(contactMethod)}${client.birthdayCalledByName ? ` by ${client.birthdayCalledByName}` : ''}${callDate ? ` · ${callDate}` : ''}` : 'Not contacted'}</div>
+                        <div className={`text-xs font-bold ${isUnavailable ? 'text-amber-800 dark:text-amber-200' : isContacted ? 'text-pink-700 dark:text-pink-200' : 'text-lime-800 dark:text-lime-200'}`}>{isContacted ? `${getContactMethodLabel(contactMethod)}${client.birthdayCalledByName ? ` by ${client.birthdayCalledByName}` : ''}${callDate ? ` · ${callDate}` : ''}` : 'Not contacted'}</div>
                       )}
                     </div>
                   )}
@@ -445,7 +450,7 @@ export default function ClientList({ clients = [], totalCount, title = 'Clients'
                   </div>
                 </div>
                 {isBirthdayView && (
-                  <div className={`rounded-xl p-3 ${getContactMethod(viewingClient) !== 'not_contacted' ? 'bg-pink-50 dark:bg-pink-950/20' : 'bg-lime-50 dark:bg-lime-950/20'}`}>
+                  <div className={`rounded-xl p-3 ${getContactMethod(viewingClient) === 'unavailable' ? 'bg-amber-50 dark:bg-amber-950/20' : getContactMethod(viewingClient) !== 'not_contacted' ? 'bg-pink-50 dark:bg-pink-950/20' : 'bg-lime-50 dark:bg-lime-950/20'}`}>
                     <div className="mb-1 text-[10px] uppercase tracking-wider font-bold text-slate-400">Birthday contact verification</div>
                     <div className="text-sm font-bold">
                       {getContactMethod(viewingClient) !== 'not_contacted' ? `${getContactMethodLabel(getContactMethod(viewingClient))}${viewingClient.birthdayCalledByName ? ` by ${viewingClient.birthdayCalledByName}` : ''}${getBirthdayCallDate(viewingClient) ? ` on ${getBirthdayCallDate(viewingClient)}` : ''}` : 'Not contacted'}
