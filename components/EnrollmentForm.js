@@ -3,12 +3,14 @@
 import { useState, useEffect } from 'react';
 import { getMembershipTypes, enrollClient } from '@/lib/memberships';
 import { useAuth } from '@/contexts/AuthContext';
+import { useData } from '@/contexts/DataContext';
 import { useNotifications } from '@/contexts/NotificationContext';
-import { searchClients } from '@/lib/clients';
+import { getClientSearchHints, searchClients } from '@/lib/clients';
 import CompanySelect from './CompanySelect';
 
 export default function EnrollmentForm({ onEnrolled }) {
   const { user, profile } = useAuth();
+  const { globalClients = [] } = useData();
   const { toast } = useNotifications();
   const canAdd = profile?.permissions?.gym?.add !== false;
   const [loading, setLoading] = useState(false);
@@ -38,17 +40,28 @@ export default function EnrollmentForm({ onEnrolled }) {
   }, []);
 
   useEffect(() => {
-    const delayDebounceFn = setTimeout(async () => {
-      if (searchTerm.length > 2) {
-        const results = await searchClients(searchTerm);
-        setClients(results);
-      } else {
-        setClients([]);
-      }
-    }, 300);
+    const trimmedSearch = searchTerm.trim();
+    if (trimmedSearch.length < 2) {
+      const clearTimer = setTimeout(() => setClients([]), 0);
+      return () => clearTimeout(clearTimer);
+    }
 
-    return () => clearTimeout(delayDebounceFn);
-  }, [searchTerm]);
+    let cancelled = false;
+    const delayDebounceFn = setTimeout(async () => {
+      const localHints = getClientSearchHints(globalClients, trimmedSearch, null, 50);
+      if (globalClients.length) {
+        if (!cancelled) setClients(localHints);
+        return;
+      }
+      const results = await searchClients(trimmedSearch);
+      if (!cancelled) setClients(getClientSearchHints(results || [], trimmedSearch, null, 50));
+    }, 180);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(delayDebounceFn);
+    };
+  }, [globalClients, searchTerm]);
 
   const uploadDocument = async (file, type, clientId) => {
     if (!file) return null;
