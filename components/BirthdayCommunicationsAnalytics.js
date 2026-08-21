@@ -102,6 +102,7 @@ export default function BirthdayCommunicationsAnalytics({ clients = [], branches
         if (branch && client.branch !== branch) return null;
         const method = getMethod(client);
         const contactedAt = asDate(client.birthdayCalledAt);
+        const redeemed = Number(client.birthdayOfferRedeemedYear) === today.getFullYear();
         return {
           ...client,
           birthdayDate,
@@ -109,6 +110,7 @@ export default function BirthdayCommunicationsAnalytics({ clients = [], branches
           method,
           contacted: method !== 'not_contacted',
           contactedBy: client.birthdayCalledByName || 'Not assigned',
+          redeemed,
         };
       })
       .filter(Boolean)
@@ -117,6 +119,7 @@ export default function BirthdayCommunicationsAnalytics({ clients = [], branches
 
   const analytics = useMemo(() => {
     const contactedRows = birthdayRows.filter((row) => row.contacted);
+    const redeemedRows = birthdayRows.filter((row) => row.redeemed);
     const methodCounts = ['called', 'messaged', 'both'].map((method) => ({
       method,
       label: METHOD_LABELS[method],
@@ -139,6 +142,9 @@ export default function BirthdayCommunicationsAnalytics({ clients = [], branches
       contacted: contactedRows.length,
       pending: birthdayRows.length - contactedRows.length,
       rate: birthdayRows.length ? Math.round((contactedRows.length / birthdayRows.length) * 100) : 0,
+      redeemed: redeemedRows.length,
+      redemptionRate: birthdayRows.length ? Math.round((redeemedRows.length / birthdayRows.length) * 100) : 0,
+      contactedRedemptionRate: contactedRows.length ? Math.round((redeemedRows.filter((row) => row.contacted).length / contactedRows.length) * 100) : 0,
       methodCounts,
       callerCounts,
       dailyCounts,
@@ -195,12 +201,20 @@ export default function BirthdayCommunicationsAnalytics({ clients = [], branches
         <div className="text-xs font-semibold text-slate-500">{branch || 'All branches'} · Birthday date window</div>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
         <MetricCard label="Birthdays in period" value={analytics.total} detail="Total birthday records" accent="blue" />
         <MetricCard label="Contacted" value={analytics.contacted} detail={`${analytics.rate}% of birthdays`} accent="pink" />
         <MetricCard label="Still pending" value={analytics.pending} detail="Not contacted yet" accent="lime" />
         <MetricCard label="Outreach coverage" value={`${analytics.rate}%`} detail={`${analytics.contacted} of ${analytics.total} contacted`} accent="violet" />
+        <MetricCard label="50% offer redeemed" value={analytics.redeemed} detail={`${analytics.redemptionRate}% of birthdays · ${analytics.contactedRedemptionRate}% of contacted`} accent="violet" />
       </div>
+
+      <section className="rounded-2xl border border-violet-100 bg-gradient-to-r from-violet-50/70 via-white to-pink-50/60 p-5 shadow-sm dark:border-violet-900/40 dark:from-violet-950/20 dark:via-slate-900 dark:to-pink-950/20">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"><div><h3 className="font-black text-slate-900 dark:text-white">Birthday offer performance</h3><p className="mt-1 text-xs font-medium text-slate-500">50% birthday offer redemptions compared with the birthday population and completed outreach.</p></div><div className="rounded-xl bg-white/80 px-3 py-2 text-right shadow-sm dark:bg-slate-900/70"><div className="text-lg font-black text-violet-700 dark:text-violet-200">{analytics.redeemed}</div><div className="text-[10px] font-black uppercase tracking-wider text-slate-400">Redeemed</div></div></div>
+        <div className="mt-5 grid gap-4 md:grid-cols-3">
+          {[{ label: 'Birthday population', value: analytics.total, percent: 100, color: 'bg-blue-400' }, { label: 'Contacted', value: analytics.contacted, percent: analytics.total ? (analytics.contacted / analytics.total) * 100 : 0, color: 'bg-pink-400' }, { label: 'Redeemed 50% offer', value: analytics.redeemed, percent: analytics.total ? (analytics.redeemed / analytics.total) * 100 : 0, color: 'bg-violet-500' }].map((item) => <div key={item.label}><div className="mb-1.5 flex items-center justify-between text-xs font-bold text-slate-600 dark:text-slate-300"><span>{item.label}</span><span>{item.value} <span className="font-medium text-slate-400">({Math.round(item.percent)}%)</span></span></div><div className="h-2.5 overflow-hidden rounded-full bg-white/80 dark:bg-slate-800"><div className={`h-full rounded-full ${item.color}`} style={{ width: `${Math.min(item.percent, 100)}%` }} /></div></div>)}
+        </div>
+      </section>
 
       <div className="grid gap-5 xl:grid-cols-[1.1fr_1fr_1fr]">
         <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
@@ -227,7 +241,7 @@ export default function BirthdayCommunicationsAnalytics({ clients = [], branches
 
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <div className="flex flex-col gap-3 border-b border-slate-100 px-5 py-4 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between"><div><h3 className="font-black text-slate-900 dark:text-white">Birthday contact detail</h3><p className="mt-1 text-xs font-medium text-slate-500">{filteredRows.length} records in the selected view</p></div><input value={detailSearch} onChange={(event) => setDetailSearch(event.target.value)} placeholder="Search client, branch, caller..." className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 sm:w-72" /></div>
-        {filteredRows.length === 0 ? <div className="p-8"><EmptyState message="No birthday records match this period and filter." /></div> : <div className="overflow-x-auto"><table className="w-full min-w-[780px] text-left"><thead className="bg-slate-50/80 dark:bg-slate-800/50"><tr>{['Birthday', 'Client', 'Branch', 'Status', 'Mode', 'Contacted on', 'By'].map((heading) => <th key={heading} className="px-5 py-3 text-[10px] font-black uppercase tracking-wider text-slate-500">{heading}</th>)}</tr></thead><tbody className="divide-y divide-slate-100 dark:divide-slate-800">{filteredRows.map((row) => <tr key={row.id} className="transition hover:bg-slate-50/70 dark:hover:bg-slate-800/40"><td className="px-5 py-3.5 text-sm font-bold text-slate-700 dark:text-slate-200">{format(row.birthdayDate, 'MMM d')}</td><td className="px-5 py-3.5"><div className="text-sm font-bold text-slate-900 dark:text-white">{row.name || 'Unnamed client'}</div><div className="text-xs text-slate-500">{row.phoneNumber || 'No phone'}</div></td><td className="px-5 py-3.5 text-sm text-slate-600 dark:text-slate-300">{row.branch || '—'}</td><td className="px-5 py-3.5"><span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-black ${row.contacted ? 'bg-pink-50 text-pink-700 dark:bg-pink-950/30 dark:text-pink-200' : 'bg-lime-50 text-lime-800 dark:bg-lime-950/20 dark:text-lime-200'}`}>{row.contacted ? 'Contacted' : 'Pending'}</span></td><td className="px-5 py-3.5"><span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-bold ${METHOD_STYLES[row.method] || METHOD_STYLES.not_contacted}`}>{METHOD_LABELS[row.method] || METHOD_LABELS.not_contacted}</span></td><td className="px-5 py-3.5 text-sm text-slate-600 dark:text-slate-300">{row.contactedAt ? format(row.contactedAt, 'MMM d, yyyy h:mm a') : '—'}</td><td className="px-5 py-3.5 text-sm font-bold text-slate-700 dark:text-slate-200">{row.contactedBy}</td></tr>)}</tbody></table></div>}
+        {filteredRows.length === 0 ? <div className="p-8"><EmptyState message="No birthday records match this period and filter." /></div> : <div className="overflow-x-auto"><table className="w-full min-w-[880px] text-left"><thead className="bg-slate-50/80 dark:bg-slate-800/50"><tr>{['Birthday', 'Client', 'Branch', 'Status', 'Mode', '50% offer', 'Contacted on', 'By'].map((heading) => <th key={heading} className="px-5 py-3 text-[10px] font-black uppercase tracking-wider text-slate-500">{heading}</th>)}</tr></thead><tbody className="divide-y divide-slate-100 dark:divide-slate-800">{filteredRows.map((row) => <tr key={row.id} className="transition hover:bg-slate-50/70 dark:hover:bg-slate-800/40"><td className="px-5 py-3.5 text-sm font-bold text-slate-700 dark:text-slate-200">{format(row.birthdayDate, 'MMM d')}</td><td className="px-5 py-3.5"><div className="text-sm font-bold text-slate-900 dark:text-white">{row.name || 'Unnamed client'}</div><div className="text-xs text-slate-500">{row.phoneNumber || 'No phone'}</div></td><td className="px-5 py-3.5 text-sm text-slate-600 dark:text-slate-300">{row.branch || '—'}</td><td className="px-5 py-3.5"><span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-black ${row.contacted ? 'bg-pink-50 text-pink-700 dark:bg-pink-950/30 dark:text-pink-200' : 'bg-lime-50 text-lime-800 dark:bg-lime-950/20 dark:text-lime-200'}`}>{row.contacted ? 'Contacted' : 'Pending'}</span></td><td className="px-5 py-3.5"><span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-bold ${METHOD_STYLES[row.method] || METHOD_STYLES.not_contacted}`}>{METHOD_LABELS[row.method] || METHOD_LABELS.not_contacted}</span></td><td className="px-5 py-3.5"><span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-black ${row.redeemed ? 'bg-violet-50 text-violet-700 dark:bg-violet-950/30 dark:text-violet-200' : 'bg-slate-50 text-slate-500 dark:bg-slate-800 dark:text-slate-400'}`}>{row.redeemed ? 'Redeemed' : 'Not redeemed'}</span></td><td className="px-5 py-3.5 text-sm text-slate-600 dark:text-slate-300">{row.contactedAt ? format(row.contactedAt, 'MMM d, yyyy h:mm a') : '—'}</td><td className="px-5 py-3.5 text-sm font-bold text-slate-700 dark:text-slate-200">{row.contactedBy}</td></tr>)}</tbody></table></div>}
       </section>
     </div>
   );
