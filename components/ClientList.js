@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react';
 import { format } from 'date-fns';
 import Image from 'next/image';
 import EditClientModal from './EditClientModal';
-import { deleteClient, updateBirthdayCall } from '@/lib/clients';
+import { deleteClient, updateBirthdayCall, filterClientsBySearch } from '@/lib/clients';
 import { normalizePhoneNumber } from '@/lib/phoneUtils';
 import LoadingState from './LoadingState';
 
@@ -106,16 +106,7 @@ export default function ClientList({ clients = [], totalCount, title = 'Clients'
     }
   };
 
-  const filteredClients = useMemo(() => {
-    if (!searchQuery.trim()) return clients;
-    const query = searchQuery.toLowerCase();
-    return clients.filter((client) => {
-      const nameMatch = client.name?.toLowerCase().includes(query);
-      const phoneMatch = client.phoneNumber?.toLowerCase().includes(query);
-      const branchMatch = client.branch?.toLowerCase().includes(query);
-      return nameMatch || phoneMatch || branchMatch;
-    });
-  }, [clients, searchQuery]);
+  const filteredClients = useMemo(() => filterClientsBySearch(clients, searchQuery), [clients, searchQuery]);
 
   if (isLoading) {
     return <LoadingState title="Loading client records..." description="Preparing your client database." />;

@@ -8,7 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
 import { signOut } from '@/lib/auth';
 import ClientList from '@/components/ClientList';
-import { searchClients } from '@/lib/clients';
+import { searchClients, filterClientsBySearch } from '@/lib/clients';
 import { affirmations } from '@/lib/affirmations';
 import { getActiveNotesCount } from '@/lib/notes';
 import ProtectedRoute from '@/components/ProtectedRoute';
@@ -590,8 +590,13 @@ export default function Home() {
       setIsSearching(true);
       try {
         const branch = selectedBranch || null;
-        const results = await searchClients(searchTerm, branch);
-        setSearchResults(results || []);
+        const searchPool = allClients.length ? allClients : cachedAllClients;
+        if (searchPool.length) {
+          setSearchResults(filterClientsBySearch(searchPool, searchTerm, branch));
+        } else {
+          const results = await searchClients(searchTerm, branch);
+          setSearchResults(results || []);
+        }
       } catch (error) {
         console.error('Search error:', error);
         setSearchResults([]);
@@ -603,7 +608,7 @@ export default function Home() {
 
     const timeoutId = setTimeout(performSearch, 300);
     return () => clearTimeout(timeoutId);
-  }, [searchTerm, selectedBranch]);
+  }, [allClients, cachedAllClients, searchTerm, selectedBranch]);
 
   const filteredBirthdays = useMemo(() => {
     // If a specific month or day is selected, search through all clients; otherwise use todaysBirthdays (already filtered by branch in sync).
