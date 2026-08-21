@@ -39,15 +39,15 @@ function getMethod(client) {
   );
 }
 
-function isOfferRedeemed(client, year) {
+function isOfferRedeemed(client) {
   const rawValue = client?.birthdayOfferRedeemedYear ?? client?.birthdayOfferRedeemed;
   if (rawValue === true || ['true', 'yes', 'redeemed'].includes(String(rawValue).trim().toLowerCase())) return true;
 
   const numericYear = Number(rawValue);
-  if (Number.isFinite(numericYear) && numericYear >= 1900 && numericYear <= 2200) return numericYear === year;
+  if (Number.isFinite(numericYear) && numericYear >= 1900 && numericYear <= 2200) return true;
 
   const dateValue = asDate(client?.birthdayOfferRedeemedAt || client?.birthdayOfferRedeemedDate);
-  return dateValue ? dateValue.getFullYear() === year : false;
+  return Boolean(dateValue);
 }
 
 function birthdayInYear(client, year) {
@@ -125,7 +125,7 @@ export default function BirthdayCommunicationsAnalytics({ clients = [], branches
         const birthdayInWindow = isWithinInterval(birthdayDate, { start, end });
         const contactInWindow = contactedAt ? isWithinInterval(contactedAt, { start, end }) : false;
         if (!birthdayInWindow && !contactInWindow) return null;
-        const redeemed = isOfferRedeemed(client, today.getFullYear());
+        const redeemed = isOfferRedeemed(client);
         return {
           ...client,
           birthdayDate,
@@ -144,6 +144,7 @@ export default function BirthdayCommunicationsAnalytics({ clients = [], branches
   const analytics = useMemo(() => {
     const contactedRows = birthdayRows.filter((row) => row.contacted);
     const redeemedRows = birthdayRows.filter((row) => row.redeemed);
+    const redeemedContactedRows = redeemedRows.filter((row) => row.contacted);
     const methodCounts = ['called', 'messaged', 'both', 'unavailable'].map((method) => ({
       method,
       label: METHOD_LABELS[method],
@@ -169,8 +170,9 @@ export default function BirthdayCommunicationsAnalytics({ clients = [], branches
       pending: birthdayRows.length - contactedRows.length,
       rate: birthdayRows.length ? Math.round((contactedRows.length / birthdayRows.length) * 100) : 0,
       redeemed: redeemedRows.length,
+      redeemedContacted: redeemedContactedRows.length,
       redemptionRate: formatPercent(redeemedRows.length, birthdayRows.length),
-      contactedRedemptionRate: formatPercent(redeemedRows.length, contactedRows.length),
+      contactedRedemptionRate: formatPercent(redeemedContactedRows.length, contactedRows.length),
       methodCounts,
       callerCounts,
       dailyCounts,
@@ -232,13 +234,13 @@ export default function BirthdayCommunicationsAnalytics({ clients = [], branches
         <MetricCard label="Contacted" value={analytics.contacted} detail={`${analytics.rate}% of birthdays`} accent="pink" />
         <MetricCard label="Still pending" value={analytics.pending} detail="Not contacted yet" accent="lime" />
         <MetricCard label="Outreach coverage" value={`${analytics.rate}%`} detail={`${analytics.contacted} of ${analytics.total} contacted`} accent="violet" />
-        <MetricCard label="50% offer redeemed" value={analytics.redeemed} detail={`${analytics.redeemed} of ${analytics.total} birthdays (${analytics.redemptionRate}) · ${analytics.redeemed} of ${analytics.contacted} contacted (${analytics.contactedRedemptionRate})`} accent="violet" />
+        <MetricCard label="50% offer redeemed after contact" value={analytics.redeemedContacted} detail={`${analytics.redeemedContacted} of ${analytics.contacted} contacted (${analytics.contactedRedemptionRate}) · ${analytics.redeemed} of ${analytics.total} birthdays (${analytics.redemptionRate})`} accent="violet" />
       </div>
 
       <section className="rounded-2xl border border-violet-100 bg-gradient-to-r from-violet-50/70 via-white to-pink-50/60 p-5 shadow-sm dark:border-violet-900/40 dark:from-violet-950/20 dark:via-slate-900 dark:to-pink-950/20">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"><div><h3 className="font-black text-slate-900 dark:text-white">Birthday offer performance</h3><p className="mt-1 text-xs font-medium text-slate-500">50% birthday offer redemptions compared with the birthday population and completed outreach.</p></div><div className="rounded-xl bg-white/80 px-3 py-2 text-right shadow-sm dark:bg-slate-900/70"><div className="text-lg font-black text-violet-700 dark:text-violet-200">{analytics.redeemed}</div><div className="text-[10px] font-black uppercase tracking-wider text-slate-400">Redeemed</div></div></div>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"><div><h3 className="font-black text-slate-900 dark:text-white">Birthday offer performance</h3><p className="mt-1 text-xs font-medium text-slate-500">50% birthday offer redemptions compared with the birthday population and completed outreach.</p></div><div className="rounded-xl bg-white/80 px-3 py-2 text-right shadow-sm dark:bg-slate-900/70"><div className="text-lg font-black text-violet-700 dark:text-violet-200">{analytics.redeemedContacted}</div><div className="text-[10px] font-black uppercase tracking-wider text-slate-400">Redeemed after contact</div></div></div>
         <div className="mt-5 grid gap-4 md:grid-cols-3">
-          {[{ label: 'Birthday population', value: analytics.total, percent: 100, color: 'bg-blue-400' }, { label: 'Contacted', value: analytics.contacted, percent: analytics.total ? (analytics.contacted / analytics.total) * 100 : 0, color: 'bg-pink-400' }, { label: 'Redeemed 50% offer', value: analytics.redeemed, percent: analytics.total ? (analytics.redeemed / analytics.total) * 100 : 0, color: 'bg-violet-500' }].map((item) => <div key={item.label}><div className="mb-1.5 flex items-center justify-between text-xs font-bold text-slate-600 dark:text-slate-300"><span>{item.label}</span><span>{item.value} <span className="font-medium text-slate-400">({formatPercent(item.value, analytics.total)})</span></span></div><div className="h-2.5 overflow-hidden rounded-full bg-white/80 dark:bg-slate-800"><div className={`h-full rounded-full ${item.color}`} style={{ width: `${Math.min(item.percent, 100)}%` }} /></div></div>)}
+          {[{ label: 'Birthday population', value: analytics.total, denominator: analytics.total, percent: 100, color: 'bg-blue-400' }, { label: 'Contacted', value: analytics.contacted, denominator: analytics.total, percent: analytics.total ? (analytics.contacted / analytics.total) * 100 : 0, color: 'bg-pink-400' }, { label: 'Redeemed after contact', value: analytics.redeemedContacted, denominator: analytics.contacted, percent: analytics.contacted ? (analytics.redeemedContacted / analytics.contacted) * 100 : 0, color: 'bg-violet-500' }].map((item) => <div key={item.label}><div className="mb-1.5 flex items-center justify-between text-xs font-bold text-slate-600 dark:text-slate-300"><span>{item.label}</span><span>{item.value} <span className="font-medium text-slate-400">({formatPercent(item.value, item.denominator)})</span></span></div><div className="h-2.5 overflow-hidden rounded-full bg-white/80 dark:bg-slate-800"><div className={`h-full rounded-full ${item.color}`} style={{ width: `${Math.min(item.percent, 100)}%` }} /></div></div>)}
         </div>
       </section>
 
