@@ -4,13 +4,13 @@ import { useState, useMemo } from 'react';
 import { format } from 'date-fns';
 import Image from 'next/image';
 import EditClientModal from './EditClientModal';
-import { deleteClient } from '@/lib/clients';
+import { deleteClient, updateBirthdayCall } from '@/lib/clients';
 import { normalizePhoneNumber } from '@/lib/phoneUtils';
 import LoadingState from './LoadingState';
 
 import { useAuth } from '@/contexts/AuthContext';
 
-export default function ClientList({ clients = [], totalCount, title = 'Clients', onClientUpdated, isLoading = false }) {
+export default function ClientList({ clients = [], totalCount, title = 'Clients', onClientUpdated, isLoading = false, birthdayCallers = [], isBirthdayView = false }) {
   const { user, profile } = useAuth();
   const canEdit = profile?.permissions?.clients?.edit !== false;
   const canDelete = profile?.permissions?.clients?.delete !== false;
@@ -23,6 +23,8 @@ export default function ClientList({ clients = [], totalCount, title = 'Clients'
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [viewMode, setViewMode] = useState('table');
   const [searchQuery, setSearchQuery] = useState('');
+  const [updatingCallId, setUpdatingCallId] = useState(null);
+  const canVerifyBirthdayCall = isBirthdayView && profile?.permissions?.birthdays?.view !== false;
 
   const generateWhatsAppLink = (phoneNumber) => {
     if (!phoneNumber) return null;
@@ -45,6 +47,33 @@ export default function ClientList({ clients = [], totalCount, title = 'Clients'
     const words = branch.trim().split(/\s+/);
     if (words.length === 1) return words[0].substring(0, 2).toUpperCase();
     return (words[0][0] + words[1][0]).toUpperCase();
+  };
+
+  const handleBirthdayCallChange = async (client, callerId) => {
+    if (!canVerifyBirthdayCall || updatingCallId === client.id) return;
+    const caller = birthdayCallers.find((item) => item.id === callerId);
+    setUpdatingCallId(client.id);
+    try {
+      const result = await updateBirthdayCall(client.id, {
+        calledById: caller?.id || null,
+        calledByName: caller?.name || null,
+        calledByRole: caller?.roleLabel || null,
+        clientName: client.name,
+      }, user);
+      if (!result.success) {
+        console.error(result.error || 'Unable to update birthday call status');
+        return;
+      }
+      if (onClientUpdated) onClientUpdated();
+    } finally {
+      setUpdatingCallId(null);
+    }
+  };
+
+  const getBirthdayCallDate = (client) => {
+    if (!client.birthdayCalledAt) return '';
+    const date = client.birthdayCalledAt.toDate?.() || new Date(client.birthdayCalledAt);
+    return Number.isNaN(date?.getTime?.()) ? '' : format(date, 'MMM d, yyyy h:mm a');
   };
 
   const handleDelete = async () => {
@@ -162,6 +191,7 @@ export default function ClientList({ clients = [], totalCount, title = 'Clients'
                 <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Contact</th>
                 <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Birthday</th>
                 <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Branch</th>
+                {isBirthdayView && <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Call check</th>}
                 <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">Actions</th>
               </tr>
             </thead>
@@ -172,8 +202,10 @@ export default function ClientList({ clients = [], totalCount, title = 'Clients'
                   const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
                   dobDisplay = `${monthNames[client.birthMonth - 1]} ${String(client.birthDay).padStart(2, '0')}`;
                 }
+                const isCalled = client.birthdayCallStatus === 'called' || Boolean(client.birthdayCalledById);
+                const callDate = getBirthdayCallDate(client);
                 return (
-                  <tr key={client.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                  <tr key={client.id} className={`${isCalled ? 'bg-[#fff4f8] dark:bg-pink-950/20' : isBirthdayView ? 'bg-[#f8ffe9] dark:bg-lime-950/15' : ''} hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors`}>
                     <td className="px-6 py-4">
                       <div className="font-medium text-slate-900 dark:text-white flex items-center gap-2">
                         {client.name}
@@ -197,6 +229,31 @@ export default function ClientList({ clients = [], totalCount, title = 'Clients'
                         <span className="hidden sm:inline">{client.branch || 'N/A'}</span>
                       </div>
                     </td>
+                    {isBirthdayView && (
+                      <td className="px-6 py-4">
+                        {canVerifyBirthdayCall ? (
+                          <div className="min-w-[210px]">
+                            <select
+                              value={client.birthdayCalledById || ''}
+                              onChange={(event) => handleBirthdayCallChange(client, event.target.value)}
+                              disabled={updatingCallId === client.id || birthdayCallers.length === 0}
+                              className={`w-full rounded-xl border px-3 py-2 text-xs font-bold outline-none transition focus:ring-4 ${isCalled ? 'border-pink-200 bg-pink-50 text-pink-700 focus:ring-pink-500/10 dark:border-pink-900/50 dark:bg-pink-950/30 dark:text-pink-200' : 'border-lime-200 bg-lime-50 text-lime-800 focus:ring-lime-500/10 dark:border-lime-900/50 dark:bg-lime-950/20 dark:text-lime-200'}`}
+                              aria-label={`Called by for ${client.name}`}
+                            >
+                              <option value="">Not called yet</option>
+                              {birthdayCallers.map((caller) => <option key={caller.id} value={caller.id}>{caller.name}{caller.roleLabel ? ` · ${caller.roleLabel}` : ''}</option>)}
+                            </select>
+                            <div className={`mt-1 text-[10px] font-bold ${isCalled ? 'text-pink-600 dark:text-pink-300' : 'text-lime-700 dark:text-lime-300'}`}>
+                              {isCalled ? `${client.birthdayCalledByName || 'Called'}${callDate ? ` · ${callDate}` : ''}` : birthdayCallers.length ? 'Select the team member who called' : 'Admin must add caller names'}
+                            </div>
+                          </div>
+                        ) : (
+                          <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${isCalled ? 'bg-pink-100 text-pink-700 dark:bg-pink-950/40 dark:text-pink-200' : 'bg-lime-100 text-lime-800 dark:bg-lime-950/30 dark:text-lime-200'}`}>
+                            {isCalled ? `Called by ${client.birthdayCalledByName || 'staff'}` : 'Not called yet'}
+                          </span>
+                        )}
+                      </td>
+                    )}
                     <td className="px-6 py-4 text-right whitespace-nowrap">
                       <div className="flex justify-end items-center gap-1">
                         {client.phoneNumber && (
@@ -237,8 +294,10 @@ export default function ClientList({ clients = [], totalCount, title = 'Clients'
                 const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
                 dobDisplay = `${monthNames[client.birthMonth - 1]} ${String(client.birthDay).padStart(2, '0')}`;
               }
-              return (
-                <div key={client.id} className="p-5 rounded-2xl border border-slate-100 dark:border-slate-800 hover:border-blue-200 dark:hover:border-blue-900/50 hover:shadow-md transition-all">
+                const isCalled = client.birthdayCallStatus === 'called' || Boolean(client.birthdayCalledById);
+                const callDate = getBirthdayCallDate(client);
+                return (
+                  <div key={client.id} className={`p-5 rounded-2xl border transition-all hover:shadow-md ${isCalled ? 'border-pink-200 bg-[#fff4f8] dark:border-pink-900/50 dark:bg-pink-950/20' : isBirthdayView ? 'border-lime-200 bg-[#f8ffe9] dark:border-lime-900/50 dark:bg-lime-950/15' : 'border-slate-100 dark:border-slate-800 hover:border-blue-200 dark:hover:border-blue-900/50'}`}>
                   <div className="flex justify-between items-start mb-4">
                     <div>
                       <h3 className="font-semibold text-slate-900 dark:text-white">{client.name}</h3>
@@ -262,6 +321,26 @@ export default function ClientList({ clients = [], totalCount, title = 'Clients'
                       <span className="hidden sm:inline">{client.branch || 'N/A'}</span>
                     </div>
                   </div>
+                  {isBirthdayView && (
+                    <div className="mt-4 rounded-xl border border-lime-200 bg-lime-50/70 p-3 dark:border-lime-900/50 dark:bg-lime-950/20">
+                      <div className="mb-1 text-[10px] font-black uppercase tracking-wider text-slate-500">Call verification</div>
+                      {canVerifyBirthdayCall ? (
+                        <select
+                          value={client.birthdayCalledById || ''}
+                          onChange={(event) => handleBirthdayCallChange(client, event.target.value)}
+                          disabled={updatingCallId === client.id || birthdayCallers.length === 0}
+                          className={`w-full rounded-lg border px-2.5 py-2 text-xs font-bold outline-none ${isCalled ? 'border-pink-200 bg-pink-50 text-pink-700 dark:border-pink-900/50 dark:bg-pink-950/30 dark:text-pink-200' : 'border-lime-200 bg-white text-lime-800 dark:border-lime-900/50 dark:bg-slate-900 dark:text-lime-200'}`}
+                          aria-label={`Called by for ${client.name}`}
+                        >
+                          <option value="">Not called yet</option>
+                          {birthdayCallers.map((caller) => <option key={caller.id} value={caller.id}>{caller.name}</option>)}
+                        </select>
+                      ) : (
+                        <div className={`text-xs font-bold ${isCalled ? 'text-pink-700 dark:text-pink-200' : 'text-lime-800 dark:text-lime-200'}`}>{isCalled ? `Called by ${client.birthdayCalledByName || 'staff'}${callDate ? ` · ${callDate}` : ''}` : 'Not called yet'}</div>
+                      )}
+                    </div>
+                  )}
+
                   <div className="mt-5 pt-4 border-t border-slate-50 dark:border-slate-800 flex justify-between items-center">
                     <div className="flex gap-2">
                       {client.phoneNumber && (
@@ -330,6 +409,14 @@ export default function ClientList({ clients = [], totalCount, title = 'Clients'
                       : 'N/A'}
                   </div>
                 </div>
+                {isBirthdayView && (
+                  <div className={`rounded-xl p-3 ${viewingClient.birthdayCalledById ? 'bg-pink-50 dark:bg-pink-950/20' : 'bg-lime-50 dark:bg-lime-950/20'}`}>
+                    <div className="mb-1 text-[10px] uppercase tracking-wider font-bold text-slate-400">Birthday call verification</div>
+                    <div className="text-sm font-bold">
+                      {viewingClient.birthdayCalledById ? `Called by ${viewingClient.birthdayCalledByName || 'staff'}${getBirthdayCallDate(viewingClient) ? ` on ${getBirthdayCallDate(viewingClient)}` : ''}` : 'Not called yet'}
+                    </div>
+                  </div>
+                )}
                 {viewingClient.nextOfKin && (
                   <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl">
                     <div className="text-[10px] uppercase tracking-wider font-bold text-slate-400 mb-1">Next of Kin</div>

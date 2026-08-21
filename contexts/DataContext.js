@@ -5,6 +5,7 @@ import { useAuth } from './AuthContext';
 import { getAllClients, getTodaysBirthdays, getClientCountsByBranch, getBirthdayCountsByBranch } from '@/lib/clients';
 import { getAllEnrollments, getActiveEnrollmentCount } from '@/lib/memberships';
 import { getAllBranches } from '@/lib/branches';
+import { getBirthdayCallers } from '@/lib/birthdayCallers';
 
 const DataContext = createContext({});
 
@@ -17,13 +18,14 @@ export function DataProvider({ children }) {
     branches: [],
     todaysBirthdays: [],
     allBirthdays: [],
+    birthdayCallers: [],
     gymEnrollments: [],
     spaEnrollments: [],
     clientCountsByBranch: {},
     birthdayCountsByBranch: {},
     activeGymEnrollmentCount: 0,
     activeSpaEnrollmentCount: 0,
-    lastFetched: null
+    lastFetched: null,
   });
   const [loading, setLoading] = useState(false);
   const [fullDataLoading, setFullDataLoading] = useState(false);
@@ -41,42 +43,43 @@ export function DataProvider({ children }) {
     setFullDataLoading(true);
 
     try {
-      // Load lightweight home-card data first so refreshes can render the main page quickly.
       const allBranches = await getAllBranches();
       const [
         clientCounts,
         birthdayCounts,
         birthdays,
+        birthdayCallers,
         activeGymEnrollmentCount,
         activeSpaEnrollmentCount,
       ] = await Promise.all([
         getClientCountsByBranch(allBranches),
         getBirthdayCountsByBranch(allBranches),
         getTodaysBirthdays(null),
+        getBirthdayCallers(),
         getActiveEnrollmentCount(false),
         getActiveEnrollmentCount(true),
       ]);
 
-      setData(prev => ({
+      setData((prev) => ({
         ...prev,
         branches: allBranches,
         clientCountsByBranch: clientCounts,
         birthdayCountsByBranch: birthdayCounts,
         todaysBirthdays: birthdays,
         allBirthdays: birthdays,
+        birthdayCallers,
         activeGymEnrollmentCount,
         activeSpaEnrollmentCount,
       }));
       setLoading(false);
 
-      // Load large datasets after the cards have enough data to display.
       const [clients, gymEnrollments, spaEnrollments] = await Promise.all([
         getAllClients(null),
         getAllEnrollments(false),
         getAllEnrollments(true),
       ]);
 
-      setData(prev => ({
+      setData((prev) => ({
         ...prev,
         allClients: clients,
         globalClients: clients,
@@ -87,7 +90,7 @@ export function DataProvider({ children }) {
         birthdayCountsByBranch: birthdayCounts,
         activeGymEnrollmentCount,
         activeSpaEnrollmentCount,
-        lastFetched: now
+        lastFetched: now,
       }));
     } catch (error) {
       console.error('Error loading data:', error);
@@ -100,7 +103,7 @@ export function DataProvider({ children }) {
 
   useEffect(() => {
     if (user && !data.lastFetched) {
-      loadData();
+      Promise.resolve().then(() => loadData());
     }
   }, [user, data.lastFetched, loadData]);
 

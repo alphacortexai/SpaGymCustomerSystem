@@ -42,10 +42,25 @@ service cloud.firestore {
     }
 
     match /clients/{clientId} {
-      allow read: if can('clients', 'view');
+      allow read: if can('clients', 'view') || can('birthdays', 'view');
       allow create: if can('clients', 'add');
-      allow update: if can('clients', 'edit');
+      allow update: if can('clients', 'edit') || (
+        can('birthdays', 'view') &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'birthdayCallStatus',
+          'birthdayCalledById',
+          'birthdayCalledByName',
+          'birthdayCalledByRole',
+          'birthdayCalledAt',
+          'updatedAt'
+        ])
+      );
       allow delete: if can('clients', 'delete');
+    }
+
+    match /birthday_callers/{callerId} {
+      allow read: if can('birthdays', 'view');
+      allow create, update, delete: if isAdmin();
     }
 
     match /branches/{branchId} {

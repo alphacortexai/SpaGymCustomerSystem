@@ -43,6 +43,7 @@ const InvoiceGenerator = dynamic(() => import('@/components/InvoiceGenerator'), 
 const InvoiceList = dynamic(() => import('@/components/InvoiceList'), { loading: LazySectionFallback });
 const InvoiceTracking = dynamic(() => import('@/components/InvoiceTracking'), { loading: LazySectionFallback });
 const NotesSection = dynamic(() => import('@/components/NotesSection'), { loading: LazySectionFallback });
+const BirthdayCallersManager = dynamic(() => import('@/components/BirthdayCallersManager'), { loading: LazySectionFallback });
 
 const NavCard = ({ onClick, icon, title, titleLines, description, badge, isImage, fullBg, centerBadge, accent = 'blue', eyebrow }) => {
   const accentStyles = {
@@ -346,6 +347,7 @@ export default function Home() {
     spaEnrollments: cachedSpaEnrollments,
     clientCountsByBranch: cachedClientCounts,
     birthdayCountsByBranch: cachedBirthdayCounts,
+    birthdayCallers: cachedBirthdayCallers,
     loading: isDataLoading,
     fullDataLoading: isFullDataLoading,
     activeGymEnrollmentCount,
@@ -522,7 +524,7 @@ export default function Home() {
     return () => clearInterval(interval);
   }, []);
 
-  const adminSubsectionTabs = ['upload', 'unrecognized', 'history', 'users', 'branches', 'duplicates', 'timeline', 'invoice-list'];
+  const adminSubsectionTabs = ['upload', 'unrecognized', 'history', 'users', 'birthday-callers', 'branches', 'duplicates', 'timeline', 'invoice-list'];
 
   const openAdminTool = (tab) => {
     setReturnToAdmin(true);
@@ -936,6 +938,9 @@ export default function Home() {
                     {profile?.permissions?.users?.view !== false && (
                       <NavCard onClick={() => openAdminTool('users')} icon={<QuickActionIcon name="users" />} title="Users" description="Manage roles." accent="violet" eyebrow="Access" />
                     )}
+                    {profile?.role === 'Admin' && (
+                      <NavCard onClick={() => openAdminTool('birthday-callers')} icon={<QuickActionIcon name="birthdays" />} title="Birthday Callers" description="Manage call names." accent="rose" eyebrow="Marketing" />
+                    )}
                     {profile?.permissions?.branches?.view !== false && (
                       <NavCard onClick={() => openAdminTool('branches')} icon={<QuickActionIcon name="branches" />} title="Branches" description="Manage locations." badge={dataLoaded ? branches.length : undefined} accent="emerald" eyebrow="Network" />
                     )}
@@ -1148,11 +1153,20 @@ export default function Home() {
                 </div>
               </div>
 
+              <div className="flex flex-col gap-3 rounded-2xl border border-pink-100 bg-gradient-to-r from-pink-50/80 via-white to-lime-50/80 p-4 dark:border-slate-800 dark:from-pink-950/20 dark:via-slate-900 dark:to-lime-950/10 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.18em] text-pink-600 dark:text-pink-300">Call verification</p>
+                  <p className="mt-1 text-sm font-semibold text-slate-600 dark:text-slate-300"><span className="mr-1 inline-block h-2.5 w-2.5 rounded-full bg-pink-200 align-middle" />Pink means the client has been called. <span className="ml-2 mr-1 inline-block h-2.5 w-2.5 rounded-full bg-lime-200 align-middle" />Lemon green means the call is still pending.</p>
+                </div>
+                {profile?.role === 'Admin' && <button type="button" onClick={() => openAdminTool('birthday-callers')} className="shrink-0 rounded-xl border border-pink-200 bg-white px-3.5 py-2 text-xs font-black text-pink-700 shadow-sm transition hover:bg-pink-50 dark:border-pink-900/50 dark:bg-slate-900 dark:text-pink-200 dark:hover:bg-pink-950/30">Manage caller names</button>}
+              </div>
               <ClientList
                 clients={getPaginatedClients(filteredBirthdays)}
                 totalCount={filteredBirthdays.length}
                 title={selectedMonth || selectedDay ? "Filtered Birthdays" : "Today's Birthdays"}
                 onClientUpdated={refreshData}
+                birthdayCallers={cachedBirthdayCallers}
+                isBirthdayView
                 isLoading={isInitialLoading || ((selectedMonth || selectedDay) && isFullDatasetLoading)}
               />
 
@@ -1237,6 +1251,19 @@ export default function Home() {
                 <AdminBackButton onBack={goBackFromSection} />
               </div>
               <BranchForm onBranchAdded={refreshData} />
+            </div>
+          )}
+
+          {activeTab === 'birthday-callers' && (
+            <div className="space-y-8 animate-in fade-in duration-300">
+              <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <h2 className="text-3xl font-bold text-slate-900 dark:text-white">Birthday Callers</h2>
+                  <p className="mt-1 text-slate-500">Set the marketing and management names that staff can use to verify birthday calls.</p>
+                </div>
+                <AdminBackButton onBack={goBackFromSection} />
+              </div>
+              <BirthdayCallersManager onChanged={refreshData} />
             </div>
           )}
 
