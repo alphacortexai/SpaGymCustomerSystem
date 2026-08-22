@@ -47,7 +47,7 @@ const NotesSection = dynamic(() => import('@/components/NotesSection'), { loadin
 const BirthdayCallersManager = dynamic(() => import('@/components/BirthdayCallersManager'), { loading: LazySectionFallback });
 const BirthdayCommunicationsAnalytics = dynamic(() => import('@/components/BirthdayCommunicationsAnalytics'), { loading: LazySectionFallback });
 
-const NavCard = ({ onClick, icon, title, titleLines, description, badge, isImage, fullBg, centerBadge, accent = 'blue', eyebrow, size = 'default', imageTint = 'none' }) => {
+const NavCard = ({ onClick, icon, title, titleLines, description, badge, isImage, fullBg, centerBadge, accent = 'blue', eyebrow }) => {
   const accentStyles = {
     blue: {
       gradient: 'from-blue-500/16 via-sky-400/10 to-cyan-300/12',
@@ -87,24 +87,17 @@ const NavCard = ({ onClick, icon, title, titleLines, description, badge, isImage
     },
   };
   const selectedAccent = accentStyles[accent] || accentStyles.blue;
-  const imageTintStyles = {
-    pink: 'bg-gradient-to-b from-pink-100/80 via-pink-50/35 to-transparent',
-    lemon: 'bg-gradient-to-b from-lime-100/80 via-yellow-50/35 to-transparent',
-    lavender: 'bg-gradient-to-b from-violet-100/80 via-purple-50/35 to-transparent',
-  };
-  const cardSize = size === 'large' ? 'dashboard-card-large' : 'dashboard-card-default';
 
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`dashboard-grid-card group relative flex ${cardSize} cursor-pointer flex-col items-start justify-end p-5 sm:p-6 ${fullBg ? 'bg-transparent' : 'card-bg-doc'} rounded-[24px] shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl text-left w-full overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2`}
+      className={`dashboard-grid-card group relative flex min-h-[166px] cursor-pointer flex-col items-start justify-end p-5 sm:p-6 ${fullBg ? 'bg-transparent' : 'card-bg-doc'} rounded-[24px] shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl text-left w-full overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2`}
       aria-label={`Open ${title}`}
     >
       {fullBg && isImage && (
         <div className="absolute inset-0 z-0">
-          <Image src={icon} alt={title} fill className="object-cover opacity-85 group-hover:opacity-100 transition-opacity duration-300" />
-          {imageTint !== 'none' && <div className={`absolute inset-0 ${imageTintStyles[imageTint] || imageTintStyles.pink}`} aria-hidden="true" />}
+          <Image src={icon} alt={title} fill className="object-cover opacity-80 group-hover:opacity-100 transition-opacity duration-300" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent z-1" />
         </div>
       )}
@@ -118,7 +111,7 @@ const NavCard = ({ onClick, icon, title, titleLines, description, badge, isImage
       {badge !== undefined && (
         <div className={centerBadge
           ? "absolute inset-0 flex items-center justify-center z-10 pointer-events-none"
-          : `absolute top-3 right-3 ${size === 'large' ? 'min-w-[48px] h-10 px-3 text-lg' : 'min-w-[22px] h-6 px-2 text-[10px]'} flex items-center justify-center ${selectedAccent.badge} text-white font-black rounded-full shadow-lg z-10 ring-2 ring-white/80 dark:ring-slate-950/80`
+          : `absolute top-3 right-3 min-w-[22px] h-6 px-2 flex items-center justify-center ${selectedAccent.badge} text-white text-[10px] font-bold rounded-full shadow-lg z-10 ring-2 ring-white/80 dark:ring-slate-950/80`
         }>
           <div className={centerBadge
             ? "text-white text-4xl md:text-5xl font-black drop-shadow-lg"
@@ -909,10 +902,10 @@ export default function Home() {
                 <section>
                   <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
                   {profile?.permissions?.clients?.view !== false && (
-                    <NavCard onClick={() => setActiveTab('dashboard')} icon="/clients_bg.png" title="Clients Database" description="Manage" badge={cachedClientCounts ? clientBadgeTotal : (dataLoaded ? '...' : undefined)} isImage={true} fullBg={true} size="large" imageTint="pink" />
+                    <NavCard onClick={() => setActiveTab('dashboard')} icon="/clients_bg.png" title="Clients Database" description="Manage" badge={cachedClientCounts ? clientBadgeTotal : (dataLoaded ? '...' : undefined)} isImage={true} fullBg={true} />
                   )}
                   {profile?.permissions?.birthdays?.view !== false && (
-                    <NavCard onClick={() => setActiveTab('birthdays')} icon="/birthday.png" title="Today's Birthdays" description="Celebrations" badge={cachedBirthdayCounts ? birthdayBadgeTotal : (dataLoaded ? '...' : undefined)} isImage={true} fullBg={true} size="large" imageTint="lemon" />
+                    <NavCard onClick={() => setActiveTab('birthdays')} icon="/birthday.png" title="Today's Birthdays" description="Celebrations" badge={cachedBirthdayCounts ? birthdayBadgeTotal : (dataLoaded ? '...' : undefined)} isImage={true} fullBg={true} />
                   )}
                   {profile?.permissions?.gym?.view !== false && (
                     <NavCard
@@ -922,8 +915,6 @@ export default function Home() {
                       description="Memberships."
                       isImage={true}
                       fullBg={true}
-                      size="large"
-                      imageTint="lavender"
                       badge={dataLoaded ? activeGymMembers : undefined}
                     />
                   )}
@@ -935,12 +926,10 @@ export default function Home() {
                       description="Memberships."
                       isImage={true}
                       fullBg={true}
-                      size="large"
-                      imageTint="pink"
                       badge={dataLoaded ? activeSpaMembers : undefined}
                     />
                   )}
-                  <NavCard onClick={() => setActiveTab('notes')} icon="📝" title="Notes" description="Reference reminders." badge={activeNotesCount} accent="violet" size="large" />
+                  <NavCard onClick={() => setActiveTab('notes')} icon="📝" title="Notes" description="Reference reminders." badge={activeNotesCount} accent="violet" />
                   </div>
                 </section>
                 <div className="hidden md:block">
