@@ -157,8 +157,8 @@ const TypedGreeting = ({ firstName }) => {
   );
 };
 
-const TypedBirthdayReminder = ({ count, branchName }) => {
-  const message = `You have ${count} Birthday Babies to call today for ${branchName}`;
+const TypedBirthdayReminder = ({ contactedCount, remainingCount, branchName }) => {
+  const message = `${contactedCount} of today's birthday babies called, ${remainingCount} remaining for ${branchName}`;
   const [typedLength, setTypedLength] = useState(0);
   const isComplete = typedLength >= message.length;
 
@@ -172,9 +172,13 @@ const TypedBirthdayReminder = ({ count, branchName }) => {
     return () => clearInterval(typingTimer);
   }, [message]);
 
-  const countStart = 'You have '.length;
-  const countEnd = countStart + String(count).length;
-  const branchStart = message.length - branchName.length;
+  const contactedStart = 0;
+  const contactedEnd = String(contactedCount).length;
+  const remainingLabel = ` of today's birthday babies called, `;
+  const remainingStart = contactedEnd + remainingLabel.length;
+  const remainingEnd = remainingStart + String(remainingCount).length;
+  const branchLabel = ' remaining for ';
+  const branchStart = remainingEnd + branchLabel.length;
   const renderSegment = (start, end, className = '') => {
     const visibleLength = Math.min(Math.max(typedLength - start, 0), end - start);
     if (visibleLength <= 0) return null;
@@ -183,9 +187,10 @@ const TypedBirthdayReminder = ({ count, branchName }) => {
 
   return (
     <h1 className="text-lg font-black leading-tight tracking-tight text-slate-950 dark:text-white sm:text-3xl lg:text-4xl" aria-label={message}>
-      {renderSegment(0, countStart)}
-      {renderSegment(countStart, countEnd, 'text-blue-600 dark:text-blue-400')}
-      {renderSegment(countEnd, branchStart)}
+      {renderSegment(contactedStart, contactedEnd, 'text-blue-600 dark:text-blue-400')}
+      {renderSegment(contactedEnd, remainingStart)}
+      {renderSegment(remainingStart, remainingEnd, 'text-blue-600 dark:text-blue-400')}
+      {renderSegment(remainingEnd, branchStart)}
       {renderSegment(branchStart, message.length, 'text-blue-600 dark:text-blue-400')}
       {!isComplete && <span className="ml-0.5 inline-block h-[1em] w-0.5 align-[-0.12em] bg-blue-600 dark:bg-blue-400" aria-hidden="true" />}
     </h1>
@@ -437,10 +442,18 @@ export default function Home() {
         ? branches.map((branch) => branch.name).filter(Boolean)
         : [];
     const birthdaySource = allBirthdays.length ? allBirthdays : cachedAllBirthdays;
-    return branchNames.map((branchName) => ({
-      branchName,
-      count: birthdaySource.filter((client) => client.branch === branchName).length,
-    })).filter((message) => message.count > 0);
+    return branchNames.map((branchName) => {
+      const branchBirthdays = birthdaySource.filter((client) => client.branch === branchName);
+      const contactedCount = branchBirthdays.filter((client) => (
+        client.birthdayContactMethod && client.birthdayContactMethod !== 'not_contacted'
+      ) || client.birthdayCallStatus === 'called' || client.birthdayCalledById).length;
+      return {
+        branchName,
+        totalCount: branchBirthdays.length,
+        contactedCount,
+        remainingCount: branchBirthdays.length - contactedCount,
+      };
+    }).filter((message) => message.totalCount > 0);
   }, [allBirthdays, branches, cachedAllBirthdays, isRootAdmin, profile?.assignedBranches]);
 
   useEffect(() => {
@@ -870,8 +883,8 @@ export default function Home() {
                     {birthdayReminderIndex === null ? (
                       <TypedGreeting firstName={user?.displayName?.split(' ')[0] || 'there'} />
                     ) : (
-                      <div key={`${birthdayReminderMessages[birthdayReminderIndex].branchName}-${birthdayReminderMessages[birthdayReminderIndex].count}`} className="animate-in fade-in duration-500" aria-live="polite">
-                        <TypedBirthdayReminder count={birthdayReminderMessages[birthdayReminderIndex].count} branchName={birthdayReminderMessages[birthdayReminderIndex].branchName} />
+                      <div key={`${birthdayReminderMessages[birthdayReminderIndex].branchName}-${birthdayReminderMessages[birthdayReminderIndex].contactedCount}-${birthdayReminderMessages[birthdayReminderIndex].remainingCount}`} className="animate-in fade-in duration-500" aria-live="polite">
+                        <TypedBirthdayReminder contactedCount={birthdayReminderMessages[birthdayReminderIndex].contactedCount} remainingCount={birthdayReminderMessages[birthdayReminderIndex].remainingCount} branchName={birthdayReminderMessages[birthdayReminderIndex].branchName} />
                       </div>
                     )}
                   </div>
