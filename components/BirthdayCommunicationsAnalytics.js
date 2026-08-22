@@ -91,6 +91,57 @@ function EmptyState({ message }) {
   return <div className="rounded-xl border border-dashed border-slate-200 px-5 py-8 text-center text-sm font-medium text-slate-500 dark:border-slate-700 dark:text-slate-400">{message}</div>;
 }
 
+const CALLER_CHART_COLORS = ['#60a5fa', '#818cf8', '#c084fc', '#f472b6', '#fb7185', '#fbbf24'];
+
+function CallerPieChart({ segments, total }) {
+  const segmentsWithOffsets = segments.map((segment, index) => ({
+    ...segment,
+    offset: segments.slice(0, index).reduce((sum, item) => sum + item.percent, 0),
+  }));
+
+  return (
+    <div className="top-callers-chart flex flex-col items-center gap-5 py-2 sm:flex-row sm:justify-center sm:gap-8">
+      <div className="relative h-40 w-40 shrink-0" aria-label={`Pie chart showing ${total} contacts by caller`} role="img">
+        <svg viewBox="0 0 100 100" className="h-full w-full -rotate-0 overflow-visible">
+          <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor" strokeWidth="10" className="text-slate-100 dark:text-slate-800" />
+          {segmentsWithOffsets.map((segment) => (
+              <circle
+                key={segment.name}
+                cx="50"
+                cy="50"
+                r="42"
+                fill="none"
+                stroke={segment.color}
+                strokeWidth="10"
+                pathLength="100"
+                strokeDasharray={`${segment.percent} ${100 - segment.percent}`}
+                strokeDashoffset={-segment.offset}
+                strokeLinecap="butt"
+                className="top-callers-chart-segment"
+                transform="rotate(-90 50 50)"
+              />
+          ))}
+        </svg>
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          <span className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">{total}</span>
+          <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">contacts</span>
+        </div>
+      </div>
+      <div className="grid w-full max-w-[13rem] gap-2">
+        {segments.map((segment) => (
+          <div key={segment.name} className="flex min-w-0 items-center justify-between gap-3 text-xs">
+            <div className="flex min-w-0 items-center gap-2">
+              <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: segment.color }} />
+              <span className="truncate font-bold text-slate-600 dark:text-slate-300" title={segment.name}>{segment.name}</span>
+            </div>
+            <span className="shrink-0 font-black text-slate-800 dark:text-slate-100">{segment.count}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function BirthdayCommunicationsAnalytics({ clients = [], branches = [], birthdayCallers = [], onBack }) {
   const [today] = useState(() => new Date());
   const [period, setPeriod] = useState('today');
@@ -98,6 +149,7 @@ export default function BirthdayCommunicationsAnalytics({ clients = [], branches
   const [customEnd, setCustomEnd] = useState(format(today, 'yyyy-MM-dd'));
   const [branch, setBranch] = useState('');
   const [detailSearch, setDetailSearch] = useState('');
+  const [callerView, setCallerView] = useState('list');
   const callerNameById = useMemo(() => new Map(birthdayCallers.map((caller) => [caller.id, caller.name])), [birthdayCallers]);
 
   const periodBounds = useMemo(() => {
@@ -188,6 +240,17 @@ export default function BirthdayCommunicationsAnalytics({ clients = [], branches
   const maxMethod = Math.max(...analytics.methodCounts.map((item) => item.count), 1);
   const maxCaller = Math.max(...analytics.callerCounts.map((item) => item.count), 1);
   const maxDaily = Math.max(...analytics.dailyCounts.map((item) => item.count), 1);
+  const callerSegments = useMemo(() => {
+    const topCallers = analytics.callerCounts.slice(0, 5);
+    const topCallerTotal = topCallers.reduce((sum, item) => sum + item.count, 0);
+    const otherCount = analytics.contacted - topCallerTotal;
+    const segments = otherCount > 0 ? [...topCallers, { name: 'Other callers', count: otherCount }] : topCallers;
+    return segments.map((item, index) => ({
+      ...item,
+      color: CALLER_CHART_COLORS[index % CALLER_CHART_COLORS.length],
+      percent: analytics.contacted ? (item.count / analytics.contacted) * 100 : 0,
+    }));
+  }, [analytics.callerCounts, analytics.contacted]);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
@@ -260,9 +323,18 @@ export default function BirthdayCommunicationsAnalytics({ clients = [], branches
         </section>
 
         <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-          <div><h3 className="font-black text-slate-900 dark:text-white">Top callers</h3><p className="mt-1 text-xs font-medium text-slate-500">Contacts attributed by team member</p></div>
-          <div className="mt-6 space-y-3">
-            {analytics.callerCounts.length === 0 ? <EmptyState message="No attributed contacts in this period." /> : analytics.callerCounts.slice(0, 5).map((item) => <div key={item.name} className="flex items-center gap-3"><span className="w-28 shrink-0 truncate text-[11px] font-bold text-slate-600 dark:text-slate-300" title={item.name}>{item.name}</span><div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800"><div className="h-full rounded-full bg-blue-400" style={{ width: `${(item.count / maxCaller) * 100}%` }} /></div><span className="w-5 text-right text-xs font-black text-slate-700 dark:text-slate-200">{item.count}</span></div>)}
+          <div className="flex items-start justify-between gap-3">
+            <div><h3 className="font-black text-slate-900 dark:text-white">Top callers</h3><p className="mt-1 text-xs font-medium text-slate-500">Contacts attributed by team member</p></div>
+            <div className="inline-flex shrink-0 rounded-lg bg-slate-100 p-0.5 dark:bg-slate-800" role="group" aria-label="Top callers view">
+              {[['list', 'List'], ['pie', 'Pie']].map(([view, label]) => (
+                <button key={view} type="button" onClick={() => setCallerView(view)} aria-pressed={callerView === view} className={`rounded-md px-2.5 py-1 text-[10px] font-black transition ${callerView === view ? 'bg-white text-blue-600 shadow-sm dark:bg-slate-700 dark:text-blue-300' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'}`}>
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div key={callerView} className="top-callers-view mt-6">
+            {analytics.callerCounts.length === 0 ? <EmptyState message="No attributed contacts in this period." /> : callerView === 'pie' ? <CallerPieChart segments={callerSegments} total={analytics.contacted} /> : <div className="space-y-3">{analytics.callerCounts.slice(0, 5).map((item, index) => <div key={item.name} className="top-caller-row flex items-center gap-3" style={{ '--row-delay': `${index * 45}ms` }}><span className="w-28 shrink-0 truncate text-[11px] font-bold text-slate-600 dark:text-slate-300" title={item.name}>{item.name}</span><div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800"><div className="h-full rounded-full bg-blue-400 transition-[width] duration-500 ease-out" style={{ width: `${(item.count / maxCaller) * 100}%` }} /></div><span className="w-5 text-right text-xs font-black text-slate-700 dark:text-slate-200">{item.count}</span></div>)}</div>}
           </div>
         </section>
       </div>
