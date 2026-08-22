@@ -293,21 +293,36 @@ const AnimatedCount = ({ value }) => {
   return <span aria-live="polite">{displayValue.toLocaleString()}</span>;
 };
 
+const formatSummaryPercent = (value, denominator) => {
+  if (!denominator) return '0%';
+  return `${((value / denominator) * 100).toFixed(1).replace('.0', '')}%`;
+};
+
+const isBirthdayContacted = (client) => (
+  (client.birthdayContactMethod && client.birthdayContactMethod !== 'not_contacted')
+  || client.birthdayCallStatus === 'called'
+  || client.birthdayCalledById
+);
+
+const isBirthdayOfferRedeemed = (client) => {
+  const rawValue = client?.birthdayOfferRedeemedYear ?? client?.birthdayOfferRedeemed;
+  if (rawValue === true || ['true', 'yes', 'redeemed'].includes(String(rawValue).trim().toLowerCase())) return true;
+  const numericYear = Number(rawValue);
+  if (Number.isFinite(numericYear) && numericYear >= 1900 && numericYear <= 2200) return true;
+  return Boolean(client?.birthdayOfferRedeemedAt || client?.birthdayOfferRedeemedDate);
+};
+
 const SummaryPanel = ({ clients, branches, loading }) => {
   const now = new Date();
   const [birthdayMonth, setBirthdayMonth] = useState(now.getMonth() + 1);
-  const [recentDays, setRecentDays] = useState(30);
   const [summaryBranch, setSummaryBranch] = useState('');
 
   const branchClients = useMemo(() => summaryBranch ? clients.filter((client) => client.branch === summaryBranch) : clients, [clients, summaryBranch]);
   const birthdayClients = useMemo(() => branchClients.filter((client) => Number(client.birthMonth) === birthdayMonth), [birthdayMonth, branchClients]);
-  const recentClients = useMemo(() => {
-    const cutoff = Date.now() - recentDays * 24 * 60 * 60 * 1000;
-    return branchClients.filter((client) => {
-      const createdAt = client.createdAt?.toDate?.() || client.createdAt;
-      return createdAt instanceof Date && createdAt.getTime() >= cutoff;
-    });
-  }, [branchClients, recentDays]);
+  const birthdayMonthLabel = useMemo(() => new Date(2000, birthdayMonth - 1, 1).toLocaleDateString(undefined, { month: 'long' }), [birthdayMonth]);
+  const contactedCount = useMemo(() => birthdayClients.filter(isBirthdayContacted).length, [birthdayClients]);
+  const redeemedCount = useMemo(() => birthdayClients.filter(isBirthdayOfferRedeemed).length, [birthdayClients]);
+  const redeemedAfterContactCount = useMemo(() => birthdayClients.filter((client) => isBirthdayContacted(client) && isBirthdayOfferRedeemed(client)).length, [birthdayClients]);
 
   return (
     <section className="dashboard-summary dashboard-surface rounded-2xl p-4 sm:p-5">
@@ -323,21 +338,33 @@ const SummaryPanel = ({ clients, branches, loading }) => {
           <select value={birthdayMonth} onChange={(event) => setBirthdayMonth(Number(event.target.value))} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200" aria-label="Birthday month">
             {Array.from({ length: 12 }, (_, index) => <option key={index + 1} value={index + 1}>{new Date(2000, index, 1).toLocaleDateString(undefined, { month: 'long' })}</option>)}
           </select>
-          <select value={recentDays} onChange={(event) => setRecentDays(Number(event.target.value))} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200" aria-label="Recent client period">
-            {[30, 60, 90].map((days) => <option key={days} value={days}>Last {days} days</option>)}
-          </select>
         </div>
       </div>
       {loading ? <p className="mt-5 text-sm text-slate-500">Loading summary...</p> : (
-        <div className="mt-5 grid gap-4 md:grid-cols-2">
-          <div className="rounded-2xl border border-pink-100 bg-pink-50/70 p-4 dark:border-pink-900/40 dark:bg-pink-950/20">
-            <h3 className="font-bold text-slate-900 dark:text-white">Birthday babies</h3>
-            <p className="mt-5 text-5xl font-black tracking-tight text-pink-600 dark:text-pink-300"><AnimatedCount value={birthdayClients.length} /></p><p className="mt-1 text-xs font-bold uppercase tracking-wider text-slate-500">Birthday babies in {new Date(2000, birthdayMonth - 1, 1).toLocaleDateString(undefined, { month: 'long' })}</p>
+        <div className="mt-5 rounded-2xl border border-violet-100 bg-gradient-to-r from-violet-50/70 via-white to-pink-50/60 p-5 shadow-sm dark:border-violet-900/40 dark:from-violet-950/20 dark:via-slate-900 dark:to-pink-950/20">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <h3 className="font-black text-slate-900 dark:text-white">Birthday offer performance</h3>
+              <p className="mt-1 text-xs font-medium text-slate-500">50% birthday offer redemptions compared with the birthday population and completed outreach.</p>
+            </div>
+            <div className="rounded-xl bg-white/80 px-3 py-2 text-right shadow-sm dark:bg-slate-900/70">
+              <div className="text-lg font-black text-violet-700 dark:text-violet-200"><AnimatedCount value={redeemedAfterContactCount} /></div>
+              <div className="text-[10px] font-black uppercase tracking-wider text-slate-400">Redeemed after contact</div>
+            </div>
           </div>
-          <div className="rounded-2xl border border-blue-100 bg-blue-50/70 p-4 dark:border-blue-900/40 dark:bg-blue-950/20">
-            <h3 className="font-bold text-slate-900 dark:text-white">New client additions</h3>
-            <p className="mt-5 text-5xl font-black tracking-tight text-blue-600 dark:text-blue-300"><AnimatedCount value={recentClients.length} /></p><p className="mt-1 text-xs font-bold uppercase tracking-wider text-slate-500">New client additions in the last {recentDays} days</p>
+          <div className="mt-5 grid gap-4 md:grid-cols-3">
+            {[
+              { label: `Birthday population (${birthdayMonthLabel})`, value: birthdayClients.length, denominator: birthdayClients.length, percent: 100, color: 'bg-blue-400' },
+              { label: 'Contacted', value: contactedCount, denominator: birthdayClients.length, percent: birthdayClients.length ? (contactedCount / birthdayClients.length) * 100 : 0, color: 'bg-pink-400' },
+              { label: 'Redeemed after contact', value: redeemedAfterContactCount, denominator: contactedCount, percent: contactedCount ? (redeemedAfterContactCount / contactedCount) * 100 : 0, color: 'bg-violet-500' },
+            ].map((item) => (
+              <div key={item.label}>
+                <div className="mb-1.5 flex items-center justify-between gap-3 text-xs font-bold text-slate-600 dark:text-slate-300"><span>{item.label}</span><span className="shrink-0">{item.value} <span className="font-medium text-slate-400">({formatSummaryPercent(item.value, item.denominator)})</span></span></div>
+                <div className="h-2.5 overflow-hidden rounded-full bg-white/80 dark:bg-slate-800"><div className={`h-full rounded-full ${item.color} transition-[width] duration-500`} style={{ width: `${Math.min(item.percent, 100)}%` }} /></div>
+              </div>
+            ))}
           </div>
+          <p className="mt-4 text-xs font-semibold text-slate-500">{redeemedCount} total offer redemptions in the {birthdayMonthLabel} birthday population.</p>
         </div>
       )}
     </section>
