@@ -1353,14 +1353,14 @@ export default function Home() {
                 <div>
                   <div className="flex items-center gap-3">
                     <SectionBackArrow onClick={() => gymSubTab === 'overview' ? setActiveTab('home') : setGymSubTab('overview')} label={gymSubTab === 'overview' ? 'Back to Home' : 'Back to Overview'} />
-                    <h2 className="text-3xl font-bold text-slate-900 dark:text-white">GYM Memberships</h2>
+                    <h2 className="text-3xl font-bold text-slate-900 dark:text-white">{gymSubTab === 'client-contacts' ? 'Gym directory' : 'GYM Memberships'}</h2>
                   </div>
                   <p className="text-slate-500">
                     {gymSubTab === 'overview' ? 'Manage membership types and client enrollments.' :
                      gymSubTab === 'create-type' ? 'Define new membership packages.' :
                      gymSubTab === 'partner-companies' ? 'Manage companies available on invoices.' :
                      gymSubTab === 'enroll' ? 'Register a client for a membership.' :
-                     gymSubTab === 'client-contacts' ? 'View client phone numbers and membership status.' : 'View active gym members.'}
+                     gymSubTab === 'client-contacts' ? 'Client contact details.' : 'View active gym members.'}
                   </p>
                 </div>
               </div>
@@ -1460,13 +1460,13 @@ export default function Home() {
                 <div>
                   <div className="flex items-center gap-3">
                     <SectionBackArrow onClick={() => spaSubTab === 'overview' ? setActiveTab('home') : setSpaSubTab('overview')} label={spaSubTab === 'overview' ? 'Back to Home' : 'Back to Overview'} />
-                    <h2 className="text-3xl font-bold text-slate-900 dark:text-white">SPA Memberships</h2>
+                    <h2 className="text-3xl font-bold text-slate-900 dark:text-white">{spaSubTab === 'client-contacts' ? 'Spa directory' : 'SPA Memberships'}</h2>
                   </div>
                   <p className="text-slate-500">
                     {spaSubTab === 'overview' ? 'Manage spa membership types and client enrollments.' :
                      spaSubTab === 'create-type' ? 'Define new spa membership packages.' :
                      spaSubTab === 'enroll' ? 'Register a client for a spa membership.' :
-                     spaSubTab === 'client-contacts' ? 'View client phone numbers and membership status.' : 'View active spa members.'}
+                     spaSubTab === 'client-contacts' ? 'Client contact details.' : 'View active spa members.'}
                   </p>
                 </div>
               </div>
