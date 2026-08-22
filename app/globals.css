@@ -266,6 +266,27 @@ button { @apply transition-all duration-200 active:scale-95; }
     min-height: 116px;
   }
 }
+
+.dashboard-card-default {
+  min-height: 166px;
+}
+
+.dashboard-card-large {
+  min-height: 205px;
+}
+
+@media (min-width: 640px) {
+  .dashboard-card-large {
+    min-height: 220px;
+  }
+}
+
+@media (max-width: 420px) {
+  .dashboard-card-large {
+    min-height: 184px;
+  }
+}
+
 .dark .dashboard-shell {
   background: #161617;
 }
