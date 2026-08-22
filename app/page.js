@@ -34,6 +34,7 @@ const SpaMembershipForm = dynamic(() => import('@/components/SpaMembershipForm')
 const SpaMembershipTypeManager = dynamic(() => import('@/components/SpaMembershipTypeManager'), { loading: LazySectionFallback });
 const SpaEnrollmentForm = dynamic(() => import('@/components/SpaEnrollmentForm'), { loading: LazySectionFallback });
 const SpaMembershipList = dynamic(() => import('@/components/SpaMembershipList'), { loading: LazySectionFallback });
+const MembershipContactsDirectory = dynamic(() => import('@/components/MembershipContactsDirectory'), { loading: LazySectionFallback });
 const UserManagement = dynamic(() => import('@/components/UserManagement'), { loading: LazySectionFallback });
 const UserProfile = dynamic(() => import('@/components/UserProfile'), { loading: LazySectionFallback });
 const ActionsTimeline = dynamic(() => import('@/components/ActionsTimeline'), { loading: LazySectionFallback });
@@ -1358,7 +1359,8 @@ export default function Home() {
                     {gymSubTab === 'overview' ? 'Manage membership types and client enrollments.' :
                      gymSubTab === 'create-type' ? 'Define new membership packages.' :
                      gymSubTab === 'partner-companies' ? 'Manage companies available on invoices.' :
-                     gymSubTab === 'enroll' ? 'Register a client for a membership.' : 'View active gym members.'}
+                     gymSubTab === 'enroll' ? 'Register a client for a membership.' :
+                     gymSubTab === 'client-contacts' ? 'View client phone numbers and membership status.' : 'View active gym members.'}
                   </p>
                 </div>
               </div>
@@ -1405,6 +1407,15 @@ export default function Home() {
                       description="View and manage active memberships."
                     />
                   )}
+                  {profile?.permissions?.gym?.view !== false && (
+                    <NavCard
+                      onClick={() => setGymSubTab('client-contacts')}
+                      icon={<QuickActionIcon name="clients" />}
+                      title="Client Contacts"
+                      description="Names, phone numbers, memberships, and status."
+                      accent="blue"
+                    />
+                  )}
                 </div>
               ) : (
                 <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
@@ -1431,6 +1442,13 @@ export default function Home() {
                   {gymSubTab === 'active-members' && (
                     <MembershipList />
                   )}
+                  {gymSubTab === 'client-contacts' && (
+                    <MembershipContactsDirectory
+                      serviceName="Gym"
+                      enrollments={cachedGymEnrollments}
+                      clients={globalClients.length ? globalClients : cachedGlobalClients}
+                    />
+                  )}
                 </div>
               )}
             </div>
@@ -1447,7 +1465,8 @@ export default function Home() {
                   <p className="text-slate-500">
                     {spaSubTab === 'overview' ? 'Manage spa membership types and client enrollments.' :
                      spaSubTab === 'create-type' ? 'Define new spa membership packages.' :
-                     spaSubTab === 'enroll' ? 'Register a client for a spa membership.' : 'View active spa members.'}
+                     spaSubTab === 'enroll' ? 'Register a client for a spa membership.' :
+                     spaSubTab === 'client-contacts' ? 'View client phone numbers and membership status.' : 'View active spa members.'}
                   </p>
                 </div>
               </div>
@@ -1486,6 +1505,15 @@ export default function Home() {
                       description="View and manage active spa memberships."
                     />
                   )}
+                  {profile?.permissions?.spa?.view !== false && (
+                    <NavCard
+                      onClick={() => setSpaSubTab('client-contacts')}
+                      icon={<QuickActionIcon name="clients" />}
+                      title="Client Contacts"
+                      description="Names, phone numbers, memberships, and status."
+                      accent="violet"
+                    />
+                  )}
                 </div>
               ) : (
                 <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
@@ -1506,6 +1534,13 @@ export default function Home() {
                   )}
                   {spaSubTab === 'active-members' && (
                     <SpaMembershipList />
+                  )}
+                  {spaSubTab === 'client-contacts' && (
+                    <MembershipContactsDirectory
+                      serviceName="Spa"
+                      enrollments={cachedSpaEnrollments}
+                      clients={globalClients.length ? globalClients : cachedGlobalClients}
+                    />
                   )}
                 </div>
               )}
