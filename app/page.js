@@ -929,7 +929,6 @@ export default function Home() {
                       badge={dataLoaded ? activeSpaMembers : undefined}
                     />
                   )}
-                  <NavCard onClick={() => setActiveTab('notes')} icon="📝" title="Notes" description="Reference reminders." badge={activeNotesCount} accent="violet" />
                   </div>
                 </section>
                 <div className="hidden md:block">
