@@ -1,9 +1,12 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { getAllReports, getReportForDate, createEmptyReport, saveReport, toDateKey } from '@/lib/reports';
+import { deleteReport, getAllReports, getReportForDate, createEmptyReport, saveReport, toDateKey } from '@/lib/reports';
+import { getAllUsers } from '@/lib/users';
 import { generateReportPdf } from '@/lib/reportPdf';
 
+const REPORT_TYPE = 'feedback-birthdays-whatsapp-calls';
+const REPORT_TYPE_LABEL = 'Feedback, Birthdays, WhatsApp & Calls Report';
 const todayKey = () => toDateKey(new Date());
 
 const formatDate = (dateKey) => {
@@ -12,60 +15,48 @@ const formatDate = (dateKey) => {
 };
 
 const formatTime = (date) => (date ? new Date(date).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) : '');
-
 const initials = (name = '') => name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toUpperCase() || 'S';
-
-const makeRow = (overrides = {}) => ({
-  rowId: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-  clientId: '',
-  clientName: '',
-  phoneNumber: '',
-  branch: '',
-  contactMethod: '',
-  callerName: '',
-  comment: '',
-  source: 'manual',
-  ...overrides,
-});
-
-const emptySections = {
-  previousDayVisits: [makeRow()],
-  followUps: [makeRow()],
-  whatsappMessages: [makeRow()],
-};
+const makeRow = (overrides = {}) => ({ rowId: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, clientId: '', clientName: '', phoneNumber: '', branch: '', contactMethod: '', callerName: '', comment: '', customFields: {}, source: 'manual', ...overrides });
 
 const sectionMeta = [
-  { key: 'previousDayVisits', label: 'Previous-day visits', description: 'Clients you contacted after their previous visit.', accent: 'emerald' },
-  { key: 'followUps', label: 'Clients from Prev Day Visits', description: 'Clients from the previous day who need a follow-up, solution, or return call.', accent: 'amber' },
-  { key: 'whatsappMessages', label: 'WhatsApp messages', description: 'Client messages, replies, and important conversations.', accent: 'violet' },
+  { key: 'birthdayClients', label: 'A. Birthday Clients Contacted', description: 'Birthday outreach already recorded for the selected caller.', accent: 'blue' },
+  { key: 'previousDayVisits', label: 'B. Clients Contacted from Previous-Day Visit', description: 'Clients contacted after their previous visit.', accent: 'emerald' },
+  { key: 'followUps', label: 'C. Clients from Prev Day Visits', description: 'Clients from the previous day who need a solution, follow-up, or return call.', accent: 'amber' },
+  { key: 'whatsappMessages', label: 'D. WhatsApp Messages', description: 'Important client messages, replies, and conversations.', accent: 'violet' },
 ];
+
+const emptySections = Object.fromEntries(sectionMeta.map(({ key }) => [key, [makeRow()]]));
+
+const normalizeUser = (record = {}) => ({
+  id: record.id || record.uid || '',
+  name: record.name || record.displayName || record.email || 'Unnamed user',
+  email: record.email || '',
+  roleLabel: record.roleLabel || record.role || 'Staff member',
+});
 
 const normalizeAutoBirthdayRows = (clients, dateKey, caller) => {
   if (!caller?.id) return [];
-  return clients
-    .filter((client) => {
-      const calledByCaller = client.birthdayCalledById === caller.id || (caller.name && client.birthdayCalledByName === caller.name);
-      const contactDate = client.birthdayCalledAt?.toDate?.() || client.birthdayCalledAt;
-      const wasContactedOnDate = contactDate && toDateKey(contactDate) === dateKey;
-      const birthdayOnDate = Number(client.birthMonth) === Number(dateKey.slice(5, 7)) && Number(client.birthDay) === Number(dateKey.slice(8, 10));
-      return calledByCaller && (wasContactedOnDate || birthdayOnDate);
-    })
-    .map((client) => makeRow({
-      clientId: client.id,
-      clientName: client.name || 'Unnamed client',
-      phoneNumber: client.phoneNumber || '',
-      branch: client.branch || '',
-      contactMethod: client.birthdayContactMethod || 'Called',
-      callerName: client.birthdayCalledByName || caller.name || '',
-      comment: client.birthdayFeedback || client.birthdayComment || '',
-      source: 'birthday-auto',
-    }));
+  return clients.filter((client) => {
+    const calledByCaller = client.birthdayCalledById === caller.id || (caller.name && client.birthdayCalledByName === caller.name);
+    const contactDate = client.birthdayCalledAt?.toDate?.() || client.birthdayCalledAt;
+    const wasContactedOnDate = contactDate && toDateKey(contactDate) === dateKey;
+    const birthdayOnDate = Number(client.birthMonth) === Number(dateKey.slice(5, 7)) && Number(client.birthDay) === Number(dateKey.slice(8, 10));
+    return calledByCaller && (wasContactedOnDate || birthdayOnDate);
+  }).map((client) => makeRow({
+    clientId: client.id,
+    clientName: client.name || 'Unnamed client',
+    phoneNumber: client.phoneNumber || '',
+    branch: client.branch || '',
+    contactMethod: client.birthdayContactMethod || 'Called',
+    callerName: client.birthdayCalledByName || caller.name || '',
+    comment: client.birthdayFeedback || client.birthdayComment || '',
+    source: 'birthday-auto',
+  }));
 };
 
 const enrichReportRows = (report, clients) => {
-  const sectionKeys = ['birthdayClients', 'previousDayVisits', 'followUps', 'whatsappMessages'];
   const clientList = Array.isArray(clients) ? clients : [];
-  return sectionKeys.reduce((nextReport, sectionKey) => {
+  return ['birthdayClients', 'previousDayVisits', 'followUps', 'whatsappMessages'].reduce((nextReport, sectionKey) => {
     nextReport[sectionKey] = (nextReport[sectionKey] || []).map((row) => {
       const client = clientList.find((candidate) => candidate.id === row.clientId || (candidate.name && row.clientName && candidate.name.trim().toLowerCase() === row.clientName.trim().toLowerCase()));
       return client ? { ...row, clientId: row.clientId || client.id, clientName: row.clientName || client.name || '', phoneNumber: row.phoneNumber || client.phoneNumber || '', branch: row.branch || client.branch || '' } : row;
@@ -74,213 +65,179 @@ const enrichReportRows = (report, clients) => {
   }, { ...report });
 };
 
-const getUserCaller = (user) => ({
-  id: user?.uid || '',
-  name: user?.displayName || user?.email || 'My calls',
-  roleLabel: 'Signed-in caller',
-});
+const rowHasContent = (row, customColumns = []) => Boolean(row.clientName || row.phoneNumber || row.contactMethod || row.comment || customColumns.some((column) => row.customFields?.[column.id]));
+const reportEntryCount = (report) => sectionMeta.reduce((total, section) => total + (report?.[section.key]?.filter((row) => rowHasContent(row, report.customColumns)).length || 0), 0);
 
-function ReportRow({ row, index, readOnly, onChange, onRemove }) {
-  return (
-    <div className="grid gap-2 border-b border-slate-100 px-3 py-3 last:border-b-0 dark:border-slate-800 sm:grid-cols-[38px_minmax(0,0.8fr)_minmax(0,0.65fr)_minmax(0,0.7fr)_minmax(0,1.35fr)_34px] sm:items-start">
-      <div className="pt-2 text-xs font-black text-slate-400">{index + 1}</div>
-      <div>
-        <label className="sr-only" htmlFor={`client-${row.rowId}`}>Client name</label>
-        <input id={`client-${row.rowId}`} list="report-client-options" value={row.clientName} disabled={readOnly} onChange={(event) => onChange({ clientName: event.target.value })} placeholder="Client name" className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-800 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 disabled:cursor-default disabled:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:disabled:bg-slate-900" />
-        {row.branch && <div className="mt-1 px-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">{row.branch}</div>}
-      </div>
-      <div>
-        <label className="sr-only" htmlFor={`phone-${row.rowId}`}>Phone number</label>
-        <input id={`phone-${row.rowId}`} value={row.phoneNumber || ''} disabled={readOnly} onChange={(event) => onChange({ phoneNumber: event.target.value })} placeholder="Phone number" className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-700 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 disabled:cursor-default disabled:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:disabled:bg-slate-900" />
-      </div>
-      <div>
-        <label className="sr-only" htmlFor={`method-${row.rowId}`}>Mode of contact</label>
-        <select id={`method-${row.rowId}`} value={row.contactMethod || ''} disabled={readOnly} onChange={(event) => onChange({ contactMethod: event.target.value })} className="w-full rounded-xl border border-slate-200 bg-white px-2 py-2.5 text-xs font-bold text-slate-700 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 disabled:cursor-default disabled:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:disabled:bg-slate-900"><option value="">Contact mode</option><option value="Phone call">Phone call</option><option value="WhatsApp">WhatsApp</option><option value="SMS">SMS</option><option value="In person">In person</option><option value="Called">Called</option><option value="Not reached">Not reached</option></select>
-      </div>
-      <div>
-        <label className="sr-only" htmlFor={`comment-${row.rowId}`}>Comment or feedback</label>
-        <textarea id={`comment-${row.rowId}`} value={row.comment} disabled={readOnly} onChange={(event) => onChange({ comment: event.target.value })} placeholder="Feedback or comments..." rows={2} className="w-full resize-y rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm leading-5 text-slate-700 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 disabled:cursor-default disabled:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:disabled:bg-slate-900" />
-      </div>
-      {!readOnly && <button type="button" onClick={onRemove} aria-label="Remove row" className="mt-1 inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-300 transition hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-950/30">×</button>}
-    </div>
-  );
+function CellButton({ value, placeholder, onClick, readOnly }) {
+  return <button type="button" onClick={onClick} className={`min-h-11 w-full rounded-lg px-2 py-2 text-left text-xs transition ${value ? 'font-semibold text-slate-700 hover:bg-blue-50 hover:text-blue-700 dark:text-slate-200 dark:hover:bg-blue-950/30' : 'font-medium italic text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-900'} ${readOnly ? '' : 'cursor-pointer'}`}><span className="line-clamp-3">{value || placeholder}</span></button>;
 }
 
-function ReportSectionCard({ meta, rows, readOnly, onChange, onAdd, onRemove }) {
-  const accent = {
-    emerald: 'border-emerald-100 bg-emerald-50/40 dark:border-emerald-900/40 dark:bg-emerald-950/10',
-    amber: 'border-amber-100 bg-amber-50/40 dark:border-amber-900/40 dark:bg-amber-950/10',
-    violet: 'border-violet-100 bg-violet-50/40 dark:border-violet-900/40 dark:bg-violet-950/10',
-  }[meta.accent];
+function ReportTable({ section, rows, customColumns, readOnly, onCellClick, onAddRow, onRemoveRow, onAddColumn }) {
+  const columns = [
+    { id: 'clientName', label: 'Client name' },
+    { id: 'phoneNumber', label: 'Phone' },
+    { id: 'contactMethod', label: 'Contact mode' },
+    { id: 'comment', label: 'Feedback / comments' },
+    ...customColumns,
+  ];
   return (
-    <section className={`overflow-hidden rounded-2xl border ${accent}`}>
-      <div className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h3 className="text-sm font-black text-slate-900 dark:text-white">{meta.label}</h3>
-          <p className="mt-0.5 text-xs font-medium text-slate-500 dark:text-slate-400">{meta.description}</p>
-        </div>
-        {!readOnly && <button type="button" onClick={onAdd} className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-200 hover:text-blue-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">+ Add row</button>}
-      </div>
-      <div className="overflow-hidden rounded-xl border border-slate-200/80 bg-white/80 dark:border-slate-800 dark:bg-slate-950/60">
-        <div className="hidden grid-cols-[38px_minmax(0,0.8fr)_minmax(0,0.65fr)_minmax(0,0.7fr)_minmax(0,1.35fr)_34px] gap-2 border-b border-slate-100 px-3 py-2 text-[10px] font-black uppercase tracking-[0.16em] text-slate-400 dark:border-slate-800 sm:grid"><span>No.</span><span>Client name</span><span>Phone</span><span>Contact mode</span><span>Feedback / comments</span><span /></div>
-        {rows.map((row, index) => <ReportRow key={row.rowId || index} row={row} index={index} readOnly={readOnly} onChange={(patch) => onChange(index, patch)} onRemove={() => onRemove(index)} />)}
-      </div>
+    <section className={`overflow-hidden rounded-2xl border ${section.accent === 'blue' ? 'border-blue-100 bg-blue-50/40 dark:border-blue-900/40 dark:bg-blue-950/10' : section.accent === 'emerald' ? 'border-emerald-100 bg-emerald-50/40 dark:border-emerald-900/40 dark:bg-emerald-950/10' : section.accent === 'amber' ? 'border-amber-100 bg-amber-50/40 dark:border-amber-900/40 dark:bg-amber-950/10' : 'border-violet-100 bg-violet-50/40 dark:border-violet-900/40 dark:bg-violet-950/10'}`}>
+      <div className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between"><div><h3 className="text-sm font-black text-slate-900 dark:text-white">{section.label}</h3><p className="mt-0.5 text-xs font-medium text-slate-500 dark:text-slate-400">{section.description}</p></div><div className="flex flex-wrap gap-2">{!readOnly && <button type="button" onClick={onAddRow} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-700 shadow-sm hover:border-blue-200 hover:text-blue-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">+ Add row</button>}{!readOnly && <button type="button" onClick={onAddColumn} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-700 shadow-sm hover:border-blue-200 hover:text-blue-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">+ New column</button>}</div></div>
+      <div className="overflow-x-auto rounded-xl border border-slate-200/80 bg-white/85 dark:border-slate-800 dark:bg-slate-950/60"><table className="w-full min-w-[900px] border-collapse text-left"><thead><tr className="border-b border-slate-100 dark:border-slate-800"><th className="w-12 px-3 py-3 text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">No.</th>{columns.map((column) => <th key={column.id} className="min-w-40 px-2 py-3 text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">{column.label}</th>)}{!readOnly && <th className="w-12 px-2 py-3" />}</tr></thead><tbody>{rows.map((row, index) => <tr key={row.rowId || index} className="border-b border-slate-100 align-top last:border-b-0 dark:border-slate-800"><td className="px-3 py-2 text-xs font-black text-slate-400">{index + 1}</td>{columns.map((column) => <td key={column.id} className="px-1 py-1"><CellButton value={column.id === 'clientName' ? row.clientName : column.id === 'phoneNumber' ? row.phoneNumber : column.id === 'contactMethod' ? row.contactMethod : column.id === 'comment' ? row.comment : row.customFields?.[column.id]} placeholder={column.id === 'comment' ? 'Enter feedback or comments' : `Enter ${column.label.toLowerCase()}`} readOnly={readOnly} onClick={() => onCellClick(index, ['clientName', 'phoneNumber', 'contactMethod', 'comment'].includes(column.id) ? column.id : `custom:${column.id}`, column.label)} /></td>)}{!readOnly && <td className="px-2 py-2"><button type="button" onClick={() => onRemoveRow(index)} aria-label="Remove row" className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-300 transition hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-950/30">×</button></td>}</tr>)}</tbody></table></div>
     </section>
   );
 }
 
+function CellDialog({ cell, readOnly, clients, onClose, onSave }) {
+  const [value, setValue] = useState(cell?.value || '');
+  const [clientMatch, setClientMatch] = useState(null);
+  if (!cell) return null;
+  const isClient = cell.field === 'clientName';
+  const save = () => {
+    const matchedClient = isClient ? clients.find((client) => client.name && client.name.trim().toLowerCase() === value.trim().toLowerCase()) : null;
+    onSave(value, matchedClient);
+  };
+  return <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="report-cell-title"><div className="w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-5 shadow-2xl dark:border-slate-800 dark:bg-slate-900"><div className="flex items-start justify-between gap-4"><div><p className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-600">Table cell entry</p><h3 id="report-cell-title" className="mt-1 text-xl font-black text-slate-900 dark:text-white">{cell.columnLabel}</h3><p className="mt-1 text-xs font-medium text-slate-500">{cell.sectionLabel} · Row {cell.rowIndex + 1}</p></div><button type="button" onClick={onClose} aria-label="Close dialog" className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800">×</button></div><div className="mt-5">{isClient ? <><input autoFocus list="report-client-options" value={value} onChange={(event) => { setValue(event.target.value); setClientMatch(clients.find((client) => client.name && client.name.trim().toLowerCase() === event.target.value.trim().toLowerCase()) || null); }} disabled={readOnly} placeholder="Search or enter client name" className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-semibold outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 disabled:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:disabled:bg-slate-800" />{clientMatch && <p className="mt-2 rounded-xl bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 dark:bg-blue-950/30 dark:text-blue-300">Phone will auto-fill: {clientMatch.phoneNumber || 'No phone saved'}</p>}</> : cell.field === 'contactMethod' ? <select autoFocus value={value} onChange={(event) => setValue(event.target.value)} disabled={readOnly} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-semibold outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 disabled:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:disabled:bg-slate-800"><option value="">Select contact mode</option><option value="Phone call">Phone call</option><option value="WhatsApp">WhatsApp</option><option value="SMS">SMS</option><option value="In person">In person</option><option value="Called">Called</option><option value="Not reached">Not reached</option></select> : <textarea autoFocus value={value} onChange={(event) => setValue(event.target.value)} disabled={readOnly} rows={cell.field === 'comment' ? 6 : 3} placeholder={`Enter ${cell.columnLabel.toLowerCase()}`} className="w-full resize-y rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm leading-6 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 disabled:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:disabled:bg-slate-800" />}</div><div className="mt-5 flex justify-end gap-2"><button type="button" onClick={onClose} className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-black text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800">{readOnly ? 'Close' : 'Cancel'}</button>{!readOnly && <button type="button" onClick={save} className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-black text-white hover:bg-blue-700">Save cell</button>}</div></div></div>;
+}
+
+function ColumnDialog({ onClose, onSave }) {
+  const [label, setLabel] = useState('');
+  return <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="new-column-title"><div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-5 shadow-2xl dark:border-slate-800 dark:bg-slate-900"><p className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-600">Customize table</p><h3 id="new-column-title" className="mt-1 text-xl font-black text-slate-900 dark:text-white">Add a new column</h3><p className="mt-1 text-sm text-slate-500">Create a field for any extra detail your team needs to record.</p><input autoFocus value={label} onChange={(event) => setLabel(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') onSave(label); }} placeholder="For example: Action owner" className="mt-5 w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-semibold outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" /><div className="mt-5 flex justify-end gap-2"><button type="button" onClick={onClose} className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-black text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800">Cancel</button><button type="button" onClick={() => onSave(label)} disabled={!label.trim()} className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-black text-white hover:bg-blue-700 disabled:opacity-50">Add column</button></div></div></div>;
+}
+
 export default function ReportsSection({ user, profile, clients = [], birthdayCallers = [], onBack }) {
-  const defaultCaller = getUserCaller(user);
-  const [mode, setMode] = useState('history');
+  const [workspaceStep, setWorkspaceStep] = useState('users');
+  const [selectedUserId, setSelectedUserId] = useState('');
+  const [reportType, setReportType] = useState(REPORT_TYPE);
   const [selectedDate, setSelectedDate] = useState(todayKey());
-  const [selectedCallerId, setSelectedCallerId] = useState(defaultCaller.id);
   const [selectedBranch, setSelectedBranch] = useState(profile?.assignedBranches?.[0] || '');
   const [report, setReport] = useState(null);
   const [reports, setReports] = useState([]);
+  const [workspaceUsers, setWorkspaceUsers] = useState([]);
+  const [cellDialog, setCellDialog] = useState(null);
+  const [columnDialogOpen, setColumnDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
 
+  const defaultUser = useMemo(() => normalizeUser({ id: user?.uid, name: user?.displayName, email: user?.email, role: profile?.role }), [profile?.role, user?.displayName, user?.email, user?.uid]);
   const callerOptions = useMemo(() => {
-    const combined = [...birthdayCallers, defaultCaller];
     const seen = new Set();
-    return combined.filter((caller) => caller?.id && !seen.has(caller.id) && seen.add(caller.id));
-  }, [birthdayCallers, defaultCaller]);
-
-  const selectedCaller = callerOptions.find((caller) => caller.id === selectedCallerId) || defaultCaller;
+    const reportUsers = reports.map((item) => normalizeUser({ id: item.ownerId || item.callerId, name: item.ownerName || item.callerName, email: item.ownerEmail }));
+    return [defaultUser, ...workspaceUsers, ...birthdayCallers.map(normalizeUser), ...reportUsers].filter((candidate) => candidate.id && !seen.has(candidate.id) && seen.add(candidate.id));
+  }, [birthdayCallers, defaultUser, reports, workspaceUsers]);
+  const selectedUser = callerOptions.find((candidate) => candidate.id === selectedUserId) || defaultUser;
+  const isOwnWorkspace = selectedUser.id === user?.uid;
   const canEdit = Boolean(report && report.ownerId === user?.uid);
+  const canDelete = Boolean(report && (report.ownerId === user?.uid || profile?.role === 'Admin'));
   const assignedBranches = Array.isArray(profile?.assignedBranches) ? profile.assignedBranches.filter(Boolean) : [];
   const visibleBranches = assignedBranches.length ? assignedBranches : [...new Set(clients.map((client) => client.branch).filter(Boolean))];
 
   useEffect(() => {
     let active = true;
-    getAllReports().then((data) => {
+    Promise.all([getAllReports(), getAllUsers()]).then(([allReports, allUsers]) => {
       if (!active) return;
-      setReports(data);
+      setReports(allReports);
+      setWorkspaceUsers(allUsers.map(normalizeUser));
       setIsLoading(false);
-    });
+    }).catch(() => setIsLoading(false));
     return () => { active = false; };
   }, []);
 
   useEffect(() => {
     if (!notice) return undefined;
-    const timer = setTimeout(() => setNotice(''), 3500);
+    const timer = setTimeout(() => setNotice(''), 4000);
     return () => clearTimeout(timer);
   }, [notice]);
 
   const historyReports = useMemo(() => reports.filter((item) => {
-    const callerMatch = selectedCallerId === 'all' || !selectedCallerId || item.callerId === selectedCallerId || item.ownerId === selectedCallerId;
+    const callerMatch = !selectedUserId || item.callerId === selectedUserId || item.ownerId === selectedUserId;
     const branchMatch = !selectedBranch || item.branch === selectedBranch;
     return callerMatch && branchMatch;
-  }), [reports, selectedCallerId, selectedBranch]);
+  }), [reports, selectedBranch, selectedUserId]);
+
+  const goToUsers = () => { setWorkspaceStep('users'); setReport(null); setSelectedUserId(''); setError(''); };
+  const chooseUser = (candidate) => { setSelectedUserId(candidate.id); setWorkspaceStep('types'); setError(''); setNotice(`${candidate.name}'s report workspace is ready.`); };
+  const chooseReportType = () => setWorkspaceStep('history');
 
   const startNewReport = async (dateKey = selectedDate) => {
-    setError('');
-    setNotice('');
-    setSelectedDate(dateKey);
-    const existing = await getReportForDate(dateKey, user?.uid);
-    const autoRows = normalizeAutoBirthdayRows(clients, dateKey, selectedCaller);
-    const nextReport = existing || createEmptyReport({ dateKey, ownerId: user?.uid, ownerName: user?.displayName || user?.email, callerId: selectedCaller.id, callerName: selectedCaller.name, branch: selectedBranch });
-    setReport({
-      ...enrichReportRows(nextReport, clients),
-      callerId: nextReport.callerId || selectedCaller.id,
-      callerName: nextReport.callerName || selectedCaller.name,
-      branch: nextReport.branch || selectedBranch,
-      birthdayClients: nextReport.birthdayClients?.length ? nextReport.birthdayClients : autoRows,
-      previousDayVisits: nextReport.previousDayVisits?.length ? nextReport.previousDayVisits : emptySections.previousDayVisits,
-      followUps: nextReport.followUps?.length ? nextReport.followUps : emptySections.followUps,
-      whatsappMessages: nextReport.whatsappMessages?.length ? nextReport.whatsappMessages : emptySections.whatsappMessages,
-    });
-    setMode('editor');
-  };
-
-  const openReport = (item) => {
-    setSelectedDate(item.reportDateKey);
-    setReport(enrichReportRows(item, clients));
-    setMode('editor');
-    setNotice(item.ownerId === user?.uid ? 'Your report is ready to continue editing.' : 'Viewing another caller’s report in read-only mode.');
-  };
-
-  const updateSectionRow = (sectionKey, index, patch) => {
-    setReport((current) => ({ ...current, [sectionKey]: current[sectionKey].map((row, rowIndex) => rowIndex === index ? { ...row, ...patch } : row) }));
-  };
-
-  const updateClientRow = (sectionKey, index, patch) => {
-    if (!patch.clientName) {
-      updateSectionRow(sectionKey, index, patch);
+    if (!isOwnWorkspace) {
+      setNotice('Select your own name to create or edit a report. Other users’ reports can be viewed from their workspace.');
       return;
     }
-    const matchedClient = clients.find((client) => client.name && client.name.trim().toLowerCase() === patch.clientName.trim().toLowerCase());
-    updateSectionRow(sectionKey, index, matchedClient ? { ...patch, clientId: matchedClient.id, phoneNumber: matchedClient.phoneNumber || '', branch: matchedClient.branch || '' } : patch);
+    setError('');
+    setSelectedDate(dateKey);
+    const existing = await getReportForDate(dateKey, user?.uid);
+    const autoRows = normalizeAutoBirthdayRows(clients, dateKey, selectedUser);
+    const nextReport = existing || createEmptyReport({ dateKey, ownerId: user?.uid, ownerName: user?.displayName || user?.email, callerId: selectedUser.id, callerName: selectedUser.name, branch: selectedBranch });
+    const hydrated = enrichReportRows({ ...nextReport, reportType: nextReport.reportType || REPORT_TYPE }, clients);
+    setReport({ ...hydrated, callerId: hydrated.callerId || selectedUser.id, callerName: hydrated.callerName || selectedUser.name, branch: hydrated.branch || selectedBranch, birthdayClients: hydrated.birthdayClients?.length ? hydrated.birthdayClients : autoRows, previousDayVisits: hydrated.previousDayVisits?.length ? hydrated.previousDayVisits : emptySections.previousDayVisits, followUps: hydrated.followUps?.length ? hydrated.followUps : emptySections.followUps, whatsappMessages: hydrated.whatsappMessages?.length ? hydrated.whatsappMessages : emptySections.whatsappMessages });
+    setWorkspaceStep('editor');
   };
 
-  const addSectionRow = (sectionKey) => setReport((current) => ({ ...current, [sectionKey]: [...current[sectionKey], makeRow()] }));
-  const removeSectionRow = (sectionKey, index) => setReport((current) => ({ ...current, [sectionKey]: current[sectionKey].filter((_, rowIndex) => rowIndex !== index) }));
+  const openReport = (item) => { setSelectedDate(item.reportDateKey); setReport(enrichReportRows(item, clients)); setWorkspaceStep('editor'); setNotice(item.ownerId === user?.uid ? 'Your report is ready to continue editing.' : 'Viewing another user’s report in read-only mode.'); };
+
+  const handleCellSave = (value, matchedClient) => {
+    const { sectionKey, rowIndex, field } = cellDialog;
+    setReport((current) => {
+      const nextRows = current[sectionKey].map((row, index) => {
+        if (index !== rowIndex) return row;
+        const patch = field === 'clientName' && matchedClient ? { clientName: value, clientId: matchedClient.id, phoneNumber: matchedClient.phoneNumber || '', branch: matchedClient.branch || '' } : field.startsWith('custom:') ? { customFields: { ...row.customFields, [field.slice(7)]: value } } : { [field]: value };
+        return { ...row, ...patch };
+      });
+      return { ...current, [sectionKey]: nextRows };
+    });
+    setCellDialog(null);
+  };
+
+  const openCell = (sectionKey, rowIndex, field, columnLabel) => {
+    const row = report?.[sectionKey]?.[rowIndex] || {};
+    const value = field === 'clientName' ? row.clientName : field === 'phoneNumber' ? row.phoneNumber : field === 'contactMethod' ? row.contactMethod : field === 'comment' ? row.comment : row.customFields?.[field.slice(7)] || '';
+    setCellDialog({ sectionKey, rowIndex, field, value, columnLabel, sectionLabel: sectionMeta.find((section) => section.key === sectionKey)?.label || '' });
+  };
+
+  const addRow = (sectionKey) => setReport((current) => ({ ...current, [sectionKey]: [...(current[sectionKey] || []), makeRow()] }));
+  const removeRow = (sectionKey, rowIndex) => setReport((current) => ({ ...current, [sectionKey]: current[sectionKey].filter((_, index) => index !== rowIndex) }));
+  const addColumn = (label) => { const normalizedLabel = label.trim(); if (!normalizedLabel) return; const id = `${normalizedLabel.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${Date.now()}`; setReport((current) => ({ ...current, customColumns: [...(current.customColumns || []), { id, label: normalizedLabel }] })); setColumnDialogOpen(false); };
 
   const saveCurrentReport = async () => {
     if (!report || !canEdit) return;
     setIsSaving(true);
     setError('');
-    const result = await saveReport(report, user, profile);
+    const result = await saveReport({ ...report, reportType }, user, profile);
     setIsSaving(false);
-    if (!result.success) {
-      setError(result.error || 'Unable to save this report.');
-      return;
-    }
+    if (!result.success) { setError(result.error || 'Unable to save this report.'); return; }
     setReport(result.report);
     setReports((current) => [result.report, ...current.filter((item) => item.id !== result.report.id)]);
-    setNotice('Report saved. You can return to it anytime from Report history.');
+    setNotice('Report saved. You can return to it anytime from this workspace.');
   };
 
-  const downloadCurrentReport = () => {
-    if (!report) return;
-    const dataUri = generateReportPdf(report);
-    const link = document.createElement('a');
-    link.href = dataUri;
-    link.download = `spa-ems-report-${report.reportDateKey || todayKey()}.pdf`;
-    link.click();
+  const removeReport = async (item) => {
+    if (!window.confirm(`Delete the report for ${formatDate(item.reportDateKey)}? This cannot be undone.`)) return;
+    const result = await deleteReport(item.id, user, profile?.role === 'Admin');
+    if (!result.success) { setError(result.error || 'Unable to delete report.'); return; }
+    setReports((current) => current.filter((candidate) => candidate.id !== item.id));
+    if (report?.id === item.id) { setReport(null); setWorkspaceStep('history'); }
+    setNotice('Report deleted.');
   };
 
-  const loadBirthdayCalls = () => {
-    if (!report || !canEdit) return;
-    const autoRows = normalizeAutoBirthdayRows(clients, report.reportDateKey, selectedCaller);
-    setReport((current) => ({ ...current, callerId: selectedCaller.id, callerName: selectedCaller.name, birthdayClients: autoRows }));
-    setNotice(autoRows.length ? `${autoRows.length} birthday call${autoRows.length === 1 ? '' : 's'} loaded for ${selectedCaller.name}.` : 'No matching birthday calls found for this date and caller.');
-  };
+  const downloadCurrentReport = () => { if (!report) return; const link = document.createElement('a'); link.href = generateReportPdf(report); link.download = `spa-ems-report-${report.reportDateKey || todayKey()}.pdf`; link.click(); };
+  const loadBirthdayCalls = () => { if (!report || !canEdit) return; const autoRows = normalizeAutoBirthdayRows(clients, report.reportDateKey, selectedUser); setReport((current) => ({ ...current, callerId: selectedUser.id, callerName: selectedUser.name, birthdayClients: autoRows })); setNotice(autoRows.length ? `${autoRows.length} birthday call${autoRows.length === 1 ? '' : 's'} loaded for ${selectedUser.name}.` : 'No matching birthday calls found for this date and caller.'); };
 
-  return (
-    <div className="space-y-6 animate-in fade-in duration-300">
-      <datalist id="report-client-options">{clients.slice(0, 300).map((client) => <option key={client.id} value={client.name}>{client.phoneNumber || ''}</option>)}</datalist>
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <div className="flex items-center gap-3"><button type="button" onClick={onBack} aria-label="Back to Home" className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-500 transition hover:bg-slate-100 hover:text-blue-600 dark:border-slate-800 dark:text-slate-400 dark:hover:bg-slate-800">←</button><div><p className="text-[11px] font-black uppercase tracking-[0.2em] text-blue-600 dark:text-blue-400">Operations workspace</p><h2 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white">Reports</h2></div></div>
-          <p className="mt-2 max-w-2xl text-sm font-medium text-slate-500 dark:text-slate-400">Create a clear daily record of birthday calls, feedback, follow-ups, and WhatsApp conversations — organized by caller and date.</p>
-        </div>
-        <div className="flex gap-2"><button type="button" onClick={() => setMode('history')} className={`rounded-xl px-3 py-2 text-xs font-black transition ${mode === 'history' ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-950' : 'border border-slate-200 text-slate-600 hover:bg-slate-100 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800'}`}>History</button><button type="button" onClick={() => startNewReport()} className="rounded-xl bg-blue-600 px-3 py-2 text-xs font-black text-white shadow-lg shadow-blue-600/20 transition hover:-translate-y-0.5 hover:bg-blue-700">+ New report</button></div>
-      </div>
+  return <div className="space-y-6 animate-in fade-in duration-300">
+    <datalist id="report-client-options">{clients.slice(0, 300).map((client) => <option key={client.id} value={client.name}>{client.phoneNumber || ''}</option>)}</datalist>
+    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"><div><div className="flex items-center gap-3"><button type="button" onClick={onBack} aria-label="Back to Home" className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-500 transition hover:bg-slate-100 hover:text-blue-600 dark:border-slate-800 dark:text-slate-400 dark:hover:bg-slate-800">←</button><div><p className="text-[11px] font-black uppercase tracking-[0.2em] text-blue-600 dark:text-blue-400">Operations workspace</p><h2 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white">Reports Workspace</h2></div></div><p className="mt-2 max-w-2xl text-sm font-medium text-slate-500 dark:text-slate-400">Choose a user, choose the report type, and keep every daily caller record organized in one place.</p></div><div className="flex flex-wrap gap-2">{workspaceStep !== 'users' && <button type="button" onClick={goToUsers} className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-black text-slate-600 hover:bg-slate-100 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800">Change user</button>}{workspaceStep === 'editor' && report && <button type="button" onClick={downloadCurrentReport} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-700 shadow-sm hover:border-blue-200 hover:text-blue-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200">↓ Download PDF</button>}{workspaceStep === 'editor' && canEdit && <button type="button" onClick={saveCurrentReport} disabled={isSaving} className="rounded-xl bg-blue-600 px-3 py-2 text-xs font-black text-white shadow-lg shadow-blue-600/20 hover:bg-blue-700 disabled:opacity-60">{isSaving ? 'Saving...' : 'Save report'}</button>}</div></div>
+    {notice && <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/20 dark:text-emerald-300">{notice}</div>}{error && <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/20 dark:text-rose-300">{error}</div>}
 
-      {notice && <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/20 dark:text-emerald-300">{notice}</div>}
-      {error && <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/20 dark:text-rose-300">{error}</div>}
+    {workspaceStep === 'users' && <div className="space-y-5"><div className="rounded-3xl border border-blue-100 bg-gradient-to-br from-blue-50 via-white to-violet-50 p-6 dark:border-blue-900/40 dark:from-blue-950/20 dark:via-slate-900 dark:to-violet-950/20"><p className="text-xs font-black uppercase tracking-[0.18em] text-blue-600">Step 1</p><h3 className="mt-2 text-2xl font-black text-slate-900 dark:text-white">Who are you working for?</h3><p className="mt-1 max-w-xl text-sm font-medium text-slate-500">Select a caller or user to open their report workspace. You can view other users’ saved reports; only the report owner can edit.</p></div>{isLoading ? <div className="dashboard-surface rounded-2xl p-12 text-center text-sm font-semibold text-slate-500">Loading users...</div> : <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{callerOptions.map((candidate) => <button type="button" key={candidate.id} onClick={() => chooseUser(candidate)} className="group flex items-center gap-4 rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-lg dark:border-slate-800 dark:bg-slate-900"><span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-violet-600 text-sm font-black text-white">{initials(candidate.name)}</span><span className="min-w-0"><span className="block truncate text-base font-black text-slate-900 dark:text-white">{candidate.name}</span><span className="mt-1 block truncate text-xs font-semibold text-slate-500">{candidate.roleLabel}{candidate.id === user?.uid ? ' · You' : ''}</span></span><span className="ml-auto text-lg text-slate-300 transition group-hover:translate-x-1 group-hover:text-blue-600">→</span></button>)}</div>}</div>}
 
-      {mode === 'history' ? (
-        <div className="space-y-5">
-          <div className="dashboard-surface rounded-2xl p-4 sm:p-5">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between"><div><p className="text-xs font-black uppercase tracking-[0.16em] text-slate-400">Report archive</p><h3 className="mt-1 text-xl font-black text-slate-900 dark:text-white">Find a report by caller or branch</h3></div><div className="grid gap-2 sm:grid-cols-3"><label className="text-xs font-bold text-slate-500">Caller<select value={selectedCallerId} onChange={(event) => setSelectedCallerId(event.target.value)} className="mt-1 block min-w-40 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-700 outline-none dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200"><option value="all">All callers</option>{callerOptions.map((caller) => <option key={caller.id} value={caller.id}>{caller.name}</option>)}</select></label><label className="text-xs font-bold text-slate-500">Branch<select value={selectedBranch} onChange={(event) => setSelectedBranch(event.target.value)} className="mt-1 block min-w-40 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-700 outline-none dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200"><option value="">All branches</option>{visibleBranches.map((branch) => <option key={branch} value={branch}>{branch}</option>)}</select></label><label className="text-xs font-bold text-slate-500">Jump to date<input type="date" value={selectedDate} onChange={(event) => { setSelectedDate(event.target.value); const match = reports.find((item) => item.reportDateKey === event.target.value); if (match) openReport(match); }} className="mt-1 block min-w-40 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-700 outline-none dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200" /></label></div></div>
-          </div>
-          {isLoading ? <div className="dashboard-surface rounded-2xl p-12 text-center text-sm font-semibold text-slate-500">Loading reports...</div> : historyReports.length === 0 ? <div className="dashboard-surface rounded-2xl p-12 text-center"><div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-xl text-blue-600 dark:bg-blue-950/30">▤</div><h3 className="mt-4 text-lg font-black text-slate-900 dark:text-white">No reports yet</h3><p className="mx-auto mt-1 max-w-md text-sm text-slate-500">Start today’s report, then return here to review previous days or download a PDF copy.</p><button type="button" onClick={() => startNewReport()} className="mt-5 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-black text-white hover:bg-blue-700">Create today’s report</button></div> : <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{historyReports.map((item) => { const totals = [item.birthdayClients, item.previousDayVisits, item.followUps, item.whatsappMessages].reduce((sum, section) => sum + (section?.filter((row) => row.clientName || row.comment).length || 0), 0); return <button key={item.id} type="button" onClick={() => openReport(item)} className="group rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-lg dark:border-slate-800 dark:bg-slate-900"><div className="flex items-start justify-between gap-3"><div><p className="text-[10px] font-black uppercase tracking-[0.16em] text-blue-600">{formatDate(item.reportDateKey)}</p><h3 className="mt-1 text-base font-black text-slate-900 dark:text-white">{item.callerName || item.ownerName || 'Caller report'}</h3></div><span className={`rounded-full px-2 py-1 text-[10px] font-black ${item.ownerId === user?.uid ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300' : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-300'}`}>{item.ownerId === user?.uid ? 'Mine' : 'View only'}</span></div><div className="mt-4 flex items-center justify-between text-xs font-bold text-slate-500"><span>{item.branch || 'All branches'}</span><span>{totals} recorded {totals === 1 ? 'entry' : 'entries'}</span></div><div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3 text-xs font-black text-blue-600 dark:border-slate-800">{item.updatedAt ? `Updated ${formatTime(item.updatedAt)}` : 'Open report'}<span className="transition group-hover:translate-x-1">→</span></div></button>; })}</div>}
-        </div>
-      ) : (
-        <div className="space-y-5">
-          <div className="dashboard-surface rounded-2xl p-4 sm:p-5"><div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between"><div><p className="text-xs font-black uppercase tracking-[0.16em] text-blue-600">Daily report</p><h3 className="mt-1 text-2xl font-black text-slate-900 dark:text-white">{report ? formatDate(report.reportDateKey) : 'New report'}</h3><p className="mt-1 text-sm font-medium text-slate-500">{canEdit ? 'Your report is editable and autosets the caller record you choose.' : 'This report belongs to another caller and is available for reference.'}</p></div><div className="flex flex-wrap gap-2"><button type="button" onClick={() => setMode('history')} className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-black text-slate-600 hover:bg-slate-100 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800">← History</button>{report && <button type="button" onClick={downloadCurrentReport} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-700 shadow-sm hover:border-blue-200 hover:text-blue-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200">↓ Download PDF</button>}{canEdit && <button type="button" onClick={saveCurrentReport} disabled={isSaving} className="rounded-xl bg-blue-600 px-3 py-2 text-xs font-black text-white shadow-lg shadow-blue-600/20 hover:bg-blue-700 disabled:opacity-60">{isSaving ? 'Saving...' : 'Save report'}</button>}</div></div></div>
-          {report && <>
-            <div className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]"><div className="dashboard-surface rounded-2xl p-4 sm:p-5"><div className="mb-4 flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 text-sm font-black text-white">{initials(report.callerName)}</div><div><p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Report owner / caller</p><p className="font-black text-slate-900 dark:text-white">{report.callerName || 'Caller'}</p></div></div><div className="grid gap-3 sm:grid-cols-2"><label className="text-xs font-bold text-slate-500">Report date<input type="date" value={report.reportDateKey} disabled={!canEdit} onChange={(event) => setReport((current) => ({ ...current, reportDateKey: event.target.value }))} className="mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-700 outline-none disabled:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:disabled:bg-slate-900" /></label><label className="text-xs font-bold text-slate-500">Branch<select value={report.branch || ''} disabled={!canEdit} onChange={(event) => setReport((current) => ({ ...current, branch: event.target.value }))} className="mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-700 outline-none disabled:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:disabled:bg-slate-900"><option value="">All branches</option>{visibleBranches.map((branch) => <option key={branch} value={branch}>{branch}</option>)}</select></label></div></div><div className="rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50 via-white to-violet-50 p-4 sm:p-5 dark:border-blue-900/30 dark:from-blue-950/20 dark:via-slate-900 dark:to-violet-950/20"><p className="text-[10px] font-black uppercase tracking-[0.16em] text-blue-600">Birthday calls</p><div className="mt-2 flex items-end justify-between gap-3"><div><div className="text-4xl font-black text-slate-900 dark:text-white">{report.birthdayClients.filter((row) => row.clientName || row.comment).length}</div><p className="text-xs font-semibold text-slate-500">entries loaded for this caller</p></div>{canEdit && <button type="button" onClick={loadBirthdayCalls} className="rounded-xl bg-white px-3 py-2 text-xs font-black text-blue-700 shadow-sm ring-1 ring-blue-100 hover:bg-blue-50 dark:bg-slate-900 dark:ring-blue-900/50">↻ Load calls</button>}</div><p className="mt-4 text-xs font-medium leading-5 text-slate-500">Pulls from birthday communications already recorded in the client database, then leaves comments open for feedback and next steps.</p></div></div>
-            <section className="overflow-hidden rounded-2xl border border-blue-100 bg-blue-50/40 dark:border-blue-900/40 dark:bg-blue-950/10"><div className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between"><div><h3 className="text-sm font-black text-slate-900 dark:text-white">A. Birthday clients contacted</h3><p className="mt-0.5 text-xs font-medium text-slate-500">Auto-loaded from the caller’s recorded birthday communications.</p></div>{canEdit && <button type="button" onClick={() => setReport((current) => ({ ...current, birthdayClients: [...current.birthdayClients, makeRow()] }))} className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-700 shadow-sm hover:text-blue-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">+ Add row</button>}</div><div className="overflow-hidden rounded-xl border border-slate-200/80 bg-white/80 dark:border-slate-800 dark:bg-slate-950/60">{report.birthdayClients.length ? report.birthdayClients.map((row, index) => <ReportRow key={row.rowId || index} row={row} index={index} readOnly={!canEdit} onChange={(patch) => updateClientRow('birthdayClients', index, patch)} onRemove={() => removeSectionRow('birthdayClients', index)} clients={clients} />) : <div className="p-5 text-sm font-medium text-slate-500">No birthday calls loaded yet.</div>}</div></section>
-            {sectionMeta.map((meta) => <ReportSectionCard key={meta.key} meta={meta} rows={report[meta.key] || []} readOnly={!canEdit} onChange={(index, patch) => updateClientRow(meta.key, index, patch)} onAdd={() => addSectionRow(meta.key)} onRemove={(index) => removeSectionRow(meta.key, index)} />)}
-            <section className="dashboard-surface rounded-2xl p-4 sm:p-5"><label className="text-xs font-black uppercase tracking-[0.16em] text-slate-400">Additional notes<textarea value={report.notes || ''} disabled={!canEdit} onChange={(event) => setReport((current) => ({ ...current, notes: event.target.value }))} rows={4} placeholder="Add handover notes, unresolved actions, or observations for the team..." className="mt-2 block w-full resize-y rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm leading-6 text-slate-700 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 disabled:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:disabled:bg-slate-900" /></label></section>
-          </>}
-        </div>
-      )}
-    </div>
-  );
+    {workspaceStep === 'types' && <div className="space-y-5"><div className="dashboard-surface rounded-2xl p-5"><div className="flex items-center gap-3"><span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-600 text-sm font-black text-white">{initials(selectedUser.name)}</span><div><p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Selected user</p><h3 className="text-xl font-black text-slate-900 dark:text-white">{selectedUser.name}</h3></div></div></div><div className="rounded-3xl border border-violet-100 bg-gradient-to-br from-violet-50 via-white to-blue-50 p-6 dark:border-violet-900/40 dark:from-violet-950/20 dark:via-slate-900 dark:to-blue-950/20"><p className="text-xs font-black uppercase tracking-[0.18em] text-violet-600">Step 2</p><h3 className="mt-2 text-2xl font-black text-slate-900 dark:text-white">Choose a report type</h3><p className="mt-1 text-sm font-medium text-slate-500">The first workspace combines the current feedback, birthday, WhatsApp, and calls format.</p></div><button type="button" onClick={chooseReportType} className="group w-full rounded-3xl border border-slate-200 bg-white p-6 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-xl dark:border-slate-800 dark:bg-slate-900"><div className="flex flex-col gap-5 sm:flex-row sm:items-center"><span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-violet-600 text-2xl text-white">▤</span><span className="flex-1"><span className="block text-xl font-black text-slate-900 dark:text-white">{REPORT_TYPE_LABEL}</span><span className="mt-1 block text-sm font-medium text-slate-500">Daily caller records with separate phone, contact mode, feedback, and expandable custom columns.</span></span><span className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-black text-white group-hover:bg-blue-700">Open workspace →</span></div></button></div>}
+
+    {workspaceStep === 'history' && <div className="space-y-5"><div className="dashboard-surface rounded-2xl p-4 sm:p-5"><div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between"><div><p className="text-xs font-black uppercase tracking-[0.16em] text-blue-600">{REPORT_TYPE_LABEL}</p><h3 className="mt-1 text-2xl font-black text-slate-900 dark:text-white">{selectedUser.name}’s report history</h3><p className="mt-1 text-sm font-medium text-slate-500">Choose a saved day to view, edit your own report, download a PDF, or delete an owned report.</p></div><div className="grid gap-2 sm:grid-cols-3"><label className="text-xs font-bold text-slate-500">Branch<select value={selectedBranch} onChange={(event) => setSelectedBranch(event.target.value)} className="mt-1 block w-full min-w-40 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-700 outline-none dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200"><option value="">All branches</option>{visibleBranches.map((branch) => <option key={branch} value={branch}>{branch}</option>)}</select></label><label className="text-xs font-bold text-slate-500">Jump to date<input type="date" value={selectedDate} onChange={(event) => { setSelectedDate(event.target.value); const match = historyReports.find((item) => item.reportDateKey === event.target.value); if (match) openReport(match); }} className="mt-1 block w-full min-w-40 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-700 outline-none dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200" /></label><button type="button" onClick={() => startNewReport()} className="rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-black text-white shadow-lg shadow-blue-600/20 hover:bg-blue-700">+ New report</button></div></div></div>{historyReports.length === 0 ? <div className="dashboard-surface rounded-2xl p-12 text-center"><h3 className="text-lg font-black text-slate-900 dark:text-white">No reports for this user yet</h3><p className="mx-auto mt-1 max-w-md text-sm text-slate-500">Start a new daily report to create the first organized record for this workspace.</p><button type="button" onClick={() => startNewReport()} className="mt-5 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-black text-white hover:bg-blue-700">Create today’s report</button></div> : <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{historyReports.map((item) => <div key={item.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900"><button type="button" onClick={() => openReport(item)} className="group w-full text-left"><div className="flex items-start justify-between gap-3"><div><p className="text-[10px] font-black uppercase tracking-[0.16em] text-blue-600">{formatDate(item.reportDateKey)}</p><h3 className="mt-1 text-base font-black text-slate-900 dark:text-white">{item.callerName || item.ownerName || selectedUser.name}</h3></div><span className={`rounded-full px-2 py-1 text-[10px] font-black ${item.ownerId === user?.uid ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300' : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-300'}`}>{item.ownerId === user?.uid ? 'Mine' : 'View only'}</span></div><div className="mt-4 flex items-center justify-between text-xs font-bold text-slate-500"><span>{item.branch || 'All branches'}</span><span>{reportEntryCount(item)} entries</span></div><div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3 text-xs font-black text-blue-600 dark:border-slate-800">{item.updatedAt ? `Updated ${formatTime(item.updatedAt)}` : 'Open report'}<span className="transition group-hover:translate-x-1">→</span></div></button>{(item.ownerId === user?.uid || profile?.role === 'Admin') && <button type="button" onClick={() => removeReport(item)} className="mt-3 w-full rounded-xl border border-rose-100 px-3 py-2 text-xs font-black text-rose-600 hover:bg-rose-50 dark:border-rose-900/40 dark:hover:bg-rose-950/20">Delete report</button>}</div>)}</div>}</div>}
+
+    {workspaceStep === 'editor' && report && <div className="space-y-5"><div className="dashboard-surface rounded-2xl p-4 sm:p-5"><div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between"><div><p className="text-xs font-black uppercase tracking-[0.16em] text-blue-600">{REPORT_TYPE_LABEL}</p><h3 className="mt-1 text-2xl font-black text-slate-900 dark:text-white">{formatDate(report.reportDateKey)}</h3><p className="mt-1 text-sm font-medium text-slate-500">{canEdit ? 'Click any table cell to enter or update details.' : 'This report belongs to another user and is available in read-only mode.'}</p></div><div className="flex flex-wrap gap-2"><button type="button" onClick={() => setWorkspaceStep('history')} className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-black text-slate-600 hover:bg-slate-100 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800">← History</button>{canDelete && <button type="button" onClick={() => removeReport(report)} className="rounded-xl border border-rose-100 px-3 py-2 text-xs font-black text-rose-600 hover:bg-rose-50 dark:border-rose-900/40 dark:hover:bg-rose-950/20">Delete report</button>}</div></div></div><div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]"><div className="dashboard-surface rounded-2xl p-4 sm:p-5"><div className="mb-4 flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 text-sm font-black text-white">{initials(report.callerName)}</div><div><p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Selected user / caller</p><p className="font-black text-slate-900 dark:text-white">{report.callerName || selectedUser.name}</p></div></div><div className="grid gap-3 sm:grid-cols-2"><label className="text-xs font-bold text-slate-500">Report date<input type="date" value={report.reportDateKey} disabled={!canEdit} onChange={(event) => setReport((current) => ({ ...current, reportDateKey: event.target.value }))} className="mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold outline-none disabled:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:disabled:bg-slate-900" /></label><label className="text-xs font-bold text-slate-500">Branch<select value={report.branch || ''} disabled={!canEdit} onChange={(event) => setReport((current) => ({ ...current, branch: event.target.value }))} className="mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold outline-none disabled:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:disabled:bg-slate-900"><option value="">All branches</option>{visibleBranches.map((branch) => <option key={branch} value={branch}>{branch}</option>)}</select></label></div></div><div className="rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50 via-white to-violet-50 p-4 sm:p-5 dark:border-blue-900/30 dark:from-blue-950/20 dark:via-slate-900 dark:to-violet-950/20"><p className="text-[10px] font-black uppercase tracking-[0.16em] text-blue-600">Report overview</p><div className="mt-2 flex items-end justify-between"><div><div className="text-4xl font-black text-slate-900 dark:text-white">{reportEntryCount(report)}</div><p className="text-xs font-semibold text-slate-500">recorded entries</p></div>{canEdit && <button type="button" onClick={loadBirthdayCalls} className="rounded-xl bg-white px-3 py-2 text-xs font-black text-blue-700 shadow-sm ring-1 ring-blue-100 hover:bg-blue-50 dark:bg-slate-900 dark:ring-blue-900/50">↻ Load birthdays</button>}</div><p className="mt-4 text-xs font-medium leading-5 text-slate-500">Phone numbers are linked automatically when a saved client is selected. Add extra columns whenever your team needs another field.</p></div></div>{sectionMeta.map((section) => <ReportTable key={section.key} section={section} rows={report[section.key] || []} customColumns={report.customColumns || []} readOnly={!canEdit} onCellClick={(rowIndex, field, columnLabel) => openCell(section.key, rowIndex, field, columnLabel)} onAddRow={() => addRow(section.key)} onRemoveRow={(rowIndex) => removeRow(section.key, rowIndex)} onAddColumn={() => setColumnDialogOpen(true)} />)}<section className="dashboard-surface rounded-2xl p-4 sm:p-5"><label className="text-xs font-black uppercase tracking-[0.16em] text-slate-400">Additional notes<textarea value={report.notes || ''} disabled={!canEdit} onChange={(event) => setReport((current) => ({ ...current, notes: event.target.value }))} rows={4} placeholder="Add handover notes, unresolved actions, or observations for the team..." className="mt-2 block w-full resize-y rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm leading-6 text-slate-700 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 disabled:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:disabled:bg-slate-900" /></label></section></div>}
+
+    {cellDialog && <CellDialog key={`${cellDialog.sectionKey}-${cellDialog.rowIndex}-${cellDialog.field}`} cell={cellDialog} readOnly={!canEdit} clients={clients} onClose={() => setCellDialog(null)} onSave={handleCellSave} />}{columnDialogOpen && <ColumnDialog onClose={() => setColumnDialogOpen(false)} onSave={addColumn} />}
+  </div>;
 }
