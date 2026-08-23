@@ -71,6 +71,13 @@ service cloud.firestore {
       allow delete: if can('branches', 'delete');
     }
 
+    match /reports/{reportId} {
+      allow read: if approved();
+      allow create: if approved() && request.resource.data.ownerId == request.auth.uid;
+      allow update: if approved() && (resource.data.ownerId == request.auth.uid || isAdmin());
+      allow delete: if isAdmin() || (approved() && resource.data.ownerId == request.auth.uid);
+    }
+
     match /notes/{noteId} {
       allow read: if approved() && (
         resource.data.createdBy == request.auth.uid ||

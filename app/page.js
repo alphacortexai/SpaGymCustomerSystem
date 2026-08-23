@@ -46,6 +46,7 @@ const InvoiceTracking = dynamic(() => import('@/components/InvoiceTracking'), { 
 const NotesSection = dynamic(() => import('@/components/NotesSection'), { loading: LazySectionFallback });
 const BirthdayCallersManager = dynamic(() => import('@/components/BirthdayCallersManager'), { loading: LazySectionFallback });
 const BirthdayCommunicationsAnalytics = dynamic(() => import('@/components/BirthdayCommunicationsAnalytics'), { loading: LazySectionFallback });
+const ReportsSection = dynamic(() => import('@/components/ReportsSection'), { loading: LazySectionFallback });
 
 const NavCard = ({ onClick, icon, title, titleLines, description, badge, isImage, fullBg, centerBadge, accent = 'blue', eyebrow }) => {
   const accentStyles = {
@@ -227,6 +228,7 @@ const QuickActionIcon = ({ name }) => {
     clients: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
     birthdays: 'M20 12v8H4v-8M2 7h20v5H2zM12 7v13M12 7H8.5a2.5 2.5 0 1 1 0-5C12 2 12 7 12 7ZM12 7h3.5a2.5 2.5 0 1 0 0-5C12 2 12 7 12 7Z',
     analytics: 'M4 19V5M4 19h16M8 16v-4M12 16V8M16 16v-7M20 16v-10',
+    reports: 'M6 3h12a2 2 0 0 1 2 2v14H4V5a2 2 0 0 1 2-2ZM8 8h8M8 12h8M8 16h5',
     gym: 'M6 4v16M18 4v16M3 8v8M21 8v8M6 12h12',
     spa: 'M12 21c4-3 7-6.5 7-11a7 7 0 0 0-14 0c0 4.5 3 8 7 11ZM9 10c1.5-1.5 4.5-1.5 6 0',
     notes: 'M4 4h16v16H4zM8 8h8M8 12h8M8 16h5',
@@ -258,6 +260,7 @@ const WorkspaceRail = ({ activeTab, setActiveTab, profile, showAdminSection, onO
       {profile?.permissions?.clients?.view !== false && <button type="button" onClick={() => setActiveTab('dashboard')} className={`dashboard-rail-link ${activeTab === 'dashboard' ? 'is-active' : ''}`} aria-label="Clients"><span className="dashboard-rail-icon"><QuickActionIcon name="clients" /></span><span className="dashboard-rail-label">Clients</span></button>}
       {profile?.permissions?.birthdays?.view !== false && <button type="button" onClick={() => setActiveTab('birthdays')} className={`dashboard-rail-link ${activeTab === 'birthdays' ? 'is-active' : ''}`} aria-label="Birthdays"><span className="dashboard-rail-icon"><QuickActionIcon name="birthdays" /></span><span className="dashboard-rail-label">Birthdays</span></button>}
       {profile?.permissions?.birthdays?.view !== false && <button type="button" onClick={() => setActiveTab('birthday-analytics')} className={`dashboard-rail-link ${activeTab === 'birthday-analytics' ? 'is-active' : ''}`} aria-label="Birthday communications analytics"><span className="dashboard-rail-icon"><QuickActionIcon name="analytics" /></span><span className="dashboard-rail-label">Birthday analytics</span></button>}
+      <button type="button" onClick={() => setActiveTab('reports')} className={`dashboard-rail-link ${activeTab === 'reports' ? 'is-active' : ''}`} aria-label="Reports"><span className="dashboard-rail-icon"><QuickActionIcon name="reports" /></span><span className="dashboard-rail-label">Reports</span></button>
       {profile?.permissions?.gym?.view !== false && <button type="button" onClick={() => setActiveTab('gym')} className={`dashboard-rail-link ${activeTab === 'gym' ? 'is-active' : ''}`} aria-label="Gym"><span className="dashboard-rail-icon"><QuickActionIcon name="gym" /></span><span className="dashboard-rail-label">GYM</span></button>}
       {profile?.permissions?.spa?.view !== false && <button type="button" onClick={() => setActiveTab('spa')} className={`dashboard-rail-link ${activeTab === 'spa' ? 'is-active' : ''}`} aria-label="Spa"><span className="dashboard-rail-icon"><QuickActionIcon name="spa" /></span><span className="dashboard-rail-label">SPA</span></button>}
       <button type="button" onClick={() => setActiveTab('notes')} className={`dashboard-rail-link ${activeTab === 'notes' ? 'is-active' : ''}`} aria-label="Notes"><span className="dashboard-rail-icon"><QuickActionIcon name="notes" /></span><span className="dashboard-rail-label">Notes</span>{activeNotesCount > 0 && <span className="ml-auto inline-flex min-w-5 items-center justify-center rounded-full bg-blue-600 px-1.5 py-0.5 text-[10px] font-black text-white">{activeNotesCount}</span>}</button>
@@ -818,14 +821,14 @@ export default function Home() {
               </button>
 
                 <nav aria-label="Primary navigation" className="mobile-primary-nav order-3 flex basis-full items-center gap-1 overflow-x-auto pb-0.5 sm:order-none sm:w-auto sm:basis-auto sm:max-w-[58vw]">
-                {['home', 'dashboard', 'birthdays', 'gym', 'spa', 'profile'].map((tab) => {
+                {['home', 'dashboard', 'birthdays', 'reports', 'gym', 'spa', 'profile'].map((tab) => {
                   // Check permissions for each tab
                   if (tab === 'dashboard' && profile?.permissions?.clients?.view === false) return null;
                   if (tab === 'birthdays' && profile?.permissions?.birthdays?.view === false) return null;
                   if (tab === 'gym' && profile?.permissions?.gym?.view === false) return null;
                   if (tab === 'spa' && profile?.permissions?.spa?.view === false) return null;
 
-                  const navLabel = tab === 'gym' ? 'GYM' : tab === 'spa' ? 'SPA' : tab.charAt(0).toUpperCase() + tab.slice(1);
+                  const navLabel = tab === 'gym' ? 'GYM' : tab === 'spa' ? 'SPA' : tab === 'reports' ? 'Reports' : tab.charAt(0).toUpperCase() + tab.slice(1);
                   return (
                     <button
                       key={tab}
@@ -934,6 +937,7 @@ export default function Home() {
                   {profile?.permissions?.birthdays?.view !== false && (
                     <NavCard onClick={() => setActiveTab('birthdays')} icon="/birthday.png" title="Today's Birthdays" description="Celebrations" badge={cachedBirthdayCounts ? birthdayBadgeTotal : (dataLoaded ? '...' : undefined)} isImage={true} fullBg={true} />
                   )}
+                  <NavCard onClick={() => setActiveTab('reports')} icon={<QuickActionIcon name="reports" />} title="Reports" description="Daily caller records." accent="violet" eyebrow="Operations" />
                   {profile?.permissions?.gym?.view !== false && (
                     <NavCard
                       onClick={() => setActiveTab('gym')}
@@ -1011,6 +1015,16 @@ export default function Home() {
               )}
                 {!showAdminSection && <div className="dashboard-quote mt-1 rounded-2xl border border-slate-200/80 bg-white/70 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/50"><div className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-600 dark:text-blue-300">Power quote</div><p className="mt-1 text-sm font-semibold italic leading-6 text-slate-600 dark:text-slate-200">“{currentAffirmation}”</p></div>}
               </div>
+          )}
+
+          {activeTab === 'reports' && (
+            <ReportsSection
+              user={user}
+              profile={profile}
+              clients={globalClients.length ? globalClients : cachedGlobalClients}
+              birthdayCallers={cachedBirthdayCallers}
+              onBack={goBackFromSection}
+            />
           )}
 
           {activeTab === 'notes' && (
