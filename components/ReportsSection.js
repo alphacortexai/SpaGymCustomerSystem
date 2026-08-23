@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { deleteReport, getAllReports, getReportForDate, createEmptyReport, saveReport, toDateKey } from '@/lib/reports';
-import { getAllUsers } from '@/lib/users';
 import { generateReportPdf } from '@/lib/reportPdf';
 
 const REPORT_TYPE = 'feedback-birthdays-whatsapp-calls';
@@ -113,7 +112,6 @@ export default function ReportsSection({ user, profile, clients = [], birthdayCa
   const [selectedBranch, setSelectedBranch] = useState(profile?.assignedBranches?.[0] || '');
   const [report, setReport] = useState(null);
   const [reports, setReports] = useState([]);
-  const [workspaceUsers, setWorkspaceUsers] = useState([]);
   const [cellDialog, setCellDialog] = useState(null);
   const [columnDialogOpen, setColumnDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -122,13 +120,8 @@ export default function ReportsSection({ user, profile, clients = [], birthdayCa
   const [error, setError] = useState('');
 
   const defaultUser = useMemo(() => normalizeUser({ id: user?.uid, name: user?.displayName, email: user?.email, role: profile?.role }), [profile?.role, user?.displayName, user?.email, user?.uid]);
-  const callerOptions = useMemo(() => {
-    const seen = new Set();
-    const reportUsers = reports.map((item) => normalizeUser({ id: item.ownerId || item.callerId, name: item.ownerName || item.callerName, email: item.ownerEmail }));
-    return [defaultUser, ...workspaceUsers, ...birthdayCallers.map(normalizeUser), ...reportUsers].filter((candidate) => candidate.id && !seen.has(candidate.id) && seen.add(candidate.id));
-  }, [birthdayCallers, defaultUser, reports, workspaceUsers]);
+  const callerOptions = useMemo(() => birthdayCallers.map(normalizeUser).filter((candidate) => candidate.id), [birthdayCallers]);
   const selectedUser = callerOptions.find((candidate) => candidate.id === selectedUserId) || defaultUser;
-  const isOwnWorkspace = selectedUser.id === user?.uid;
   const canEdit = Boolean(report && report.ownerId === user?.uid);
   const canDelete = Boolean(report && (report.ownerId === user?.uid || profile?.role === 'Admin'));
   const assignedBranches = Array.isArray(profile?.assignedBranches) ? profile.assignedBranches.filter(Boolean) : [];
@@ -136,10 +129,9 @@ export default function ReportsSection({ user, profile, clients = [], birthdayCa
 
   useEffect(() => {
     let active = true;
-    Promise.all([getAllReports(), getAllUsers()]).then(([allReports, allUsers]) => {
+    getAllReports().then((allReports) => {
       if (!active) return;
       setReports(allReports);
-      setWorkspaceUsers(allUsers.map(normalizeUser));
       setIsLoading(false);
     }).catch(() => setIsLoading(false));
     return () => { active = false; };
@@ -162,10 +154,6 @@ export default function ReportsSection({ user, profile, clients = [], birthdayCa
   const chooseReportType = () => setWorkspaceStep('history');
 
   const startNewReport = async (dateKey = selectedDate) => {
-    if (!isOwnWorkspace) {
-      setNotice('Select your own name to create or edit a report. Other users’ reports can be viewed from their workspace.');
-      return;
-    }
     setError('');
     setSelectedDate(dateKey);
     const existing = await getReportForDate(dateKey, user?.uid);
@@ -230,7 +218,7 @@ export default function ReportsSection({ user, profile, clients = [], birthdayCa
     <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"><div><div className="flex items-center gap-3"><button type="button" onClick={onBack} aria-label="Back to Home" className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-500 transition hover:bg-slate-100 hover:text-blue-600 dark:border-slate-800 dark:text-slate-400 dark:hover:bg-slate-800">←</button><div><p className="text-[11px] font-black uppercase tracking-[0.2em] text-blue-600 dark:text-blue-400">Operations workspace</p><h2 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white">Reports Workspace</h2></div></div><p className="mt-2 max-w-2xl text-sm font-medium text-slate-500 dark:text-slate-400">Choose a user, choose the report type, and keep every daily caller record organized in one place.</p></div><div className="flex flex-wrap gap-2">{workspaceStep !== 'users' && <button type="button" onClick={goToUsers} className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-black text-slate-600 hover:bg-slate-100 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800">Change user</button>}{workspaceStep === 'editor' && report && <button type="button" onClick={downloadCurrentReport} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-700 shadow-sm hover:border-blue-200 hover:text-blue-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200">↓ Download PDF</button>}{workspaceStep === 'editor' && canEdit && <button type="button" onClick={saveCurrentReport} disabled={isSaving} className="rounded-xl bg-blue-600 px-3 py-2 text-xs font-black text-white shadow-lg shadow-blue-600/20 hover:bg-blue-700 disabled:opacity-60">{isSaving ? 'Saving...' : 'Save report'}</button>}</div></div>
     {notice && <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/20 dark:text-emerald-300">{notice}</div>}{error && <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/20 dark:text-rose-300">{error}</div>}
 
-    {workspaceStep === 'users' && <div className="space-y-5"><div className="rounded-3xl border border-blue-100 bg-gradient-to-br from-blue-50 via-white to-violet-50 p-6 dark:border-blue-900/40 dark:from-blue-950/20 dark:via-slate-900 dark:to-violet-950/20"><p className="text-xs font-black uppercase tracking-[0.18em] text-blue-600">Step 1</p><h3 className="mt-2 text-2xl font-black text-slate-900 dark:text-white">Who are you working for?</h3><p className="mt-1 max-w-xl text-sm font-medium text-slate-500">Select a caller or user to open their report workspace. You can view other users’ saved reports; only the report owner can edit.</p></div>{isLoading ? <div className="dashboard-surface rounded-2xl p-12 text-center text-sm font-semibold text-slate-500">Loading users...</div> : <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{callerOptions.map((candidate) => <button type="button" key={candidate.id} onClick={() => chooseUser(candidate)} className="group flex items-center gap-4 rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-lg dark:border-slate-800 dark:bg-slate-900"><span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-violet-600 text-sm font-black text-white">{initials(candidate.name)}</span><span className="min-w-0"><span className="block truncate text-base font-black text-slate-900 dark:text-white">{candidate.name}</span><span className="mt-1 block truncate text-xs font-semibold text-slate-500">{candidate.roleLabel}{candidate.id === user?.uid ? ' · You' : ''}</span></span><span className="ml-auto text-lg text-slate-300 transition group-hover:translate-x-1 group-hover:text-blue-600">→</span></button>)}</div>}</div>}
+    {workspaceStep === 'users' && <div className="space-y-5"><div className="rounded-3xl border border-blue-100 bg-gradient-to-br from-blue-50 via-white to-violet-50 p-6 dark:border-blue-900/40 dark:from-blue-950/20 dark:via-slate-900 dark:to-violet-950/20"><p className="text-xs font-black uppercase tracking-[0.18em] text-blue-600">Step 1</p><h3 className="mt-2 text-2xl font-black text-slate-900 dark:text-white">Select name to make report</h3><p className="mt-1 max-w-xl text-sm font-medium text-slate-500">Select a caller name to open that report workspace. You can view saved reports here and continue with the report operations for that caller.</p></div>{isLoading ? <div className="dashboard-surface rounded-2xl p-12 text-center text-sm font-semibold text-slate-500">Loading caller names...</div> : callerOptions.length === 0 ? <div className="dashboard-surface rounded-2xl p-10 text-center"><h3 className="text-lg font-black text-slate-900 dark:text-white">No caller names available</h3><p className="mx-auto mt-1 max-w-md text-sm text-slate-500">An Admin must create an active caller name before reports can be prepared.</p></div> : <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{callerOptions.map((candidate) => <button type="button" key={candidate.id} onClick={() => chooseUser(candidate)} className="group flex items-center gap-4 rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-lg dark:border-slate-800 dark:bg-slate-900"><span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-violet-600 text-sm font-black text-white">{initials(candidate.name)}</span><span className="min-w-0"><span className="block truncate text-base font-black text-slate-900 dark:text-white">{candidate.name}</span><span className="mt-1 block truncate text-xs font-semibold text-slate-500">{candidate.roleLabel}</span></span><span className="ml-auto text-lg text-slate-300 transition group-hover:translate-x-1 group-hover:text-blue-600">→</span></button>)}</div>}</div>}
 
     {workspaceStep === 'types' && <div className="space-y-5"><div className="dashboard-surface rounded-2xl p-5"><div className="flex items-center gap-3"><span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-600 text-sm font-black text-white">{initials(selectedUser.name)}</span><div><p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Selected user</p><h3 className="text-xl font-black text-slate-900 dark:text-white">{selectedUser.name}</h3></div></div></div><div className="rounded-3xl border border-violet-100 bg-gradient-to-br from-violet-50 via-white to-blue-50 p-6 dark:border-violet-900/40 dark:from-violet-950/20 dark:via-slate-900 dark:to-blue-950/20"><p className="text-xs font-black uppercase tracking-[0.18em] text-violet-600">Step 2</p><h3 className="mt-2 text-2xl font-black text-slate-900 dark:text-white">Choose a report type</h3><p className="mt-1 text-sm font-medium text-slate-500">The first workspace combines the current feedback, birthday, WhatsApp, and calls format.</p></div><button type="button" onClick={chooseReportType} className="group w-full rounded-3xl border border-slate-200 bg-white p-6 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-xl dark:border-slate-800 dark:bg-slate-900"><div className="flex flex-col gap-5 sm:flex-row sm:items-center"><span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-violet-600 text-2xl text-white">▤</span><span className="flex-1"><span className="block text-xl font-black text-slate-900 dark:text-white">{REPORT_TYPE_LABEL}</span><span className="mt-1 block text-sm font-medium text-slate-500">Daily caller records with separate phone, contact mode, feedback, and expandable custom columns.</span></span><span className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-black text-white group-hover:bg-blue-700">Open workspace →</span></div></button></div>}
 
