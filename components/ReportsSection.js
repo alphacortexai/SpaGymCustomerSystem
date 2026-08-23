@@ -19,9 +19,8 @@ const makeRow = (overrides = {}) => ({ rowId: `${Date.now()}-${Math.random().toS
 
 const sectionMeta = [
   { key: 'birthdayClients', label: 'A. Birthday Clients Contacted', description: 'Birthday outreach already recorded for the selected caller.', accent: 'blue' },
-  { key: 'previousDayVisits', label: 'B. Clients Contacted from Previous-Day Visit', description: 'Clients contacted after their previous visit.', accent: 'emerald' },
-  { key: 'followUps', label: 'C. Clients from Prev Day Visits', description: 'Clients from the previous day who need a solution, follow-up, or return call.', accent: 'amber' },
-  { key: 'whatsappMessages', label: 'D. WhatsApp Messages', description: 'Important client messages, replies, and conversations.', accent: 'violet' },
+  { key: 'previousDayVisits', label: 'B. Clients from Prev Day Visits', description: 'Clients contacted after their previous visit, including follow-ups and solutions.', accent: 'emerald' },
+  { key: 'whatsappMessages', label: 'C. WhatsApp Messages', description: 'Important client messages, replies, and conversations.', accent: 'violet' },
 ];
 
 const emptySections = Object.fromEntries(sectionMeta.map(({ key }) => [key, [makeRow()]]));
@@ -55,13 +54,17 @@ const normalizeAutoBirthdayRows = (clients, dateKey, caller) => {
 
 const enrichReportRows = (report, clients) => {
   const clientList = Array.isArray(clients) ? clients : [];
-  return ['birthdayClients', 'previousDayVisits', 'followUps', 'whatsappMessages'].reduce((nextReport, sectionKey) => {
-    nextReport[sectionKey] = (nextReport[sectionKey] || []).map((row) => {
-      const client = clientList.find((candidate) => candidate.id === row.clientId || (candidate.name && row.clientName && candidate.name.trim().toLowerCase() === row.clientName.trim().toLowerCase()));
-      return client ? { ...row, clientId: row.clientId || client.id, clientName: row.clientName || client.name || '', phoneNumber: row.phoneNumber || client.phoneNumber || '', branch: row.branch || client.branch || '' } : row;
-    });
-    return nextReport;
-  }, { ...report });
+  const hydrate = (row) => {
+    const client = clientList.find((candidate) => candidate.id === row.clientId || (candidate.name && row.clientName && candidate.name.trim().toLowerCase() === row.clientName.trim().toLowerCase()));
+    return client ? { ...row, clientId: row.clientId || client.id, clientName: row.clientName || client.name || '', phoneNumber: row.phoneNumber || client.phoneNumber || '', branch: row.branch || client.branch || '' } : row;
+  };
+  return {
+    ...report,
+    birthdayClients: (report.birthdayClients || []).map(hydrate),
+    previousDayVisits: [...(report.previousDayVisits || []), ...(report.followUps || [])].map(hydrate),
+    followUps: [],
+    whatsappMessages: (report.whatsappMessages || []).map(hydrate),
+  };
 };
 
 const rowHasContent = (row, customColumns = []) => Boolean(row.clientName || row.phoneNumber || row.contactMethod || row.comment || customColumns.some((column) => row.customFields?.[column.id]));
@@ -160,7 +163,7 @@ export default function ReportsSection({ user, profile, clients = [], birthdayCa
     const autoRows = normalizeAutoBirthdayRows(clients, dateKey, selectedUser);
     const nextReport = existing || createEmptyReport({ dateKey, ownerId: user?.uid, ownerName: user?.displayName || user?.email, callerId: selectedUser.id, callerName: selectedUser.name, branch: selectedBranch });
     const hydrated = enrichReportRows({ ...nextReport, reportType: nextReport.reportType || REPORT_TYPE }, clients);
-    setReport({ ...hydrated, callerId: hydrated.callerId || selectedUser.id, callerName: hydrated.callerName || selectedUser.name, branch: hydrated.branch || selectedBranch, birthdayClients: hydrated.birthdayClients?.length ? hydrated.birthdayClients : autoRows, previousDayVisits: hydrated.previousDayVisits?.length ? hydrated.previousDayVisits : emptySections.previousDayVisits, followUps: hydrated.followUps?.length ? hydrated.followUps : emptySections.followUps, whatsappMessages: hydrated.whatsappMessages?.length ? hydrated.whatsappMessages : emptySections.whatsappMessages });
+    setReport({ ...hydrated, callerId: hydrated.callerId || selectedUser.id, callerName: hydrated.callerName || selectedUser.name, branch: hydrated.branch || selectedBranch, birthdayClients: hydrated.birthdayClients?.length ? hydrated.birthdayClients : autoRows, previousDayVisits: hydrated.previousDayVisits?.length ? hydrated.previousDayVisits : emptySections.previousDayVisits, whatsappMessages: hydrated.whatsappMessages?.length ? hydrated.whatsappMessages : emptySections.whatsappMessages });
     setWorkspaceStep('editor');
   };
 
