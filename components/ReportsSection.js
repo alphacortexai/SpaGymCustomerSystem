@@ -19,6 +19,7 @@ const makeRow = (overrides = {}) => ({
   rowId: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
   clientId: '',
   clientName: '',
+  phoneNumber: '',
   branch: '',
   contactMethod: '',
   callerName: '',
@@ -52,6 +53,7 @@ const normalizeAutoBirthdayRows = (clients, dateKey, caller) => {
     .map((client) => makeRow({
       clientId: client.id,
       clientName: client.name || 'Unnamed client',
+      phoneNumber: client.phoneNumber || '',
       branch: client.branch || '',
       contactMethod: client.birthdayContactMethod || 'Called',
       callerName: client.birthdayCalledByName || caller.name || '',
@@ -60,45 +62,46 @@ const normalizeAutoBirthdayRows = (clients, dateKey, caller) => {
     }));
 };
 
+const enrichReportRows = (report, clients) => {
+  const sectionKeys = ['birthdayClients', 'previousDayVisits', 'followUps', 'whatsappMessages'];
+  const clientList = Array.isArray(clients) ? clients : [];
+  return sectionKeys.reduce((nextReport, sectionKey) => {
+    nextReport[sectionKey] = (nextReport[sectionKey] || []).map((row) => {
+      const client = clientList.find((candidate) => candidate.id === row.clientId || (candidate.name && row.clientName && candidate.name.trim().toLowerCase() === row.clientName.trim().toLowerCase()));
+      return client ? { ...row, clientId: row.clientId || client.id, clientName: row.clientName || client.name || '', phoneNumber: row.phoneNumber || client.phoneNumber || '', branch: row.branch || client.branch || '' } : row;
+    });
+    return nextReport;
+  }, { ...report });
+};
+
 const getUserCaller = (user) => ({
   id: user?.uid || '',
   name: user?.displayName || user?.email || 'My calls',
   roleLabel: 'Signed-in caller',
 });
 
-function ReportRow({ row, index, readOnly, onChange, onRemove, clients }) {
+function ReportRow({ row, index, readOnly, onChange, onRemove }) {
   return (
-    <div className="grid gap-2 border-b border-slate-100 px-3 py-3 last:border-b-0 dark:border-slate-800 sm:grid-cols-[38px_minmax(0,0.75fr)_minmax(0,1.45fr)_34px] sm:items-start">
+    <div className="grid gap-2 border-b border-slate-100 px-3 py-3 last:border-b-0 dark:border-slate-800 sm:grid-cols-[38px_minmax(0,0.8fr)_minmax(0,0.65fr)_minmax(0,0.7fr)_minmax(0,1.35fr)_34px] sm:items-start">
       <div className="pt-2 text-xs font-black text-slate-400">{index + 1}</div>
       <div>
         <label className="sr-only" htmlFor={`client-${row.rowId}`}>Client name</label>
-        <input
-          id={`client-${row.rowId}`}
-          list="report-client-options"
-          value={row.clientName}
-          disabled={readOnly}
-          onChange={(event) => onChange({ clientName: event.target.value })}
-          placeholder="Client name"
-          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-800 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 disabled:cursor-default disabled:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:disabled:bg-slate-900"
-        />
+        <input id={`client-${row.rowId}`} list="report-client-options" value={row.clientName} disabled={readOnly} onChange={(event) => onChange({ clientName: event.target.value })} placeholder="Client name" className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-800 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 disabled:cursor-default disabled:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:disabled:bg-slate-900" />
         {row.branch && <div className="mt-1 px-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">{row.branch}</div>}
       </div>
       <div>
-        <label className="sr-only" htmlFor={`comment-${row.rowId}`}>Comment or feedback</label>
-        <textarea
-          id={`comment-${row.rowId}`}
-          value={row.comment}
-          disabled={readOnly}
-          onChange={(event) => onChange({ comment: event.target.value })}
-          placeholder="Add comment, feedback, action taken, or next step..."
-          rows={2}
-          className="w-full resize-y rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm leading-5 text-slate-700 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 disabled:cursor-default disabled:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:disabled:bg-slate-900"
-        />
-        {row.contactMethod && <div className="mt-1 px-1 text-[10px] font-bold uppercase tracking-wider text-blue-500">{row.contactMethod}</div>}
+        <label className="sr-only" htmlFor={`phone-${row.rowId}`}>Phone number</label>
+        <input id={`phone-${row.rowId}`} value={row.phoneNumber || ''} disabled={readOnly} onChange={(event) => onChange({ phoneNumber: event.target.value })} placeholder="Phone number" className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-700 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 disabled:cursor-default disabled:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:disabled:bg-slate-900" />
       </div>
-      {!readOnly && (
-        <button type="button" onClick={onRemove} aria-label="Remove row" className="mt-1 inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-300 transition hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-950/30">×</button>
-      )}
+      <div>
+        <label className="sr-only" htmlFor={`method-${row.rowId}`}>Mode of contact</label>
+        <select id={`method-${row.rowId}`} value={row.contactMethod || ''} disabled={readOnly} onChange={(event) => onChange({ contactMethod: event.target.value })} className="w-full rounded-xl border border-slate-200 bg-white px-2 py-2.5 text-xs font-bold text-slate-700 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 disabled:cursor-default disabled:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:disabled:bg-slate-900"><option value="">Contact mode</option><option value="Phone call">Phone call</option><option value="WhatsApp">WhatsApp</option><option value="SMS">SMS</option><option value="In person">In person</option><option value="Called">Called</option><option value="Not reached">Not reached</option></select>
+      </div>
+      <div>
+        <label className="sr-only" htmlFor={`comment-${row.rowId}`}>Comment or feedback</label>
+        <textarea id={`comment-${row.rowId}`} value={row.comment} disabled={readOnly} onChange={(event) => onChange({ comment: event.target.value })} placeholder="Feedback or comments..." rows={2} className="w-full resize-y rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm leading-5 text-slate-700 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 disabled:cursor-default disabled:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:disabled:bg-slate-900" />
+      </div>
+      {!readOnly && <button type="button" onClick={onRemove} aria-label="Remove row" className="mt-1 inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-300 transition hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-950/30">×</button>}
     </div>
   );
 }
@@ -119,8 +122,8 @@ function ReportSectionCard({ meta, rows, readOnly, onChange, onAdd, onRemove }) 
         {!readOnly && <button type="button" onClick={onAdd} className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-200 hover:text-blue-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">+ Add row</button>}
       </div>
       <div className="overflow-hidden rounded-xl border border-slate-200/80 bg-white/80 dark:border-slate-800 dark:bg-slate-950/60">
-        <div className="hidden grid-cols-[38px_minmax(0,0.75fr)_minmax(0,1.45fr)_34px] gap-2 border-b border-slate-100 px-3 py-2 text-[10px] font-black uppercase tracking-[0.16em] text-slate-400 dark:border-slate-800 sm:grid"><span>No.</span><span>Client name</span><span>Comment or feedback</span><span /></div>
-        {rows.map((row, index) => <ReportRow key={row.rowId || index} row={row} index={index} readOnly={readOnly} clients={[]} onChange={(patch) => onChange(index, patch)} onRemove={() => onRemove(index)} />)}
+        <div className="hidden grid-cols-[38px_minmax(0,0.8fr)_minmax(0,0.65fr)_minmax(0,0.7fr)_minmax(0,1.35fr)_34px] gap-2 border-b border-slate-100 px-3 py-2 text-[10px] font-black uppercase tracking-[0.16em] text-slate-400 dark:border-slate-800 sm:grid"><span>No.</span><span>Client name</span><span>Phone</span><span>Contact mode</span><span>Feedback / comments</span><span /></div>
+        {rows.map((row, index) => <ReportRow key={row.rowId || index} row={row} index={index} readOnly={readOnly} onChange={(patch) => onChange(index, patch)} onRemove={() => onRemove(index)} />)}
       </div>
     </section>
   );
@@ -180,7 +183,7 @@ export default function ReportsSection({ user, profile, clients = [], birthdayCa
     const autoRows = normalizeAutoBirthdayRows(clients, dateKey, selectedCaller);
     const nextReport = existing || createEmptyReport({ dateKey, ownerId: user?.uid, ownerName: user?.displayName || user?.email, callerId: selectedCaller.id, callerName: selectedCaller.name, branch: selectedBranch });
     setReport({
-      ...nextReport,
+      ...enrichReportRows(nextReport, clients),
       callerId: nextReport.callerId || selectedCaller.id,
       callerName: nextReport.callerName || selectedCaller.name,
       branch: nextReport.branch || selectedBranch,
@@ -194,13 +197,22 @@ export default function ReportsSection({ user, profile, clients = [], birthdayCa
 
   const openReport = (item) => {
     setSelectedDate(item.reportDateKey);
-    setReport(item);
+    setReport(enrichReportRows(item, clients));
     setMode('editor');
     setNotice(item.ownerId === user?.uid ? 'Your report is ready to continue editing.' : 'Viewing another caller’s report in read-only mode.');
   };
 
   const updateSectionRow = (sectionKey, index, patch) => {
     setReport((current) => ({ ...current, [sectionKey]: current[sectionKey].map((row, rowIndex) => rowIndex === index ? { ...row, ...patch } : row) }));
+  };
+
+  const updateClientRow = (sectionKey, index, patch) => {
+    if (!patch.clientName) {
+      updateSectionRow(sectionKey, index, patch);
+      return;
+    }
+    const matchedClient = clients.find((client) => client.name && client.name.trim().toLowerCase() === patch.clientName.trim().toLowerCase());
+    updateSectionRow(sectionKey, index, matchedClient ? { ...patch, clientId: matchedClient.id, phoneNumber: matchedClient.phoneNumber || '', branch: matchedClient.branch || '' } : patch);
   };
 
   const addSectionRow = (sectionKey) => setReport((current) => ({ ...current, [sectionKey]: [...current[sectionKey], makeRow()] }));
@@ -263,8 +275,8 @@ export default function ReportsSection({ user, profile, clients = [], birthdayCa
           <div className="dashboard-surface rounded-2xl p-4 sm:p-5"><div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between"><div><p className="text-xs font-black uppercase tracking-[0.16em] text-blue-600">Daily report</p><h3 className="mt-1 text-2xl font-black text-slate-900 dark:text-white">{report ? formatDate(report.reportDateKey) : 'New report'}</h3><p className="mt-1 text-sm font-medium text-slate-500">{canEdit ? 'Your report is editable and autosets the caller record you choose.' : 'This report belongs to another caller and is available for reference.'}</p></div><div className="flex flex-wrap gap-2"><button type="button" onClick={() => setMode('history')} className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-black text-slate-600 hover:bg-slate-100 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800">← History</button>{report && <button type="button" onClick={downloadCurrentReport} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-700 shadow-sm hover:border-blue-200 hover:text-blue-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200">↓ Download PDF</button>}{canEdit && <button type="button" onClick={saveCurrentReport} disabled={isSaving} className="rounded-xl bg-blue-600 px-3 py-2 text-xs font-black text-white shadow-lg shadow-blue-600/20 hover:bg-blue-700 disabled:opacity-60">{isSaving ? 'Saving...' : 'Save report'}</button>}</div></div></div>
           {report && <>
             <div className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]"><div className="dashboard-surface rounded-2xl p-4 sm:p-5"><div className="mb-4 flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 text-sm font-black text-white">{initials(report.callerName)}</div><div><p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Report owner / caller</p><p className="font-black text-slate-900 dark:text-white">{report.callerName || 'Caller'}</p></div></div><div className="grid gap-3 sm:grid-cols-2"><label className="text-xs font-bold text-slate-500">Report date<input type="date" value={report.reportDateKey} disabled={!canEdit} onChange={(event) => setReport((current) => ({ ...current, reportDateKey: event.target.value }))} className="mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-700 outline-none disabled:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:disabled:bg-slate-900" /></label><label className="text-xs font-bold text-slate-500">Branch<select value={report.branch || ''} disabled={!canEdit} onChange={(event) => setReport((current) => ({ ...current, branch: event.target.value }))} className="mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-700 outline-none disabled:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:disabled:bg-slate-900"><option value="">All branches</option>{visibleBranches.map((branch) => <option key={branch} value={branch}>{branch}</option>)}</select></label></div></div><div className="rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50 via-white to-violet-50 p-4 sm:p-5 dark:border-blue-900/30 dark:from-blue-950/20 dark:via-slate-900 dark:to-violet-950/20"><p className="text-[10px] font-black uppercase tracking-[0.16em] text-blue-600">Birthday calls</p><div className="mt-2 flex items-end justify-between gap-3"><div><div className="text-4xl font-black text-slate-900 dark:text-white">{report.birthdayClients.filter((row) => row.clientName || row.comment).length}</div><p className="text-xs font-semibold text-slate-500">entries loaded for this caller</p></div>{canEdit && <button type="button" onClick={loadBirthdayCalls} className="rounded-xl bg-white px-3 py-2 text-xs font-black text-blue-700 shadow-sm ring-1 ring-blue-100 hover:bg-blue-50 dark:bg-slate-900 dark:ring-blue-900/50">↻ Load calls</button>}</div><p className="mt-4 text-xs font-medium leading-5 text-slate-500">Pulls from birthday communications already recorded in the client database, then leaves comments open for feedback and next steps.</p></div></div>
-            <section className="overflow-hidden rounded-2xl border border-blue-100 bg-blue-50/40 dark:border-blue-900/40 dark:bg-blue-950/10"><div className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between"><div><h3 className="text-sm font-black text-slate-900 dark:text-white">A. Birthday clients contacted</h3><p className="mt-0.5 text-xs font-medium text-slate-500">Auto-loaded from the caller’s recorded birthday communications.</p></div>{canEdit && <button type="button" onClick={() => setReport((current) => ({ ...current, birthdayClients: [...current.birthdayClients, makeRow()] }))} className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-700 shadow-sm hover:text-blue-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">+ Add row</button>}</div><div className="overflow-hidden rounded-xl border border-slate-200/80 bg-white/80 dark:border-slate-800 dark:bg-slate-950/60">{report.birthdayClients.length ? report.birthdayClients.map((row, index) => <ReportRow key={row.rowId || index} row={row} index={index} readOnly={!canEdit} onChange={(patch) => updateSectionRow('birthdayClients', index, patch)} onRemove={() => removeSectionRow('birthdayClients', index)} clients={clients} />) : <div className="p-5 text-sm font-medium text-slate-500">No birthday calls loaded yet.</div>}</div></section>
-            {sectionMeta.map((meta) => <ReportSectionCard key={meta.key} meta={meta} rows={report[meta.key] || []} readOnly={!canEdit} onChange={(index, patch) => updateSectionRow(meta.key, index, patch)} onAdd={() => addSectionRow(meta.key)} onRemove={(index) => removeSectionRow(meta.key, index)} />)}
+            <section className="overflow-hidden rounded-2xl border border-blue-100 bg-blue-50/40 dark:border-blue-900/40 dark:bg-blue-950/10"><div className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between"><div><h3 className="text-sm font-black text-slate-900 dark:text-white">A. Birthday clients contacted</h3><p className="mt-0.5 text-xs font-medium text-slate-500">Auto-loaded from the caller’s recorded birthday communications.</p></div>{canEdit && <button type="button" onClick={() => setReport((current) => ({ ...current, birthdayClients: [...current.birthdayClients, makeRow()] }))} className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-700 shadow-sm hover:text-blue-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">+ Add row</button>}</div><div className="overflow-hidden rounded-xl border border-slate-200/80 bg-white/80 dark:border-slate-800 dark:bg-slate-950/60">{report.birthdayClients.length ? report.birthdayClients.map((row, index) => <ReportRow key={row.rowId || index} row={row} index={index} readOnly={!canEdit} onChange={(patch) => updateClientRow('birthdayClients', index, patch)} onRemove={() => removeSectionRow('birthdayClients', index)} clients={clients} />) : <div className="p-5 text-sm font-medium text-slate-500">No birthday calls loaded yet.</div>}</div></section>
+            {sectionMeta.map((meta) => <ReportSectionCard key={meta.key} meta={meta} rows={report[meta.key] || []} readOnly={!canEdit} onChange={(index, patch) => updateClientRow(meta.key, index, patch)} onAdd={() => addSectionRow(meta.key)} onRemove={(index) => removeSectionRow(meta.key, index)} />)}
             <section className="dashboard-surface rounded-2xl p-4 sm:p-5"><label className="text-xs font-black uppercase tracking-[0.16em] text-slate-400">Additional notes<textarea value={report.notes || ''} disabled={!canEdit} onChange={(event) => setReport((current) => ({ ...current, notes: event.target.value }))} rows={4} placeholder="Add handover notes, unresolved actions, or observations for the team..." className="mt-2 block w-full resize-y rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm leading-6 text-slate-700 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 disabled:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:disabled:bg-slate-900" /></label></section>
           </>}
         </div>
