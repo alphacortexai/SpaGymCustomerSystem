@@ -36,7 +36,7 @@ const emptySections = {
 
 const sectionMeta = [
   { key: 'previousDayVisits', label: 'Previous-day visits', description: 'Clients you contacted after their previous visit.', accent: 'emerald' },
-  { key: 'followUps', label: 'Follow-up & complaints', description: 'Clients needing solutions, escalation, or a return call.', accent: 'amber' },
+  { key: 'followUps', label: 'Clients from Prev Day Visits', description: 'Clients from the previous day who need a follow-up, solution, or return call.', accent: 'amber' },
   { key: 'whatsappMessages', label: 'WhatsApp messages', description: 'Client messages, replies, and important conversations.', accent: 'violet' },
 ];
 
