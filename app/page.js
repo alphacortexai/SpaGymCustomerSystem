@@ -937,7 +937,7 @@ export default function Home() {
                   {profile?.permissions?.birthdays?.view !== false && (
                     <NavCard onClick={() => setActiveTab('birthdays')} icon="/birthday.png" title="Today's Birthdays" description="Celebrations" badge={cachedBirthdayCounts ? birthdayBadgeTotal : (dataLoaded ? '...' : undefined)} isImage={true} fullBg={true} />
                   )}
-                  <NavCard onClick={() => setActiveTab('reports')} icon={<QuickActionIcon name="reports" />} title="Reports Workspace" description="Daily caller records." accent="violet" eyebrow="Operations" />
+
                   {profile?.permissions?.gym?.view !== false && (
                     <NavCard
                       onClick={() => setActiveTab('gym')}
