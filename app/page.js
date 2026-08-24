@@ -357,7 +357,7 @@ const SummaryPanel = ({ clients, branches, loading }) => {
           </div>
           <div className="mt-5 grid gap-4 md:grid-cols-3">
             {[
-              { label: `Birthday population (${birthdayMonthLabel})`, value: birthdayClients.length, denominator: birthdayClients.length, percent: 100, color: 'bg-blue-400' },
+              { label: `Birthday Babies in ${birthdayMonthLabel}`, value: birthdayClients.length, denominator: birthdayClients.length, percent: 100, color: 'bg-blue-400' },
               { label: 'Contacted', value: contactedCount, denominator: birthdayClients.length, percent: birthdayClients.length ? (contactedCount / birthdayClients.length) * 100 : 0, color: 'bg-pink-400' },
               { label: 'Redeemed after contact', value: redeemedAfterContactCount, denominator: contactedCount, percent: contactedCount ? (redeemedAfterContactCount / contactedCount) * 100 : 0, color: 'bg-violet-500' },
             ].map((item) => (
