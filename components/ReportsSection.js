@@ -33,14 +33,28 @@ const normalizeUser = (record = {}) => ({
   roleLabel: record.roleLabel || record.role || 'Staff member',
 });
 
-const normalizeAutoBirthdayRows = (clients, dateKey, caller) => {
-  if (!caller?.id) return [];
+const getContactDateKey = (value) => {
+  if (!value) return '';
+  const dateValue = typeof value?.toDate === 'function'
+    ? value.toDate()
+    : value instanceof Date
+      ? value
+      : value?.seconds || value?._seconds
+        ? new Date(Number(value.seconds || value._seconds) * 1000)
+        : value;
+  return toDateKey(dateValue);
+};
+
+const normalizeAutoBirthdayRows = (clients, dateKey, caller, branch = '') => {
+  const reportDateKey = String(dateKey || '').slice(0, 10);
+  const reportBranch = String(branch || '').trim();
+  if (!caller?.id || !reportDateKey || !reportBranch) return [];
   return clients.filter((client) => {
     const calledByCaller = client.birthdayCalledById === caller.id || (caller.name && client.birthdayCalledByName === caller.name);
-    const contactDate = client.birthdayCalledAt?.toDate?.() || client.birthdayCalledAt;
-    const wasContactedOnDate = contactDate && toDateKey(contactDate) === dateKey;
-    const birthdayOnDate = Number(client.birthMonth) === Number(dateKey.slice(5, 7)) && Number(client.birthDay) === Number(dateKey.slice(8, 10));
-    return calledByCaller && (wasContactedOnDate || birthdayOnDate);
+    const belongsToBranch = String(client.branch || '').trim() === reportBranch;
+    const wasContactedOnDate = getContactDateKey(client.birthdayCalledAt) === reportDateKey;
+    const birthdayOnDate = Number(client.birthMonth) === Number(reportDateKey.slice(5, 7)) && Number(client.birthDay) === Number(reportDateKey.slice(8, 10));
+    return calledByCaller && belongsToBranch && birthdayOnDate && wasContactedOnDate;
   }).map((client) => makeRow({
     clientId: client.id,
     clientName: client.name || 'Unnamed client',
@@ -51,6 +65,22 @@ const normalizeAutoBirthdayRows = (clients, dateKey, caller) => {
     comment: client.birthdayFeedback || client.birthdayComment || '',
     source: 'birthday-auto',
   }));
+};
+
+const filterBirthdayRowsForReport = (rows, clients, dateKey, branch) => {
+  const clientList = Array.isArray(clients) ? clients : [];
+  const reportMonth = Number(dateKey?.slice(5, 7));
+  const reportDay = Number(dateKey?.slice(8, 10));
+  return (Array.isArray(rows) ? rows : []).filter((row) => {
+    const client = clientList.find((candidate) => candidate.id === row.clientId || (candidate.name && row.clientName && candidate.name.trim().toLowerCase() === row.clientName.trim().toLowerCase()));
+    if (!client) return true;
+    return Number(client.birthMonth) === reportMonth && Number(client.birthDay) === reportDay && (!branch || client.branch === branch);
+  });
+};
+
+const getBirthdayRowsForReport = (rows, clients, dateKey, caller, branch) => {
+  const manualRows = filterBirthdayRowsForReport((rows || []).filter((row) => row.source !== 'birthday-auto'), clients, dateKey, branch);
+  return [...manualRows, ...normalizeAutoBirthdayRows(clients, dateKey, caller, branch)];
 };
 
 const enrichReportRows = (report, clients) => {
@@ -137,6 +167,7 @@ export default function ReportsSection({ user, profile, clients = [], birthdayCa
   const defaultUser = useMemo(() => normalizeUser({ id: user?.uid, name: user?.displayName, email: user?.email, role: profile?.role }), [profile?.role, user?.displayName, user?.email, user?.uid]);
   const callerOptions = useMemo(() => birthdayCallers.map(normalizeUser).filter((candidate) => candidate.id), [birthdayCallers]);
   const selectedUser = callerOptions.find((candidate) => candidate.id === selectedUserId) || defaultUser;
+  const reportCaller = callerOptions.find((candidate) => candidate.id === report?.callerId) || selectedUser;
   const canEdit = Boolean(report && report.ownerId === user?.uid);
   const canDelete = Boolean(report && (report.ownerId === user?.uid || profile?.role === 'Admin'));
   const assignedBranches = Array.isArray(profile?.assignedBranches) ? profile.assignedBranches.filter(Boolean) : [];
@@ -182,14 +213,15 @@ export default function ReportsSection({ user, profile, clients = [], birthdayCa
     setError('');
     setSelectedDate(dateKey);
     const existing = await getReportForDate(dateKey, user?.uid);
-    const autoRows = normalizeAutoBirthdayRows(clientDirectory, dateKey, selectedUser);
+    const autoRows = normalizeAutoBirthdayRows(clientDirectory, dateKey, selectedUser, branch);
     const nextReport = existing || createEmptyReport({ dateKey, ownerId: user?.uid, ownerName: user?.displayName || user?.email, callerId: selectedUser.id, callerName: selectedUser.name, branch });
     const hydrated = enrichReportRows({ ...nextReport, reportType: nextReport.reportType || REPORT_TYPE }, clientDirectory);
-    setReport({ ...hydrated, callerId: hydrated.callerId || selectedUser.id, callerName: hydrated.callerName || selectedUser.name, branch: hydrated.branch || selectedBranch, birthdayClients: hydrated.birthdayClients?.length ? hydrated.birthdayClients : autoRows, previousDayVisits: hydrated.previousDayVisits?.length ? hydrated.previousDayVisits : emptySections.previousDayVisits, whatsappMessages: hydrated.whatsappMessages?.length ? hydrated.whatsappMessages : emptySections.whatsappMessages });
+    const birthdayRows = getBirthdayRowsForReport(hydrated.birthdayClients, clientDirectory, dateKey, selectedUser, branch);
+    setReport({ ...hydrated, callerId: hydrated.callerId || selectedUser.id, callerName: hydrated.callerName || selectedUser.name, branch: hydrated.branch || selectedBranch, birthdayClients: birthdayRows.length ? birthdayRows : autoRows, previousDayVisits: hydrated.previousDayVisits?.length ? hydrated.previousDayVisits : emptySections.previousDayVisits, whatsappMessages: hydrated.whatsappMessages?.length ? hydrated.whatsappMessages : emptySections.whatsappMessages });
     setWorkspaceStep('editor');
   };
 
-  const openReport = (item) => { setSelectedDate(item.reportDateKey); setSelectedBranch(item.branch || ''); setReport(enrichReportRows(item, clientDirectory)); setWorkspaceStep('editor'); setNotice(item.ownerId === user?.uid ? 'Your report is ready to continue editing.' : 'Viewing another user’s report in read-only mode.'); };
+  const openReport = (item) => { setSelectedDate(item.reportDateKey); setSelectedBranch(item.branch || ''); const hydrated = enrichReportRows(item, clientDirectory); const caller = callerOptions.find((candidate) => candidate.id === item.callerId) || normalizeUser({ id: item.callerId, name: item.callerName }); setReport({ ...hydrated, birthdayClients: getBirthdayRowsForReport(hydrated.birthdayClients, clientDirectory, item.reportDateKey, caller, item.branch) }); setWorkspaceStep('editor'); setNotice(item.ownerId === user?.uid ? 'Your report is ready to continue editing.' : 'Viewing another user’s report in read-only mode.'); };
   const handleBranchContinue = () => { if (!selectedBranch) { setError('Select the branch for this report before continuing.'); return; } startNewReport(newReportDate, selectedBranch); };
 
   const handleCellSave = (value, matchedClient) => {
@@ -238,7 +270,8 @@ export default function ReportsSection({ user, profile, clients = [], birthdayCa
   };
 
   const downloadCurrentReport = () => { if (!report) return; const link = document.createElement('a'); link.href = generateReportPdf(report); link.download = `spa-ems-report-${report.reportDateKey || todayKey()}.pdf`; link.click(); };
-  const loadBirthdayCalls = () => { if (!report || !canEdit) return; const autoRows = normalizeAutoBirthdayRows(clientDirectory, report.reportDateKey, selectedUser); setReport((current) => ({ ...current, callerId: selectedUser.id, callerName: selectedUser.name, birthdayClients: autoRows })); setNotice(autoRows.length ? `${autoRows.length} birthday call${autoRows.length === 1 ? '' : 's'} loaded for ${selectedUser.name}.` : 'No matching birthday calls found for this date and caller.'); };
+  const loadBirthdayCalls = () => { if (!report || !canEdit) return; const autoRows = normalizeAutoBirthdayRows(clientDirectory, report.reportDateKey, reportCaller, report.branch); setReport((current) => ({ ...current, callerId: reportCaller.id, callerName: reportCaller.name, birthdayClients: autoRows })); setNotice(autoRows.length ? `${autoRows.length} birthday call${autoRows.length === 1 ? '' : 's'} loaded for ${reportCaller.name}.` : 'No matching birthday calls found for this date, caller, and branch.'); };
+  const birthdayEntryCount = report?.birthdayClients?.filter((row) => rowHasContent(row, report.customColumns)).length || 0;
 
   return <div className="space-y-6 animate-in fade-in duration-300">
     <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"><div><div className="flex items-center gap-3"><button type="button" onClick={handleWorkspaceBack} aria-label="Back" className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-500 transition hover:bg-slate-100 hover:text-blue-600 dark:border-slate-800 dark:text-slate-400 dark:hover:bg-slate-800">←</button><div><h2 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white">Reports &amp; Feedback</h2></div></div></div><div className="flex flex-wrap gap-2">{workspaceStep !== 'users' && <button type="button" onClick={goToUsers} className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-black text-slate-600 hover:bg-slate-100 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800">Change user</button>}{workspaceStep === 'editor' && report && <button type="button" onClick={downloadCurrentReport} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-700 shadow-sm hover:border-blue-200 hover:text-blue-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200">↓ Download PDF</button>}{workspaceStep === 'editor' && canEdit && <button type="button" onClick={saveCurrentReport} disabled={isSaving} className="rounded-xl bg-blue-600 px-3 py-2 text-xs font-black text-white shadow-lg shadow-blue-600/20 hover:bg-blue-700 disabled:opacity-60">{isSaving ? 'Saving...' : 'Save report'}</button>}</div></div>
@@ -275,13 +308,13 @@ export default function ReportsSection({ user, profile, clients = [], birthdayCa
         </div>
         <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
           <div className="grid gap-3 sm:grid-cols-2">
-            <label className="text-xs font-bold text-slate-500">Report date<input type="date" value={report.reportDateKey} disabled={!canEdit} onChange={(event) => setReport((current) => ({ ...current, reportDateKey: event.target.value }))} className="mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold outline-none disabled:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:disabled:bg-slate-900" /></label>
-            <label className="text-xs font-bold text-slate-500">Branch<select value={report.branch || ''} disabled={!canEdit} onChange={(event) => setReport((current) => ({ ...current, branch: event.target.value }))} className="mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold outline-none disabled:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:disabled:bg-slate-900"><option value="" disabled>Select branch</option>{visibleBranches.map((branch) => <option key={branch} value={branch}>{branch}</option>)}</select></label>
+            <label className="text-xs font-bold text-slate-500">Report date<input type="date" value={report.reportDateKey} disabled={!canEdit} onChange={(event) => { const reportDateKey = event.target.value; setReport((current) => ({ ...current, reportDateKey, birthdayClients: getBirthdayRowsForReport(current.birthdayClients, clientDirectory, reportDateKey, reportCaller, current.branch) })); }} className="mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold outline-none disabled:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:disabled:bg-slate-900" /></label>
+            <label className="text-xs font-bold text-slate-500">Branch<select value={report.branch || ''} disabled={!canEdit} onChange={(event) => { const branch = event.target.value; setReport((current) => ({ ...current, branch, birthdayClients: getBirthdayRowsForReport(current.birthdayClients, clientDirectory, current.reportDateKey, reportCaller, branch) })); }} className="mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold outline-none disabled:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:disabled:bg-slate-900"><option value="" disabled>Select branch</option>{visibleBranches.map((branch) => <option key={branch} value={branch}>{branch}</option>)}</select></label>
           </div>
           <div className="rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50 via-white to-violet-50 p-4 sm:p-5 dark:border-blue-900/30 dark:from-blue-950/20 dark:via-slate-900 dark:to-violet-950/20">
             <p className="text-[10px] font-black uppercase tracking-[0.16em] text-blue-600">Report overview</p>
             <div className="mt-2 flex items-end justify-between">
-              <div><div className="text-4xl font-black text-slate-900 dark:text-white">{reportEntryCount(report)}</div><p className="text-xs font-semibold text-slate-500">recorded entries</p></div>
+              <div><div className="text-4xl font-black text-slate-900 dark:text-white">{birthdayEntryCount}</div><p className="text-xs font-semibold text-slate-500">birthday entries</p><p className="mt-1 text-[11px] font-semibold text-slate-400">{reportEntryCount(report)} total report entries</p></div>
               {canEdit && <button type="button" onClick={loadBirthdayCalls} className="rounded-xl bg-white px-3 py-2 text-xs font-black text-blue-700 shadow-sm ring-1 ring-blue-100 hover:bg-blue-50 dark:bg-slate-900 dark:ring-blue-900/50">↻ Load birthdays</button>}
             </div>
             <p className="mt-4 text-xs font-medium leading-5 text-slate-500">Phone numbers are linked automatically when a saved client is selected. Add extra columns whenever your team needs another field.</p>
