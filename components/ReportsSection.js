@@ -52,9 +52,8 @@ const normalizeAutoBirthdayRows = (clients, dateKey, caller, branch = '') => {
   return clients.filter((client) => {
     const calledByCaller = client.birthdayCalledById === caller.id || (caller.name && client.birthdayCalledByName === caller.name);
     const belongsToBranch = String(client.branch || '').trim() === reportBranch;
-    const wasContactedOnDate = getContactDateKey(client.birthdayCalledAt) === reportDateKey;
     const birthdayOnDate = Number(client.birthMonth) === Number(reportDateKey.slice(5, 7)) && Number(client.birthDay) === Number(reportDateKey.slice(8, 10));
-    return calledByCaller && belongsToBranch && birthdayOnDate && wasContactedOnDate;
+    return calledByCaller && belongsToBranch && birthdayOnDate;
   }).map((client) => makeRow({
     clientId: client.id,
     clientName: client.name || 'Unnamed client',
