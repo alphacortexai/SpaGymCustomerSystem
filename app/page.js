@@ -655,16 +655,16 @@ export default function Home() {
   }, [allClients, cachedAllClients, searchTerm, selectedBranch]);
 
   const filteredBirthdays = useMemo(() => {
-    // If a specific month or day is selected, search through all clients; otherwise use todaysBirthdays (already filtered by branch in sync).
+    // Use all clients for month/day searches, today’s branch-filtered birthdays for a specific branch, and the unfiltered birthday dataset for all branches.
     const useAllClients = selectedMonth || selectedDay;
-    const baseClients = useAllClients ? allClients : todaysBirthdays;
+    const baseClients = useAllClients ? allClients : (selectedBranch ? todaysBirthdays : allBirthdays);
     return baseClients.filter((client) => {
       const monthMatch = !selectedMonth || (client.birthMonth && parseInt(client.birthMonth) === parseInt(selectedMonth));
       const dayMatch = !selectedDay || (client.birthDay && parseInt(client.birthDay) === parseInt(selectedDay));
       const branchMatch = !selectedBranch || (client.branch === selectedBranch);
       return monthMatch && dayMatch && branchMatch;
     });
-  }, [todaysBirthdays, allClients, selectedMonth, selectedDay, selectedBranch]);
+  }, [todaysBirthdays, allBirthdays, allClients, selectedMonth, selectedDay, selectedBranch]);
 
   const isFullDatasetLoading = isFullDataLoading && cachedAllClients.length === 0;
 
