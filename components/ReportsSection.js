@@ -79,8 +79,11 @@ const filterBirthdayRowsForReport = (rows, clients, dateKey, branch) => {
 };
 
 const getBirthdayRowsForReport = (rows, clients, dateKey, caller, branch) => {
-  const manualRows = filterBirthdayRowsForReport((rows || []).filter((row) => row.source !== 'birthday-auto'), clients, dateKey, branch);
-  return [...manualRows, ...normalizeAutoBirthdayRows(clients, dateKey, caller, branch)];
+  const savedRows = filterBirthdayRowsForReport(rows, clients, dateKey, branch);
+  const hasSavedClientRows = savedRows.some((row) => row.clientId || row.clientName);
+  const isHistoricalReport = String(dateKey || '').slice(0, 10) < todayKey();
+  if (isHistoricalReport && hasSavedClientRows) return savedRows;
+  return normalizeAutoBirthdayRows(clients, dateKey, caller, branch);
 };
 
 const enrichReportRows = (report, clients) => {
@@ -270,7 +273,7 @@ export default function ReportsSection({ user, profile, clients = [], birthdayCa
   };
 
   const downloadCurrentReport = () => { if (!report) return; const link = document.createElement('a'); link.href = generateReportPdf(report); link.download = `spa-ems-report-${report.reportDateKey || todayKey()}.pdf`; link.click(); };
-  const loadBirthdayCalls = () => { if (!report || !canEdit) return; const autoRows = normalizeAutoBirthdayRows(clientDirectory, report.reportDateKey, reportCaller, report.branch); setReport((current) => ({ ...current, callerId: reportCaller.id, callerName: reportCaller.name, birthdayClients: autoRows })); setNotice(autoRows.length ? `${autoRows.length} birthday call${autoRows.length === 1 ? '' : 's'} loaded for ${reportCaller.name}.` : 'No matching birthday calls found for this date, caller, and branch.'); };
+  const loadBirthdayCalls = () => { if (!report || !canEdit) return; const birthdayRows = getBirthdayRowsForReport(report.birthdayClients, clientDirectory, report.reportDateKey, reportCaller, report.branch); setReport((current) => ({ ...current, callerId: reportCaller.id, callerName: reportCaller.name, birthdayClients: birthdayRows })); setNotice(birthdayRows.length ? `${birthdayRows.length} birthday entr${birthdayRows.length === 1 ? 'y' : 'ies'} loaded for ${reportCaller.name}.` : 'No matching birthday entries found for this date, caller, and branch.'); };
   const birthdayEntryCount = report?.birthdayClients?.filter((row) => rowHasContent(row, report.customColumns)).length || 0;
 
   return <div className="space-y-6 animate-in fade-in duration-300">
