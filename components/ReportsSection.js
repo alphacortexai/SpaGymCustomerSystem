@@ -45,6 +45,24 @@ const getContactDateKey = (value) => {
   return toDateKey(dateValue);
 };
 
+const getBirthdayParts = (client) => {
+  const birthdayValue = client?.dateOfBirth;
+  const birthday = typeof birthdayValue?.toDate === 'function'
+    ? birthdayValue.toDate()
+    : birthdayValue instanceof Date
+      ? birthdayValue
+      : birthdayValue?.seconds || birthdayValue?._seconds
+        ? new Date(Number(birthdayValue.seconds || birthdayValue._seconds) * 1000)
+        : birthdayValue ? new Date(birthdayValue) : null;
+  if (birthday && !Number.isNaN(birthday.getTime())) return { month: birthday.getMonth() + 1, day: birthday.getDate() };
+  return { month: Number(client?.birthMonth), day: Number(client?.birthDay) };
+};
+
+const birthdayMatchesReportDate = (client, reportDateKey) => {
+  const { month, day } = getBirthdayParts(client);
+  return month === Number(reportDateKey.slice(5, 7)) && day === Number(reportDateKey.slice(8, 10));
+};
+
 const normalizeAutoBirthdayRows = (clients, dateKey, caller, branch = '') => {
   const reportDateKey = String(dateKey || '').slice(0, 10);
   const reportBranch = String(branch || '').trim();
@@ -52,7 +70,7 @@ const normalizeAutoBirthdayRows = (clients, dateKey, caller, branch = '') => {
   return clients.filter((client) => {
     const calledByCaller = client.birthdayCalledById === caller.id || (caller.name && client.birthdayCalledByName === caller.name);
     const belongsToBranch = String(client.branch || '').trim() === reportBranch;
-    const birthdayOnDate = Number(client.birthMonth) === Number(reportDateKey.slice(5, 7)) && Number(client.birthDay) === Number(reportDateKey.slice(8, 10));
+    const birthdayOnDate = birthdayMatchesReportDate(client, reportDateKey);
     return calledByCaller && belongsToBranch && birthdayOnDate;
   }).map((client) => makeRow({
     clientId: client.id,
@@ -73,7 +91,7 @@ const filterBirthdayRowsForReport = (rows, clients, dateKey, branch) => {
   return (Array.isArray(rows) ? rows : []).filter((row) => {
     const client = clientList.find((candidate) => candidate.id === row.clientId || (candidate.name && row.clientName && candidate.name.trim().toLowerCase() === row.clientName.trim().toLowerCase()));
     if (!client) return true;
-    return Number(client.birthMonth) === reportMonth && Number(client.birthDay) === reportDay && (!branch || client.branch === branch);
+    return birthdayMatchesReportDate(client, dateKey) && (!branch || client.branch === branch);
   });
 };
 
