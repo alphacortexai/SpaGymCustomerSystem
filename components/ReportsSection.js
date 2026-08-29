@@ -79,7 +79,7 @@ const filterBirthdayRowsForReport = (rows, clients, dateKey, branch) => {
 };
 
 const getBirthdayRowsForReport = (rows, clients, dateKey, caller, branch) => {
-  const savedRows = filterBirthdayRowsForReport(rows, clients, dateKey, branch);
+  const savedRows = Array.isArray(rows) ? rows : [];
   const hasSavedClientRows = savedRows.some((row) => row.clientId || row.clientName);
   const isHistoricalReport = String(dateKey || '').slice(0, 10) < todayKey();
   if (isHistoricalReport && hasSavedClientRows) return savedRows;
