@@ -95,11 +95,20 @@ const filterBirthdayRowsForReport = (rows, clients, dateKey, branch) => {
   });
 };
 
-const getBirthdayRowsForReport = (rows, clients, dateKey, caller, branch) => {
+const getBirthdayRowsForReport = (rows, clients, dateKey, caller, branch, { reload = false } = {}) => {
   const savedRows = Array.isArray(rows) ? rows : [];
-  const hasSavedClientRows = savedRows.some((row) => row.clientId || row.clientName);
-  const isHistoricalReport = String(dateKey || '').slice(0, 10) < todayKey();
-  if (isHistoricalReport && hasSavedClientRows) return savedRows;
+  const hasSavedBirthdayData = savedRows.some((row) => (
+    row.clientId
+    || row.clientName
+    || row.phoneNumber
+    || row.contactMethod
+    || row.comment
+    || Object.values(row.customFields || {}).some((value) => String(value || '').trim())
+  ));
+  // A report is the source of truth once the user has entered birthday rows.
+  // Rebuilding current-day rows from live client data would discard saved feedback/comments.
+  // This also preserves feedback entered on a row before its client is selected.
+  if (!reload && hasSavedBirthdayData) return savedRows;
   return normalizeAutoBirthdayRows(clients, dateKey, caller, branch);
 };
 
@@ -290,7 +299,7 @@ export default function ReportsSection({ user, profile, clients = [], birthdayCa
   };
 
   const downloadCurrentReport = () => { if (!report) return; const link = document.createElement('a'); link.href = generateReportPdf(report); link.download = `spa-ems-report-${report.reportDateKey || todayKey()}.pdf`; link.click(); };
-  const loadBirthdayCalls = () => { if (!report || !canEdit) return; const birthdayRows = getBirthdayRowsForReport(report.birthdayClients, clientDirectory, report.reportDateKey, reportCaller, report.branch); setReport((current) => ({ ...current, callerId: reportCaller.id, callerName: reportCaller.name, birthdayClients: birthdayRows })); setNotice(birthdayRows.length ? `${birthdayRows.length} birthday entr${birthdayRows.length === 1 ? 'y' : 'ies'} loaded for ${reportCaller.name}.` : 'No matching birthday entries found for this date, caller, and branch.'); };
+  const loadBirthdayCalls = () => { if (!report || !canEdit) return; const birthdayRows = getBirthdayRowsForReport(report.birthdayClients, clientDirectory, report.reportDateKey, reportCaller, report.branch, { reload: true }); setReport((current) => ({ ...current, callerId: reportCaller.id, callerName: reportCaller.name, birthdayClients: birthdayRows })); setNotice(birthdayRows.length ? `${birthdayRows.length} birthday entr${birthdayRows.length === 1 ? 'y' : 'ies'} loaded for ${reportCaller.name}.` : 'No matching birthday entries found for this date, caller, and branch.'); };
   const birthdayEntryCount = report?.birthdayClients?.filter((row) => rowHasContent(row, report.customColumns)).length || 0;
 
   return <div className="space-y-6 animate-in fade-in duration-300">
