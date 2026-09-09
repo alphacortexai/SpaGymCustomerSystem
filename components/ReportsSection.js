@@ -20,8 +20,7 @@ const makeRow = (overrides = {}) => ({ rowId: `${Date.now()}-${Math.random().toS
 
 const sectionMeta = [
   { key: 'birthdayClients', label: 'A. Birthday Clients Contacted', description: 'Birthday outreach already recorded for the selected caller.', accent: 'blue' },
-  { key: 'previousDayVisits', label: 'B. Clients from Prev Day Visits', description: 'Clients contacted after their previous visit, including follow-ups and solutions.', accent: 'emerald' },
-  { key: 'whatsappMessages', label: 'C. WhatsApp Messages', description: 'Important client messages, replies, and conversations.', accent: 'violet' },
+  { key: 'previousDayVisits', label: 'B. Clients from Prev Day Visits (Calls & WhatsApp Msgs)', description: 'Clients contacted after their previous visit by phone call or WhatsApp message, including follow-ups and solutions.', accent: 'emerald' },
 ];
 
 const emptySections = Object.fromEntries(sectionMeta.map(({ key }) => [key, [makeRow()]]));
@@ -246,7 +245,7 @@ export default function ReportsSection({ user, profile, clients = [], birthdayCa
     const nextReport = existing || createEmptyReport({ dateKey, ownerId: user?.uid, ownerName: user?.displayName || user?.email, callerId: selectedUser.id, callerName: selectedUser.name, branch });
     const hydrated = enrichReportRows({ ...nextReport, reportType: nextReport.reportType || REPORT_TYPE }, clientDirectory);
     const birthdayRows = getBirthdayRowsForReport(hydrated.birthdayClients, clientDirectory, dateKey, selectedUser, branch);
-    setReport({ ...hydrated, callerId: hydrated.callerId || selectedUser.id, callerName: hydrated.callerName || selectedUser.name, branch: hydrated.branch || selectedBranch, birthdayClients: birthdayRows.length ? birthdayRows : autoRows, previousDayVisits: hydrated.previousDayVisits?.length ? hydrated.previousDayVisits : emptySections.previousDayVisits, whatsappMessages: hydrated.whatsappMessages?.length ? hydrated.whatsappMessages : emptySections.whatsappMessages });
+    setReport({ ...hydrated, callerId: hydrated.callerId || selectedUser.id, callerName: hydrated.callerName || selectedUser.name, branch: hydrated.branch || selectedBranch, birthdayClients: birthdayRows.length ? birthdayRows : autoRows, previousDayVisits: hydrated.previousDayVisits?.length ? hydrated.previousDayVisits : emptySections.previousDayVisits });
     setWorkspaceStep('editor');
   };
 
