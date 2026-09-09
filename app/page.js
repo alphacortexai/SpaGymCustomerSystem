@@ -325,7 +325,6 @@ const SummaryPanel = ({ clients, branches, loading }) => {
   const birthdayMonthLabel = useMemo(() => new Date(2000, birthdayMonth - 1, 1).toLocaleDateString(undefined, { month: 'long' }), [birthdayMonth]);
   const contactedCount = useMemo(() => birthdayClients.filter(isBirthdayContacted).length, [birthdayClients]);
   const redeemedCount = useMemo(() => birthdayClients.filter(isBirthdayOfferRedeemed).length, [birthdayClients]);
-  const redeemedAfterContactCount = useMemo(() => birthdayClients.filter((client) => isBirthdayContacted(client) && isBirthdayOfferRedeemed(client)).length, [birthdayClients]);
 
   return (
     <section className="dashboard-summary dashboard-surface rounded-2xl p-4 sm:p-5">
@@ -351,15 +350,15 @@ const SummaryPanel = ({ clients, branches, loading }) => {
               <p className="mt-1 text-xs font-medium text-slate-500">50% birthday offer redemptions compared with the birthday population and completed outreach.</p>
             </div>
             <div className="rounded-xl bg-white/80 px-3 py-2 text-right shadow-sm dark:bg-slate-900/70">
-              <div className="text-lg font-black text-violet-700 dark:text-violet-200"><AnimatedCount value={redeemedAfterContactCount} /></div>
-              <div className="text-[10px] font-black uppercase tracking-wider text-slate-400">Redeemed after contact</div>
+              <div className="text-lg font-black text-violet-700 dark:text-violet-200"><AnimatedCount value={redeemedCount} /></div>
+              <div className="text-[10px] font-black uppercase tracking-wider text-slate-400">Redeemed offer</div>
             </div>
           </div>
           <div className="mt-5 grid gap-4 md:grid-cols-3">
             {[
               { label: `Birthday Babies in ${birthdayMonthLabel}`, value: birthdayClients.length, denominator: birthdayClients.length, percent: 100, color: 'bg-blue-400' },
               { label: 'Contacted', value: contactedCount, denominator: birthdayClients.length, percent: birthdayClients.length ? (contactedCount / birthdayClients.length) * 100 : 0, color: 'bg-pink-400' },
-              { label: 'Redeemed after contact', value: redeemedAfterContactCount, denominator: contactedCount, percent: contactedCount ? (redeemedAfterContactCount / contactedCount) * 100 : 0, color: 'bg-violet-500' },
+              { label: 'Redeemed offer (contacted or uncontacted)', value: redeemedCount, denominator: birthdayClients.length, percent: birthdayClients.length ? (redeemedCount / birthdayClients.length) * 100 : 0, color: 'bg-violet-500' },
             ].map((item) => (
               <div key={item.label}>
                 <div className="mb-1.5 flex items-center justify-between gap-3 text-xs font-bold text-slate-600 dark:text-slate-300"><span>{item.label}</span><span className="shrink-0">{item.value} <span className="font-medium text-slate-400">({formatSummaryPercent(item.value, item.denominator)})</span></span></div>
