@@ -62,12 +62,12 @@ const birthdayMatchesReportDate = (client, reportDateKey) => {
   return month === Number(reportDateKey.slice(5, 7)) && day === Number(reportDateKey.slice(8, 10));
 };
 
-const normalizeAutoBirthdayRows = (clients, dateKey, caller, branch = '') => {
+const normalizeAutoBirthdayRows = (clients, dateKey, caller, branch = '', allowUncalled = false) => {
   const reportDateKey = String(dateKey || '').slice(0, 10);
   const reportBranch = String(branch || '').trim();
   if (!caller?.id || !reportDateKey || !reportBranch) return [];
   return clients.filter((client) => {
-    const calledByCaller = client.birthdayCalledById === caller.id || (caller.name && client.birthdayCalledByName === caller.name);
+    const calledByCaller = allowUncalled || client.birthdayCalledById === caller.id || (caller.name && client.birthdayCalledByName === caller.name);
     const belongsToBranch = String(client.branch || '').trim() === reportBranch;
     const birthdayOnDate = birthdayMatchesReportDate(client, reportDateKey);
     return calledByCaller && belongsToBranch && birthdayOnDate;
@@ -94,7 +94,7 @@ const filterBirthdayRowsForReport = (rows, clients, dateKey, branch) => {
   });
 };
 
-const getBirthdayRowsForReport = (rows, clients, dateKey, caller, branch, { reload = false } = {}) => {
+const getBirthdayRowsForReport = (rows, clients, dateKey, caller, branch, { reload = false, allowUncalled = false } = {}) => {
   const savedRows = Array.isArray(rows) ? rows : [];
   const hasSavedBirthdayData = savedRows.some((row) => (
     row.clientId
@@ -108,7 +108,7 @@ const getBirthdayRowsForReport = (rows, clients, dateKey, caller, branch, { relo
   // Rebuilding current-day rows from live client data would discard saved feedback/comments.
   // This also preserves feedback entered on a row before its client is selected.
   if (!reload && hasSavedBirthdayData) return savedRows;
-  return normalizeAutoBirthdayRows(clients, dateKey, caller, branch);
+  return normalizeAutoBirthdayRows(clients, dateKey, caller, branch, allowUncalled);
 };
 
 const enrichReportRows = (report, clients) => {
@@ -196,8 +196,10 @@ export default function ReportsSection({ user, profile, clients = [], birthdayCa
   const callerOptions = useMemo(() => birthdayCallers.map(normalizeUser).filter((candidate) => candidate.id), [birthdayCallers]);
   const selectedUser = callerOptions.find((candidate) => candidate.id === selectedUserId) || defaultUser;
   const reportCaller = callerOptions.find((candidate) => candidate.id === report?.callerId) || selectedUser;
-  const canEdit = Boolean(report && report.ownerId === user?.uid);
+  const isApprovedAdmin = profile?.role === 'Admin' && profile?.status === 'approved';
+  const canEdit = Boolean(report && (report.ownerId === user?.uid || isApprovedAdmin));
   const canDelete = Boolean(report && (report.ownerId === user?.uid || profile?.role === 'Admin'));
+  const adminBirthdayApproval = isApprovedAdmin && Boolean(report?.includeUncalledBirthdays);
   const assignedBranches = Array.isArray(profile?.assignedBranches) ? profile.assignedBranches.filter(Boolean) : [];
   const clientDirectory = reportClients.length ? reportClients : clients;
   const visibleBranches = assignedBranches.length ? assignedBranches : [...new Set(clientDirectory.map((client) => client.branch).filter(Boolean))];
@@ -241,15 +243,16 @@ export default function ReportsSection({ user, profile, clients = [], birthdayCa
     setError('');
     setSelectedDate(dateKey);
     const existing = await getReportForDate(dateKey, user?.uid);
-    const autoRows = normalizeAutoBirthdayRows(clientDirectory, dateKey, selectedUser, branch);
     const nextReport = existing || createEmptyReport({ dateKey, ownerId: user?.uid, ownerName: user?.displayName || user?.email, callerId: selectedUser.id, callerName: selectedUser.name, branch });
+    const approvalEnabled = isApprovedAdmin && Boolean(nextReport.includeUncalledBirthdays);
+    const autoRows = normalizeAutoBirthdayRows(clientDirectory, dateKey, selectedUser, branch, approvalEnabled);
     const hydrated = enrichReportRows({ ...nextReport, reportType: nextReport.reportType || REPORT_TYPE }, clientDirectory);
-    const birthdayRows = getBirthdayRowsForReport(hydrated.birthdayClients, clientDirectory, dateKey, selectedUser, branch);
+    const birthdayRows = getBirthdayRowsForReport(hydrated.birthdayClients, clientDirectory, dateKey, selectedUser, branch, { allowUncalled: approvalEnabled });
     setReport({ ...hydrated, callerId: hydrated.callerId || selectedUser.id, callerName: hydrated.callerName || selectedUser.name, branch: hydrated.branch || selectedBranch, birthdayClients: birthdayRows.length ? birthdayRows : autoRows, previousDayVisits: hydrated.previousDayVisits?.length ? hydrated.previousDayVisits : emptySections.previousDayVisits });
     setWorkspaceStep('editor');
   };
 
-  const openReport = (item) => { setSelectedDate(item.reportDateKey); setSelectedBranch(item.branch || ''); const hydrated = enrichReportRows(item, clientDirectory); const caller = callerOptions.find((candidate) => candidate.id === item.callerId) || normalizeUser({ id: item.callerId, name: item.callerName }); setReport({ ...hydrated, birthdayClients: getBirthdayRowsForReport(hydrated.birthdayClients, clientDirectory, item.reportDateKey, caller, item.branch) }); setWorkspaceStep('editor'); setNotice(item.ownerId === user?.uid ? 'Your report is ready to continue editing.' : 'Viewing another user’s report in read-only mode.'); };
+  const openReport = (item) => { setSelectedDate(item.reportDateKey); setSelectedBranch(item.branch || ''); const hydrated = enrichReportRows(item, clientDirectory); const caller = callerOptions.find((candidate) => candidate.id === item.callerId) || normalizeUser({ id: item.callerId, name: item.callerName }); const approvedForScope = isApprovedAdmin && Boolean(item.includeUncalledBirthdays); setReport({ ...hydrated, birthdayClients: getBirthdayRowsForReport(hydrated.birthdayClients, clientDirectory, item.reportDateKey, caller, item.branch, { allowUncalled: approvedForScope }) }); setWorkspaceStep('editor'); setNotice(item.ownerId === user?.uid ? 'Your report is ready to continue editing.' : isApprovedAdmin ? 'Admin approval is available for this caller, date, and branch.' : 'Viewing another user’s report in read-only mode.'); };
   const handleBranchContinue = () => { if (!selectedBranch) { setError('Select the branch for this report before continuing.'); return; } startNewReport(newReportDate, selectedBranch); };
 
   const handleCellSave = (value, matchedClient) => {
@@ -298,7 +301,7 @@ export default function ReportsSection({ user, profile, clients = [], birthdayCa
   };
 
   const downloadCurrentReport = () => { if (!report) return; const link = document.createElement('a'); link.href = generateReportPdf(report); link.download = `spa-ems-report-${report.reportDateKey || todayKey()}.pdf`; link.click(); };
-  const loadBirthdayCalls = () => { if (!report || !canEdit) return; const birthdayRows = getBirthdayRowsForReport(report.birthdayClients, clientDirectory, report.reportDateKey, reportCaller, report.branch, { reload: true }); setReport((current) => ({ ...current, callerId: reportCaller.id, callerName: reportCaller.name, birthdayClients: birthdayRows })); setNotice(birthdayRows.length ? `${birthdayRows.length} birthday entr${birthdayRows.length === 1 ? 'y' : 'ies'} loaded for ${reportCaller.name}.` : 'No matching birthday entries found for this date, caller, and branch.'); };
+  const loadBirthdayCalls = () => { if (!report || !canEdit) return; const birthdayRows = getBirthdayRowsForReport(report.birthdayClients, clientDirectory, report.reportDateKey, reportCaller, report.branch, { reload: true, allowUncalled: adminBirthdayApproval }); setReport((current) => ({ ...current, callerId: reportCaller.id, callerName: reportCaller.name, birthdayClients: birthdayRows })); setNotice(birthdayRows.length ? `${birthdayRows.length} birthday entr${birthdayRows.length === 1 ? 'y' : 'ies'} loaded for ${adminBirthdayApproval ? 'the approved branch' : reportCaller.name}.` : `No matching birthday entries found for this date, ${adminBirthdayApproval ? 'approved branch' : 'caller'}, and branch.`); };
   const birthdayEntryCount = report?.birthdayClients?.filter((row) => rowHasContent(row, report.customColumns)).length || 0;
 
   return <div className="space-y-6 animate-in fade-in duration-300">
@@ -336,14 +339,14 @@ export default function ReportsSection({ user, profile, clients = [], birthdayCa
         </div>
         <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
           <div className="grid gap-3 sm:grid-cols-2">
-            <label className="text-xs font-bold text-slate-500">Report date<input type="date" value={report.reportDateKey} disabled={!canEdit} onChange={(event) => { const reportDateKey = event.target.value; setReport((current) => ({ ...current, reportDateKey, birthdayClients: getBirthdayRowsForReport(current.birthdayClients, clientDirectory, reportDateKey, reportCaller, current.branch) })); }} className="mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold outline-none disabled:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:disabled:bg-slate-900" /></label>
-            <label className="text-xs font-bold text-slate-500">Branch<select value={report.branch || ''} disabled={!canEdit} onChange={(event) => { const branch = event.target.value; setReport((current) => ({ ...current, branch, birthdayClients: getBirthdayRowsForReport(current.birthdayClients, clientDirectory, current.reportDateKey, reportCaller, branch) })); }} className="mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold outline-none disabled:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:disabled:bg-slate-900"><option value="" disabled>Select branch</option>{visibleBranches.map((branch) => <option key={branch} value={branch}>{branch}</option>)}</select></label>
+            <label className="text-xs font-bold text-slate-500">Report date<input type="date" value={report.reportDateKey} disabled={!canEdit} onChange={(event) => { const reportDateKey = event.target.value; setReport((current) => ({ ...current, reportDateKey, birthdayClients: getBirthdayRowsForReport(current.birthdayClients, clientDirectory, reportDateKey, reportCaller, current.branch, { allowUncalled: adminBirthdayApproval }) })); }} className="mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold outline-none disabled:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:disabled:bg-slate-900" /></label>
+            <label className="text-xs font-bold text-slate-500">Branch<select value={report.branch || ''} disabled={!canEdit} onChange={(event) => { const branch = event.target.value; setReport((current) => ({ ...current, branch, birthdayClients: getBirthdayRowsForReport(current.birthdayClients, clientDirectory, current.reportDateKey, reportCaller, branch, { allowUncalled: adminBirthdayApproval }) })); }} className="mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold outline-none disabled:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:disabled:bg-slate-900"><option value="" disabled>Select branch</option>{visibleBranches.map((branch) => <option key={branch} value={branch}>{branch}</option>)}</select></label>
           </div>
           <div className="rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50 via-white to-violet-50 p-4 sm:p-5 dark:border-blue-900/30 dark:from-blue-950/20 dark:via-slate-900 dark:to-violet-950/20">
             <p className="text-[10px] font-black uppercase tracking-[0.16em] text-blue-600">Report overview</p>
             <div className="mt-2 flex items-end justify-between">
               <div><div className="text-4xl font-black text-slate-900 dark:text-white">{birthdayEntryCount}</div><p className="text-xs font-semibold text-slate-500">birthday entries</p><p className="mt-1 text-[11px] font-semibold text-slate-400">{reportEntryCount(report)} total report entries</p></div>
-              {canEdit && <button type="button" onClick={loadBirthdayCalls} className="rounded-xl bg-white px-3 py-2 text-xs font-black text-blue-700 shadow-sm ring-1 ring-blue-100 hover:bg-blue-50 dark:bg-slate-900 dark:ring-blue-900/50">↻ Load birthdays</button>}
+              <div className="flex flex-wrap items-center justify-end gap-2">{isApprovedAdmin && canEdit && <label className="flex items-center gap-2 rounded-xl bg-amber-50 px-3 py-2 text-[11px] font-black text-amber-800 ring-1 ring-amber-200 dark:bg-amber-950/20 dark:text-amber-200 dark:ring-amber-900/50"><input type="checkbox" checked={Boolean(report.includeUncalledBirthdays)} onChange={(event) => setReport((current) => ({ ...current, includeUncalledBirthdays: event.target.checked }))} /> Approve same-branch birthdays</label>}{canEdit && <button type="button" onClick={loadBirthdayCalls} className="rounded-xl bg-white px-3 py-2 text-xs font-black text-blue-700 shadow-sm ring-1 ring-blue-100 hover:bg-blue-50 dark:bg-slate-900 dark:ring-blue-900/50">↻ Load birthdays</button>}</div>
             </div>
             <p className="mt-4 text-xs font-medium leading-5 text-slate-500">Phone numbers are linked automatically when a saved client is selected. Add extra columns whenever your team needs another field.</p>
           </div>
