@@ -1,6 +1,6 @@
 'use client';
 
-import { isValidElement, useState, useEffect, useMemo } from 'react';
+import { isValidElement, useState, useEffect, useMemo, useRef } from 'react';
 import Image from 'next/image';
 import * as XLSX from 'xlsx';
 import dynamic from 'next/dynamic';
@@ -422,7 +422,64 @@ export default function Home() {
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [activeNotesCount, setActiveNotesCount] = useState(0);
   const [birthdayReminderIndex, setBirthdayReminderIndex] = useState(null);
+  const workspaceRestoredRef = useRef(false);
+  const [workspaceReady, setWorkspaceReady] = useState(false);
   const isRootAdmin = user?.email?.toLowerCase() === 'alphacortexai@gmail.com';
+
+  // Mobile browsers may suspend and later recreate this client component after a
+  // phone call, app switch, or memory-pressure eviction. Keep the user's current
+  // workspace in sessionStorage so a remount does not silently send them to Home.
+  useEffect(() => {
+    workspaceRestoredRef.current = false;
+    setWorkspaceReady(false);
+    if (!user?.uid) return undefined;
+
+    const storageKey = `spa-ems-workspace:${user.uid}`;
+    try {
+      const savedWorkspace = JSON.parse(window.sessionStorage.getItem(storageKey) || 'null');
+      if (savedWorkspace && typeof savedWorkspace === 'object') {
+        if (typeof savedWorkspace.activeTab === 'string') setActiveTab(savedWorkspace.activeTab);
+        if (typeof savedWorkspace.gymSubTab === 'string') setGymSubTab(savedWorkspace.gymSubTab);
+        if (typeof savedWorkspace.spaSubTab === 'string') setSpaSubTab(savedWorkspace.spaSubTab);
+        if (typeof savedWorkspace.selectedBranch === 'string') setSelectedBranch(savedWorkspace.selectedBranch);
+        if (typeof savedWorkspace.selectedMonth === 'string') setSelectedMonth(savedWorkspace.selectedMonth);
+        if (typeof savedWorkspace.selectedDay === 'string') setSelectedDay(savedWorkspace.selectedDay);
+        if (Number.isInteger(savedWorkspace.currentPage) && savedWorkspace.currentPage > 0) setCurrentPage(savedWorkspace.currentPage);
+        if (typeof savedWorkspace.showAdminSection === 'boolean') setShowAdminSection(savedWorkspace.showAdminSection);
+        if (typeof savedWorkspace.returnToAdmin === 'boolean') setReturnToAdmin(savedWorkspace.returnToAdmin);
+        if (typeof savedWorkspace.searchTerm === 'string') setSearchTerm(savedWorkspace.searchTerm);
+      }
+    } catch (error) {
+      console.warn('Unable to restore workspace state:', error);
+    } finally {
+      workspaceRestoredRef.current = true;
+      setWorkspaceReady(true);
+    }
+
+    return undefined;
+  }, [user?.uid]);
+
+  useEffect(() => {
+    if (!user?.uid || !workspaceRestoredRef.current || !workspaceReady) return;
+    const workspace = {
+      activeTab,
+      gymSubTab,
+      spaSubTab,
+      selectedBranch,
+      selectedMonth,
+      selectedDay,
+      currentPage,
+      showAdminSection,
+      returnToAdmin,
+      searchTerm,
+      savedAt: Date.now(),
+    };
+    try {
+      window.sessionStorage.setItem(`spa-ems-workspace:${user.uid}`, JSON.stringify(workspace));
+    } catch (error) {
+      console.warn('Unable to save workspace state:', error);
+    }
+  }, [user?.uid, workspaceReady, activeTab, gymSubTab, spaSubTab, selectedBranch, selectedMonth, selectedDay, currentPage, showAdminSection, returnToAdmin, searchTerm]);
 
   const handleExportAllClients = () => {
     if (!isRootAdmin) return;
