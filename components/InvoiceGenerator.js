@@ -152,8 +152,9 @@ export default function InvoiceGenerator() {
   };
 
   const renderInvoiceContent = async (pdfDoc, displaySymbol, overrideNum) => {
-    const num =
-      overrideNum != null ? overrideNum : await getInvoiceNumber(false);
+    // Preview generation must not depend on Firestore. Reserve a number only
+    // when the user saves/downloads the invoice.
+    const num = overrideNum != null ? overrideNum : invoiceNumber ?? '...';
     pdfDoc.setFontSize(12);
     pdfDoc.text(`${num ?? '...'}`, 163, 77);
     pdfDoc.text(`${invoiceDate}`, 163, 84);
@@ -177,16 +178,16 @@ export default function InvoiceGenerator() {
   };
 
   const generatePDF = (overrideNum = null) => {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       const pdfDoc = new jsPDF();
       const img = new Image();
+      let settled = false;
       let template = '/invoice_templateA.png';
       if (experienceType === 'Soothing') {
         template = '/invoice_templateB.png';
       } else if (experienceType === 'Positive' && currency === 'UGX') {
         template = '/invoice_templateC.png';
       }
-      img.src = template;
       const displaySymbol =
         experienceType === 'Positive' &&
         serviceType === 'Gym' &&
@@ -196,21 +197,25 @@ export default function InvoiceGenerator() {
             ? 'UGX '
             : '$';
 
-      img.onload = async () => {
-        pdfDoc.addImage(img, 'PNG', 0, 0, 210, 297);
-        await renderInvoiceContent(pdfDoc, displaySymbol, overrideNum);
-        const pdfData = pdfDoc.output('datauristring');
-        const previewUrl = pdfDoc.output('bloburl');
-        setPdfPreview(previewUrl);
-        resolve(pdfData);
+      const finish = async (includeTemplate) => {
+        if (settled) return;
+        settled = true;
+        try {
+          if (includeTemplate) pdfDoc.addImage(img, 'PNG', 0, 0, 210, 297);
+          await renderInvoiceContent(pdfDoc, displaySymbol, overrideNum);
+          setPdfPreview(pdfDoc.output('bloburl'));
+          resolve(pdfDoc.output('datauristring'));
+        } catch (error) {
+          reject(error);
+        }
       };
-      img.onerror = async () => {
-        await renderInvoiceContent(pdfDoc, displaySymbol, overrideNum);
-        const pdfData = pdfDoc.output('datauristring');
-        const previewUrl = pdfDoc.output('bloburl');
-        setPdfPreview(previewUrl);
-        resolve(pdfData);
-      };
+
+      // Register handlers before assigning src so cached images cannot be
+      // missed. A text-only invoice is still useful if the template is absent.
+      img.onload = () => finish(true);
+      img.onerror = () => finish(false);
+      window.setTimeout(() => finish(false), 10000);
+      img.src = template;
     });
   };
 
@@ -245,7 +250,10 @@ export default function InvoiceGenerator() {
 
   useEffect(() => {
     if (step === 4) {
-      generatePDF();
+      generatePDF().catch((error) => {
+        console.error('Invoice preview generation failed:', error);
+        setValidationError('Unable to generate the invoice preview. Please try again.');
+      });
     }
   }, [
     step,
@@ -313,6 +321,7 @@ export default function InvoiceGenerator() {
       }
     }
     setValidationError('');
+    if (step === 3) setPdfPreview('');
     setStep((prev) => prev + 1);
   };
   const prevStep = () => setStep((prev) => prev - 1);
