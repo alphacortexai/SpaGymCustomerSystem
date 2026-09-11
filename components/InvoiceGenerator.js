@@ -14,6 +14,7 @@ import { getMembershipTypes } from '@/lib/memberships';
 import { searchClients } from '@/lib/clients';
 import { getPartnerCompanies } from '@/lib/partnerCompanies';
 import { validateInvoiceInput } from '@/lib/validation';
+import { downloadDataUri } from '@/lib/downloadFile';
 
 export default function InvoiceGenerator() {
   const [step, setStep] = useState(1);
@@ -278,37 +279,39 @@ export default function InvoiceGenerator() {
     }
     setValidationError('');
     if (pdfPreview) {
-      const currentInvoiceNumber = await getInvoiceNumber(true);
-      setInvoiceNumber(currentInvoiceNumber);
-      const pdfData = await generatePDF(currentInvoiceNumber);
-      const invoiceData = {
-        invoiceNumber: currentInvoiceNumber,
-        invoiceDate,
-        clientName,
-        company,
-        phone,
-        experienceType,
-        serviceType,
-        membership,
-        membershipName: selectedMembershipType?.type || '',
-        isReducingBalance: Boolean(selectedMembershipType?.isReducingBalance),
-        customItem,
-        customAmount: String(unitAmount),
-        customComplimentaries,
-        currency,
-        qty,
-        totalAmount,
-        createdAt: serverTimestamp(),
-      };
-      const saveResult = await saveInvoiceDetails(invoiceData);
-      if (!saveResult.success) {
-        setValidationError(`Invoice could not be saved: ${saveResult.error}`);
-        return;
+      try {
+        const currentInvoiceNumber = await getInvoiceNumber(true);
+        setInvoiceNumber(currentInvoiceNumber);
+        const pdfData = await generatePDF(currentInvoiceNumber);
+        const invoiceData = {
+          invoiceNumber: currentInvoiceNumber,
+          invoiceDate,
+          clientName,
+          company,
+          phone,
+          experienceType,
+          serviceType,
+          membership,
+          membershipName: selectedMembershipType?.type || '',
+          isReducingBalance: Boolean(selectedMembershipType?.isReducingBalance),
+          customItem,
+          customAmount: String(unitAmount),
+          customComplimentaries,
+          currency,
+          qty,
+          totalAmount,
+          createdAt: serverTimestamp(),
+        };
+        const saveResult = await saveInvoiceDetails(invoiceData);
+        if (!saveResult.success) {
+          setValidationError(`Invoice could not be saved: ${saveResult.error}`);
+          return;
+        }
+        downloadDataUri(pdfData, `invoice_${currentInvoiceNumber}.pdf`);
+      } catch (error) {
+        console.error('Invoice download failed:', error);
+        setValidationError(error?.message || 'Unable to download the invoice PDF. Please try again.');
       }
-      const a = document.createElement('a');
-      a.href = pdfData;
-      a.download = `invoice_${currentInvoiceNumber}.pdf`;
-      a.click();
     }
   };
 

@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { db } from '@/lib/firebase';
 import { collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
 import { generateInvoicePdf } from '@/lib/invoicePdf';
+import { downloadDataUri } from '@/lib/downloadFile';
 import ViewInvoiceModal from '@/components/ViewInvoiceModal';
 
 export default function InvoiceList() {
@@ -15,6 +16,7 @@ export default function InvoiceList() {
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState('all'); // 'all' | 'Gym' | 'Spa'
   const [downloadingId, setDownloadingId] = useState(null);
+  const [downloadError, setDownloadError] = useState('');
   const [viewInvoice, setViewInvoice] = useState(null);
 
   const isAdmin = profile?.role === 'Admin';
@@ -67,14 +69,13 @@ export default function InvoiceList() {
 
   const handleDownload = async (inv) => {
     setDownloadingId(inv.id);
+    setDownloadError('');
     try {
       const dataUri = await generateInvoicePdf(inv);
-      const a = document.createElement('a');
-      a.href = dataUri;
-      a.download = `invoice_${inv.invoiceNumber}.pdf`;
-      a.click();
+      downloadDataUri(dataUri, `invoice_${inv.invoiceNumber}.pdf`);
     } catch (e) {
       console.error('PDF generation failed:', e);
+      setDownloadError(e?.message || 'Unable to download the invoice PDF.');
     } finally {
       setDownloadingId(null);
     }
@@ -119,6 +120,12 @@ export default function InvoiceList() {
       {error && (
         <div className="rounded-xl bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 px-4 py-3 text-rose-700 dark:text-rose-300 text-sm">
           {error}
+        </div>
+      )}
+
+      {downloadError && (
+        <div role="alert" className="rounded-xl bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 px-4 py-3 text-rose-700 dark:text-rose-300 text-sm">
+          {downloadError}
         </div>
       )}
 
