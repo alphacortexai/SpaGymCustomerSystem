@@ -47,6 +47,7 @@ const NotesSection = dynamic(() => import('@/components/NotesSection'), { loadin
 const BirthdayCallersManager = dynamic(() => import('@/components/BirthdayCallersManager'), { loading: LazySectionFallback });
 const BirthdayCommunicationsAnalytics = dynamic(() => import('@/components/BirthdayCommunicationsAnalytics'), { loading: LazySectionFallback });
 const ReportsSection = dynamic(() => import('@/components/ReportsSection'), { loading: LazySectionFallback });
+const CallerAnalyticsAdmin = dynamic(() => import('@/components/CallerAnalyticsAdmin'), { loading: LazySectionFallback });
 
 const NavCard = ({ onClick, icon, title, titleLines, description, badge, isImage, fullBg, centerBadge, accent = 'blue', eyebrow }) => {
   const accentStyles = {
@@ -629,7 +630,7 @@ export default function Home() {
     return () => clearInterval(interval);
   }, []);
 
-  const adminSubsectionTabs = ['upload', 'unrecognized', 'history', 'users', 'birthday-callers', 'branches', 'duplicates', 'timeline', 'invoice-list'];
+  const adminSubsectionTabs = ['upload', 'unrecognized', 'history', 'users', 'birthday-callers', 'branches', 'duplicates', 'timeline', 'invoice-list', 'caller-analytics'];
 
   const openAdminTool = (tab) => {
     setReturnToAdmin(true);
@@ -1061,6 +1062,9 @@ export default function Home() {
                       <NavCard onClick={() => openAdminTool('timeline')} icon={<QuickActionIcon name="timeline" />} title="Timeline" description="Activity logs." accent="blue" eyebrow="Monitor" />
                     )}
                     {profile?.role === 'Admin' && (
+                      <NavCard onClick={() => openAdminTool('caller-analytics')} icon={<QuickActionIcon name="analytics" />} title="Caller Analytics" description="Birthday, feedback and WhatsApp totals." accent="violet" eyebrow="Reporting" />
+                    )}
+                    {profile?.role === 'Admin' && (
                       <NavCard onClick={() => openAdminTool('invoice-list')} icon={<QuickActionIcon name="invoices" />} title="All Invoices" description="View, search and recreate PDFs." accent="emerald" eyebrow="Finance" />
                     )}
                     {isRootAdmin && (
@@ -1422,6 +1426,10 @@ export default function Home() {
               </div>
               <ActionsTimeline />
             </div>
+          )}
+
+          {activeTab === 'caller-analytics' && profile?.role === 'Admin' && (
+            <CallerAnalyticsAdmin profile={profile} onBack={goBackFromSection} />
           )}
 
           {activeTab === 'duplicates' && (
