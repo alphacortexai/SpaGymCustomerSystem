@@ -8,9 +8,9 @@ import { getAllClients, getClientSearchHints } from '@/lib/clients';
 const REPORT_TYPE = 'feedback-birthdays-whatsapp-calls';
 const REPORT_TYPE_LABEL = 'Feedback, Birthdays, WhatsApp & Calls Report';
 const FEEDBACK_OPTIONS = [
-  'Reactivation of in active client',
-  'Reactivation of inactive Gym Client',
-  'Recent Visit Feedback',
+  '"REACTIVATION OF IN ACTIVE CLIENT"',
+  '"REACTIVATION OF INACTIVE GYM CLIENT"',
+  '"RECENT VISIT FEEDBACK"',
 ];
 const feedbackPrefixPattern = new RegExp(`^(?:${FEEDBACK_OPTIONS.map((option) => option.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&')).join('|')})\\n?`);
 const todayKey = () => toDateKey(new Date());
