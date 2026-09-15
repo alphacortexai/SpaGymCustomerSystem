@@ -8,7 +8,7 @@ import { getAllClients, getClientSearchHints } from '@/lib/clients';
 const REPORT_TYPE = 'feedback-birthdays-whatsapp-calls';
 const REPORT_TYPE_LABEL = 'Feedback, Birthdays, WhatsApp & Calls Report';
 const FEEDBACK_OPTIONS = [
-  '"Reason for Call : REACTIVATION OF IN SPA ACTIVE CLIENT"',
+  '"Reason for Call : REACTIVATION OF INACTIVE SPA CLIENT"',
   '"Reason for Call : REACTIVATION OF INACTIVE GYM CLIENT"',
   '"Reason for Call : RECENT VISIT FEEDBACK"',
 ];
