@@ -3,7 +3,7 @@
 /**
  * Shows full invoice details. Optional extra: { status, proofOfPaymentUrl } for tracking view.
  */
-export default function ViewInvoiceModal({ invoice, extra, onClose }) {
+export default function ViewInvoiceModal({ invoice, extra, onDownload, downloading, onClose }) {
   if (!invoice) return null;
   const sym = invoice.currency === 'UGX' ? 'UGX ' : '$';
   const unitAmount = invoice.qty ? Number(invoice.totalAmount || 0) / Number(invoice.qty) : 0;
@@ -88,6 +88,18 @@ export default function ViewInvoiceModal({ invoice, extra, onClose }) {
             </div>
           )}
         </div>
+        {onDownload && (
+          <div className="flex justify-end px-6 py-4 border-t border-slate-200 dark:border-slate-800">
+            <button
+              type="button"
+              onClick={onDownload}
+              disabled={downloading}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-sm font-semibold transition-colors"
+            >
+              {downloading ? 'Creating PDF…' : 'Download PDF'}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

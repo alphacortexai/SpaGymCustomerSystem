@@ -19,6 +19,8 @@ import {
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import ViewInvoiceModal from '@/components/ViewInvoiceModal';
+import { generateInvoicePdf } from '@/lib/invoicePdf';
+import { downloadDataUri } from '@/lib/downloadFile';
 
 const STATUS_LABELS = {
   issued: 'Issued',
@@ -46,6 +48,8 @@ export default function InvoiceTracking() {
   const [statusError, setStatusError] = useState(null);
   const [viewRecord, setViewRecord] = useState(null); // { tracking, invoice: null|{} }
   const [viewLoading, setViewLoading] = useState(false);
+  const [downloadingId, setDownloadingId] = useState(null);
+  const [downloadError, setDownloadError] = useState('');
 
   const isAllowed = profile?.role === 'Admin' || profile?.role === 'Manager';
   const isAdmin = profile?.role === 'Admin';
@@ -146,6 +150,13 @@ export default function InvoiceTracking() {
         currency: inv.currency,
         serviceType: inv.serviceType,
         experienceType: inv.experienceType,
+        membership: inv.membership,
+        membershipName: inv.membershipName,
+        customItem: inv.customItem,
+        customAmount: inv.customAmount,
+        customComplimentaries: inv.customComplimentaries,
+        qty: inv.qty,
+        isReducingBalance: Boolean(inv.isReducingBalance),
         status: 'issued',
         createdAt: serverTimestamp(),
         createdBy: user?.email || user?.uid,
@@ -225,19 +236,41 @@ export default function InvoiceTracking() {
     }
   };
 
+  const getInvoiceForTracking = async (t) => {
+    const snap = await getDocs(
+      query(collection(db, 'invoices'), where('invoiceNumber', '==', t.invoiceNumber), limit(1))
+    );
+    return snap.empty ? null : { id: snap.docs[0].id, ...snap.docs[0].data() };
+  };
+
   const openView = async (t) => {
     setViewRecord({ tracking: t, invoice: null });
     setViewLoading(true);
     try {
-      const snap = await getDocs(
-        query(collection(db, 'invoices'), where('invoiceNumber', '==', t.invoiceNumber), limit(1))
-      );
-      const inv = snap.empty ? null : { id: snap.docs[0].id, ...snap.docs[0].data() };
+      const inv = await getInvoiceForTracking(t);
       setViewRecord((r) => ({ ...r, invoice: inv || buildPartialFromTracking(t) }));
     } catch {
       setViewRecord((r) => ({ ...r, invoice: buildPartialFromTracking(t) }));
     } finally {
       setViewLoading(false);
+    }
+  };
+
+  const handleDownload = async (t, invoiceOverride = null) => {
+    setDownloadingId(t.id);
+    setDownloadError('');
+    try {
+      let invoice = invoiceOverride;
+      if (!invoice) invoice = await getInvoiceForTracking(t);
+      invoice = invoice || buildPartialFromTracking(t);
+      const dataUri = await generateInvoicePdf(invoice);
+      const safeNumber = String(invoice.invoiceNumber ?? t.invoiceNumber ?? 'invoice').replace(/[^a-z0-9_-]/gi, '_');
+      downloadDataUri(dataUri, `invoice_${safeNumber}.pdf`);
+    } catch (e) {
+      console.error('Tracking invoice PDF download failed:', e);
+      setDownloadError(e?.message || 'Unable to download the invoice PDF.');
+    } finally {
+      setDownloadingId(null);
     }
   };
 
@@ -248,9 +281,15 @@ export default function InvoiceTracking() {
     company: t.company,
     phone: t.phone,
     serviceType: t.serviceType,
+    experienceType: t.experienceType,
+    membership: t.membership,
+    membershipName: t.membershipName,
+    customItem: t.customItem,
+    customAmount: t.customAmount,
+    customComplimentaries: t.customComplimentaries,
     currency: t.currency,
     totalAmount: t.totalAmount,
-    qty: 1,
+    qty: t.qty || 1,
   });
 
   if (!isAllowed) {
@@ -296,6 +335,10 @@ export default function InvoiceTracking() {
 
       {error && (
         <div className="rounded-xl bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 px-4 py-3 text-rose-700 dark:text-rose-300 text-sm">{error}</div>
+      )}
+
+      {downloadError && (
+        <div role="alert" className="rounded-xl bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 px-4 py-3 text-rose-700 dark:text-rose-300 text-sm">{downloadError}</div>
       )}
 
       {loading ? (
@@ -353,6 +396,14 @@ export default function InvoiceTracking() {
                       <td className="px-4 py-3 text-right">
                         <div className="flex items-center justify-end gap-1.5">
                           <button onClick={() => openView(t)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-medium">View</button>
+                          <button
+                            onClick={() => handleDownload(t)}
+                            disabled={downloadingId === t.id}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-medium"
+                            title="Download or redownload invoice PDF"
+                          >
+                            {downloadingId === t.id ? 'Creating…' : 'PDF'}
+                          </button>
                           <button onClick={() => openStatus(t)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium">Status</button>
                           {isAdmin && (
                             <button
@@ -464,6 +515,8 @@ export default function InvoiceTracking() {
         <ViewInvoiceModal
           invoice={viewRecord.invoice}
           extra={viewRecord.tracking ? { status: viewRecord.tracking.status, proofOfPaymentUrl: viewRecord.tracking.proofOfPaymentUrl } : undefined}
+          onDownload={() => handleDownload(viewRecord.tracking, viewRecord.invoice)}
+          downloading={downloadingId === viewRecord.tracking?.id}
           onClose={() => setViewRecord(null)}
         />
       )}
