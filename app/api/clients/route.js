@@ -1,20 +1,15 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/firebase';
 import { addClient, getAllClients, searchClients, getTodaysBirthdays } from '@/lib/clients';
-
-// Simple auth check - in production, verify Firebase ID token from header
-function checkAuth(request) {
-  // For now, we'll allow requests if Firebase is configured
-  // In production, verify the Authorization header with Firebase Admin SDK
-  const authHeader = request.headers.get('authorization');
-  return !!authHeader || process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
+import { authorizeSpaGymClientRequest } from '@/lib/firebase-server';
+async function checkAuth(request, action) {
+  return authorizeSpaGymClientRequest(request, action);
 }
 
 export async function GET(request) {
   try {
-    if (!checkAuth(request)) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const access = await checkAuth(request, 'view');
+    if (!access.ok) return NextResponse.json({ error: access.status === 403 ? 'Forbidden' : 'Unauthorized' }, { status: access.status });
 
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search');
@@ -43,9 +38,8 @@ export async function GET(request) {
 
 export async function POST(request) {
   try {
-    if (!checkAuth(request)) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const access = await checkAuth(request, 'add');
+    if (!access.ok) return NextResponse.json({ error: access.status === 403 ? 'Forbidden' : 'Unauthorized' }, { status: access.status });
 
     const body = await request.json();
     const result = await addClient(body);
@@ -66,4 +60,3 @@ export async function POST(request) {
     );
   }
 }
-

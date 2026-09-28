@@ -114,3 +114,8 @@ Example:
 - Date format should be recognizable (YYYY-MM-DD or Excel date format)
 - Check browser console for errors
 
+
+
+## GuestFlow API integration
+
+SpaGym exposes a private, server-to-server API for GuestFlow client lookup, registration, check-in and check-out. See [GUESTFLOW_API.md](./GUESTFLOW_API.md) for the full endpoint contract and deployment steps. Configure a Firebase Admin service account and a long random `GUESTFLOW_API_KEY`; configure the same secret as `SPAGYM_API_KEY` on the GuestFlow server. Keep both values server-only. Publish the updated Firestore rules to allow approved staff with client-view/edit permissions to use the new **Spa check-ins** section.

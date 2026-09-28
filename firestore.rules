@@ -59,6 +59,21 @@ service cloud.firestore {
       allow delete: if can('clients', 'delete');
     }
 
+    match /guestflowVisits/{visitId} {
+      // GuestFlow writes through the authenticated server API (Admin SDK). Staff
+      // can only read records with client-view permission and record check-outs
+      // with client-edit permission.
+      allow read: if can('clients', 'view');
+      allow create: if false;
+      allow update: if can('clients', 'edit') &&
+        resource.data.checkedOutAt == null &&
+        request.resource.data.checkedOutAt is timestamp &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'checkedOutAt', 'checkedOutBy', 'updatedAt'
+        ]);
+      allow delete: if isAdmin();
+    }
+
     match /birthday_callers/{callerId} {
       allow read: if can('birthdays', 'view');
       allow create, update, delete: if isAdmin();

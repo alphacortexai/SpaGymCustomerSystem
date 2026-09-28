@@ -48,6 +48,7 @@ const BirthdayCallersManager = dynamic(() => import('@/components/BirthdayCaller
 const BirthdayCommunicationsAnalytics = dynamic(() => import('@/components/BirthdayCommunicationsAnalytics'), { loading: LazySectionFallback });
 const ReportsSection = dynamic(() => import('@/components/ReportsSection'), { loading: LazySectionFallback });
 const CallerAnalyticsAdmin = dynamic(() => import('@/components/CallerAnalyticsAdmin'), { loading: LazySectionFallback });
+const GuestFlowVisits = dynamic(() => import('@/components/GuestFlowVisits'), { loading: LazySectionFallback });
 
 const NavCard = ({ onClick, icon, title, titleLines, description, badge, isImage, fullBg, centerBadge, accent = 'blue', eyebrow }) => {
   const accentStyles = {
@@ -259,6 +260,7 @@ const WorkspaceRail = ({ activeTab, setActiveTab, profile, showAdminSection, onO
     <div className="dashboard-rail-group manage-group space-y-1">
       <button type="button" onClick={() => setActiveTab('home')} className={`dashboard-rail-link ${activeTab === 'home' ? 'is-active' : ''}`} aria-label="Home"><span className="dashboard-rail-icon"><QuickActionIcon name="home" /></span><span className="dashboard-rail-label">Home</span></button>
       {profile?.permissions?.clients?.view !== false && <button type="button" onClick={() => setActiveTab('dashboard')} className={`dashboard-rail-link ${activeTab === 'dashboard' ? 'is-active' : ''}`} aria-label="Clients"><span className="dashboard-rail-icon"><QuickActionIcon name="clients" /></span><span className="dashboard-rail-label">Clients</span></button>}
+      {(profile?.role === 'Admin' || profile?.permissions?.clients?.view === true) && <button type="button" onClick={() => setActiveTab('check-ins')} className={`dashboard-rail-link ${activeTab === 'check-ins' ? 'is-active' : ''}`} aria-label="Spa check-ins"><span className="dashboard-rail-icon"><QuickActionIcon name="active" /></span><span className="dashboard-rail-label">Spa check-ins</span></button>}
       {profile?.permissions?.birthdays?.view !== false && <button type="button" onClick={() => setActiveTab('birthdays')} className={`dashboard-rail-link ${activeTab === 'birthdays' ? 'is-active' : ''}`} aria-label="Birthdays"><span className="dashboard-rail-icon"><QuickActionIcon name="birthdays" /></span><span className="dashboard-rail-label">Birthdays</span></button>}
       {profile?.permissions?.birthdays?.view !== false && <button type="button" onClick={() => setActiveTab('birthday-analytics')} className={`dashboard-rail-link ${activeTab === 'birthday-analytics' ? 'is-active' : ''}`} aria-label="Birthday communications analytics"><span className="dashboard-rail-icon"><QuickActionIcon name="analytics" /></span><span className="dashboard-rail-label">Birthday analytics</span></button>}
       <button type="button" onClick={() => setActiveTab('reports')} className={`dashboard-rail-link ${activeTab === 'reports' ? 'is-active' : ''}`} aria-label="Reports & Feedback"><span className="dashboard-rail-icon"><QuickActionIcon name="reports" /></span><span className="dashboard-rail-label">Reports & Feedback</span></button>
@@ -878,14 +880,15 @@ export default function Home() {
               </button>
 
                 <nav aria-label="Primary navigation" className="mobile-primary-nav order-3 flex basis-full items-center gap-1 overflow-x-auto pb-0.5 sm:order-none sm:w-auto sm:basis-auto sm:max-w-[58vw]">
-                {['home', 'dashboard', 'birthdays', 'reports', 'gym', 'spa', 'profile'].map((tab) => {
+                {['home', 'dashboard', 'check-ins', 'birthdays', 'reports', 'gym', 'spa', 'profile'].map((tab) => {
                   // Check permissions for each tab
+                  if (tab === 'check-ins' && profile?.role !== 'Admin' && profile?.permissions?.clients?.view !== true) return null;
                   if (tab === 'dashboard' && profile?.permissions?.clients?.view === false) return null;
                   if (tab === 'birthdays' && profile?.permissions?.birthdays?.view === false) return null;
                   if (tab === 'gym' && profile?.permissions?.gym?.view === false) return null;
                   if (tab === 'spa' && profile?.permissions?.spa?.view === false) return null;
 
-                  const navLabel = tab === 'gym' ? 'GYM' : tab === 'spa' ? 'SPA' : tab === 'reports' ? 'Reports & Feedback' : tab.charAt(0).toUpperCase() + tab.slice(1);
+                  const navLabel = tab === 'gym' ? 'GYM' : tab === 'spa' ? 'SPA' : tab === 'check-ins' ? 'Check-ins' : tab === 'reports' ? 'Reports & Feedback' : tab.charAt(0).toUpperCase() + tab.slice(1);
                   return (
                     <button
                       key={tab}
@@ -1085,6 +1088,10 @@ export default function Home() {
               birthdayCallers={cachedBirthdayCallers}
               onBack={goBackFromSection}
             />
+          )}
+
+          {activeTab === 'check-ins' && (profile?.role === 'Admin' || profile?.permissions?.clients?.view === true) && (
+            <GuestFlowVisits onBack={() => setActiveTab('home')} />
           )}
 
           {activeTab === 'notes' && (
