@@ -1,12 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   /* config options here */
-  api: {
-    bodyParser: {
-      sizeLimit: '10mb', // Increase body size limit for file uploads
-    },
-    responseLimit: false,
-  },
   // Increase timeout for API routes (Vercel Pro plan allows up to 60s)
   experimental: {
     serverActions: {
