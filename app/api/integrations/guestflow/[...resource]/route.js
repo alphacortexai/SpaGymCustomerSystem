@@ -4,6 +4,7 @@ import {
   createClient,
   getSummary,
   isAuthorizedGuestFlowRequest,
+  listBranches,
   listCheckIns,
   lookupClient,
   recordCheckIn,
@@ -32,6 +33,10 @@ async function handle(request, context) {
     const method = request.method;
     const url = new URL(request.url);
 
+    if (path === 'branches' && method === 'GET') {
+      return json({ branches: await listBranches() });
+    }
+
     if (path === 'clients' && method === 'GET') {
       const phone = url.searchParams.get('phone') || '';
       const search = url.searchParams.get('search') || '';
@@ -57,12 +62,12 @@ async function handle(request, context) {
 
     if (path === 'check-ins' && method === 'POST') {
       const body = await request.json();
-      const result = await recordCheckIn(body?.phone || body?.phoneNumber);
+      const result = await recordCheckIn(body?.phone || body?.phoneNumber, body?.branchId || '');
       return json(result, result.alreadyCheckedIn ? 200 : 201);
     }
 
     if (path === 'check-ins' && method === 'GET') {
-      const visits = await listCheckIns(url.searchParams.get('date') || undefined);
+      const visits = await listCheckIns(url.searchParams.get('date') || undefined, url.searchParams.get('branchId') || '');
       return json({ visits });
     }
 
@@ -81,7 +86,7 @@ async function handle(request, context) {
     }
 
     if (path === 'summary' && method === 'GET') {
-      return json(await getSummary());
+      return json(await getSummary(url.searchParams.get('branchId') || ''));
     }
 
     return json({ error: 'Endpoint not found.' }, 404);
