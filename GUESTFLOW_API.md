@@ -35,13 +35,13 @@ All SpaGym endpoints are under `/api/integrations/guestflow` and require `Author
 | `GET` | `/clients?search=...&limit=...` | Search by name/phone; at most 100 results |
 | `GET` | `/clients/lookup?phone=...` | Look up one client by normalized phone |
 | `POST` | `/clients` | Create a client; returns an existing matching client rather than duplicating it |
-| `POST` | `/check-ins` | Check in by phone; returns an existing same-day record on repeat submissions |
+| `POST` | `/check-ins` | Check in by phone; repeat active sign-ins return the existing visit |
 | `GET` | `/check-ins?date=YYYY-MM-DD` | Read the visit register for a date (Kampala date is used by default) |
 | `POST` | `/check-ins/checkout` | Record check-out with JSON `{ "id": "<visit-id>", "staffName": "<optional>" }` |
 | `POST` | `/check-ins/{visitId}/checkout` | REST-style checkout alias used by GuestFlow |
 | `GET` | `/summary` | Return registered-client count and today's visit summary |
 
-New clients created in GuestFlow require a name, phone, and birthday month/day; their SpaGym branch comes from `GUESTFLOW_DEFAULT_BRANCH` if set. Duplicate phone numbers return the existing client. GuestFlow records one check-in per client per Kampala calendar day; check-out is persisted by GuestFlow staff or in SpaGym's **Spa check-ins** section.
+New clients created in GuestFlow require a name, phone, and birthday month/day; their SpaGym branch comes from `GUESTFLOW_DEFAULT_BRANCH` if set. Duplicate phone numbers return the existing client. Only one visit per client may be active at a time; repeated submissions are deduplicated while it is active. Manual check-out or the existing 12-hour automatic check-out closes that visit, and the client can then check in again on the same Kampala calendar day. Automatic timeouts are stored in Firestore as check-outs by `Automatic (12-hour timeout)`.
 
 ## Operational checks
 

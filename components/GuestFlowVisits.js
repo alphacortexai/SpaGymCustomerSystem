@@ -39,7 +39,7 @@ export default function GuestFlowVisits({ onBack }) {
     setLoading(true);
     setError('');
     try {
-      setVisits(await getTodayGuestFlowVisits());
+      setVisits(await getTodayGuestFlowVisits({ canCheckOut }));
       setRefreshedAt(new Date());
     } catch (loadError) {
       console.error('Unable to load GuestFlow visits:', loadError);
@@ -47,9 +47,13 @@ export default function GuestFlowVisits({ onBack }) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [canCheckOut]);
 
   useEffect(() => { loadVisits(); }, [loadVisits]);
+  useEffect(() => {
+    const interval = window.setInterval(loadVisits, 60_000);
+    return () => window.clearInterval(interval);
+  }, [loadVisits]);
 
   async function checkOut(visit) {
     if (!canCheckOut || visit.checkedOutAt) return;
