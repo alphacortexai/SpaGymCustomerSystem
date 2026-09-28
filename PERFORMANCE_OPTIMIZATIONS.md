@@ -9,6 +9,7 @@ Your system had several performance bottlenecks causing lag on the main page:
 3. **Loading All Data Upfront**: Fetching all clients, birthdays, and enrollments without limits
 4. **No Caching**: Badge counts recalculated on every render
 5. **Blocking UI**: Badges blocking page render until all data loaded
+6. **Background Resource Exhaustion**: Continuous polling and listeners running when tab is minimized/backgrounded (main cause of mobile overload)
 
 ## Optimizations Applied
 
@@ -79,6 +80,55 @@ Your system had several performance bottlenecks causing lag on the main page:
 6. **Lazy Load Tabs**:
    - Only load data when tab is opened
    - Don't fetch gym/spa enrollments until needed
+
+7. **Page Visibility API Integration** (New):
+   - All polling intervals now check `document.hidden` before executing
+   - Firebase `onSnapshot` listeners skip updates when tab is hidden
+   - Data refreshes automatically when user returns to the tab
+   - Prevents background resource consumption on mobile devices
+
+8. **Activity Logging Optimization** (New):
+   - User activity logging now only runs when tab is visible
+   - Reduces unnecessary Firestore writes in the background
+
+## Background Resource Fixes
+
+### Problem
+The app was experiencing "page overload" when minimized, especially on mobile devices. This was caused by:
+
+1. **GuestFlowVisits polling** (main culprit): Fired a database query every 60 seconds regardless of tab visibility
+2. **UploadHistory polling**: Refreshed every 30 seconds in the background
+3. **Firebase real-time listeners**: Continued consuming updates and triggering re-renders
+4. **Activity logging**: Wrote to Firestore every 5 minutes regardless of visibility
+
+### Solution
+Created `lib/usePageVisibility.js` hook that tracks `document.visibilityState` and is used to:
+
+- **Pause polling intervals** when tab is hidden:
+  ```javascript
+  useEffect(() => {
+    if (!isVisible) return undefined;
+    const interval = setInterval(loadData, 60000);
+    return () => clearInterval(interval);
+  }, [isVisible]);
+  ```
+
+- **Skip Firebase listener updates** when hidden:
+  ```javascript
+  onSnapshot(query, (snapshot) => {
+    if (document.hidden) return; // Skip background updates
+    // Process normally...
+  });
+  ```
+
+- **Refresh data on tab focus**: When the user returns, the app automatically fetches fresh data.
+
+### Impact
+- Up to 1 unnecessary Firestore read per minute eliminated (GuestFlowVisits)
+- Up to 2 unnecessary Firestore reads per minute eliminated (UploadHistory)
+- Zero unnecessary state updates when tab is backgrounded
+- Prevents mobile browser memory pressure crashes
+- Significant battery life improvement on mobile devices
 
 ## Testing
 

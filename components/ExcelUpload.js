@@ -30,6 +30,9 @@ export default function ExcelUpload({ onClientsAdded }) {
     if (!currentJobId) return;
     const jobRef = doc(db, 'importJobs', currentJobId);
     const unsubscribe = onSnapshot(jobRef, (snapshot) => {
+      // Only process snapshot updates when the tab is visible
+      if (document.hidden) return;
+      
       if (snapshot.exists()) {
         const data = snapshot.data();
         setJobStatus({

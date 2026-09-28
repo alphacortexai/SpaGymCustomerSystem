@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePageVisibility } from '@/lib/usePageVisibility';
 import { checkOutGuestFlowVisit, getTodayGuestFlowVisits } from '@/lib/guestflowVisits';
 
 function Icon({ name, className = '' }) {
@@ -28,6 +29,7 @@ function timeLabel(value) {
 
 export default function GuestFlowVisits({ onBack }) {
   const { user, profile } = useAuth();
+  const isVisible = usePageVisibility();
   const [visits, setVisits] = useState([]);
   const [loading, setLoading] = useState(true);
   const [workingId, setWorkingId] = useState('');
@@ -51,9 +53,19 @@ export default function GuestFlowVisits({ onBack }) {
 
   useEffect(() => { loadVisits(); }, [loadVisits]);
   useEffect(() => {
+    // Only poll when the tab is visible - prevents background resource usage
+    if (!isVisible) return undefined;
+    
     const interval = window.setInterval(loadVisits, 60_000);
     return () => window.clearInterval(interval);
-  }, [loadVisits]);
+  }, [loadVisits, isVisible]);
+  
+  // Refresh data when the tab becomes visible again
+  useEffect(() => {
+    if (isVisible) {
+      loadVisits();
+    }
+  }, [isVisible, loadVisits]);
 
   async function checkOut(visit) {
     if (!canCheckOut || visit.checkedOutAt) return;

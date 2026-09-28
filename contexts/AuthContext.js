@@ -52,12 +52,18 @@ export function AuthProvider({ children }) {
         await logUserLogin(firebaseUser.uid, firebaseUser.email, firebaseUser.displayName || firebaseUser.email);
 
         activityIntervalRef.current = setInterval(() => {
-          logUserActivity(firebaseUser.uid, firebaseUser.email);
+          // Only log activity when the tab is visible (pauses when minimized/backgrounded)
+          if (!document.hidden) {
+            logUserActivity(firebaseUser.uid, firebaseUser.email);
+          }
         }, 5 * 60 * 1000);
 
         unsubscribeProfileRef.current = onSnapshot(
           doc(db, 'users', firebaseUser.uid),
           (profileSnapshot) => {
+            // Only update state when the tab is visible to prevent unnecessary re-renders
+            if (document.hidden) return;
+            
             if (profileSnapshot.exists()) {
               const updatedProfile = profileSnapshot.data();
               setProfile(updatedProfile);

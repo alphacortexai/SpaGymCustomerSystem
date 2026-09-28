@@ -14,12 +14,25 @@ export default function UploadHistory() {
   }, [filter]);
 
   useEffect(() => {
-    // Auto-refresh every 30 seconds to catch new uploads
+    // Auto-refresh every 30 seconds - but only when tab is visible
     const interval = setInterval(() => {
-      loadHistory();
+      if (!document.hidden) {
+        loadHistory();
+      }
     }, 30000);
     
     return () => clearInterval(interval);
+  }, []);
+
+  // Refresh when tab becomes visible again
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        loadHistory();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, []);
 
   const loadHistory = async () => {
