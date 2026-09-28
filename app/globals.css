@@ -175,6 +175,20 @@ button { @apply transition-all duration-200 active:scale-95; }
   .dashboard-nav nav::-webkit-scrollbar { display: none; }
 }
 
+/* Tablet admin layout: keep the rail usable without squeezing the work area. */
+@media (min-width: 768px) and (max-width: 1100px) {
+  .dashboard-page-layout { grid-template-columns: 148px minmax(0, 1fr) !important; gap: 14px !important; }
+  .dashboard-rail { padding: 0.5rem !important; }
+  .dashboard-rail-label { font-size: 0.72rem; }
+  .dashboard-page-content { min-width: 0; }
+  .dashboard-hero { padding: 1.15rem !important; }
+  .dashboard-grid-card { min-height: 116px; padding: 1rem !important; }
+  .dashboard-grid-card h3 { font-size: 0.9rem; }
+  .dashboard-grid-card p { font-size: 0.72rem; }
+  .dashboard-surface { border-radius: 16px; }
+  .dashboard-date-card { white-space: nowrap; }
+}
+
 /* UI polish: compact navigation and content surfaces */
 .dashboard-nav nav {
   scrollbar-width: none;
