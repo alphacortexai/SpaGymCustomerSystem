@@ -43,7 +43,6 @@ export default function GuestFlowVisits({ onBack, clients = [] }) {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [refreshedAt, setRefreshedAt] = useState(null);
-  const [activeTab, setActiveTab] = useState('today');
   const [showCheckInModal, setShowCheckInModal] = useState(false);
   const [clientSearch, setClientSearch] = useState('');
   const [selectedClientId, setSelectedClientId] = useState('');
@@ -89,7 +88,6 @@ export default function GuestFlowVisits({ onBack, clients = [] }) {
     setClientSearch('');
     setSelectedClientId('');
     setShowCheckInModal(true);
-    setActiveTab('check-in');
   }
 
   async function checkInSelectedClient(event) {
@@ -102,7 +100,6 @@ export default function GuestFlowVisits({ onBack, clients = [] }) {
       const result = await checkInGuestFlowClient(selectedClientId);
       setSuccess(result.alreadyCheckedIn ? `${selectedClient?.name || 'Client'} is already checked in today.` : `${selectedClient?.name || 'Client'} checked in successfully.`);
       setShowCheckInModal(false);
-      setActiveTab('today');
       await loadVisits();
     } catch (checkInError) {
       console.error('Unable to check in client:', checkInError);
@@ -161,21 +158,8 @@ export default function GuestFlowVisits({ onBack, clients = [] }) {
         </div>
       </div>
 
-      <div className="flex gap-2 border-b border-slate-200 dark:border-slate-800" role="tablist" aria-label="Spa check-in views">
-        <button type="button" role="tab" aria-selected={activeTab === 'today'} onClick={() => setActiveTab('today')} className={`border-b-2 px-4 py-3 text-sm font-black ${activeTab === 'today' ? 'border-blue-600 text-blue-700 dark:text-blue-300' : 'border-transparent text-slate-500'}`}>Today’s check-ins</button>
-        {canCheckIn && <button type="button" role="tab" aria-selected={activeTab === 'check-in'} onClick={openCheckIn} className={`border-b-2 px-4 py-3 text-sm font-black ${activeTab === 'check-in' ? 'border-blue-600 text-blue-700 dark:text-blue-300' : 'border-transparent text-slate-500'}`}>Check in a client</button>}
-      </div>
-
       {success && <div role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-300">{success}</div>}
       {error && <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-300">{error}</div>}
-
-      {activeTab === 'check-in' && canCheckIn && (
-        <div className="rounded-2xl border border-blue-200 bg-blue-50/60 p-5 dark:border-blue-900/50 dark:bg-blue-950/20">
-          <h3 className="font-black text-slate-900 dark:text-white">Check in a client</h3>
-          <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Search the client directory, select a client, then confirm the arrival.</p>
-          <button type="button" onClick={openCheckIn} className="mt-4 inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-blue-700"><Icon name="plus" /> Open check-in form</button>
-        </div>
-      )}
 
       <div className="grid gap-3 sm:grid-cols-3">
         <div className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900"><div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-slate-500"><Icon name="users" /> Arrivals today</div><div className="mt-2 text-3xl font-black text-slate-900 dark:text-white">{visits.length}</div></div>
