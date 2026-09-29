@@ -18,6 +18,10 @@ service cloud.firestore {
       return approved() && userDoc().role == 'Admin';
     }
 
+    function isPlatformAdmin() {
+      return approved() && request.auth.token.email == 'alphacortexai@gmail.com';
+    }
+
     function isManagerOrAdmin() {
       return approved() && (userDoc().role == 'Admin' || userDoc().role == 'Manager');
     }
@@ -71,7 +75,7 @@ service cloud.firestore {
         request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           'checkedOutAt', 'checkedOutBy', 'updatedAt'
         ]);
-      allow delete: if isAdmin();
+      allow delete: if isPlatformAdmin();
     }
 
     match /birthday_callers/{callerId} {

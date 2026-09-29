@@ -1091,7 +1091,10 @@ export default function Home() {
           )}
 
           {activeTab === 'check-ins' && (profile?.role === 'Admin' || profile?.permissions?.clients?.view === true) && (
-            <GuestFlowVisits onBack={() => setActiveTab('home')} />
+            <GuestFlowVisits
+              onBack={() => setActiveTab('home')}
+              clients={globalClients.length ? globalClients : cachedGlobalClients}
+            />
           )}
 
           {activeTab === 'notes' && (
