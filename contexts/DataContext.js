@@ -77,6 +77,10 @@ export function DataProvider({ children }) {
 
     try {
       const allBranches = await getAllBranches();
+      
+      // Single Promise.all for ALL data — eliminates the two-wave waterfall
+      // where the second wave waited unnecessarily for the first to complete
+      // and intermediate setData calls.
       const [
         clientCounts,
         birthdayCounts,
@@ -84,6 +88,9 @@ export function DataProvider({ children }) {
         birthdayCallers,
         activeGymEnrollmentCount,
         activeSpaEnrollmentCount,
+        clients,
+        gymEnrollments,
+        spaEnrollments,
       ] = await Promise.all([
         getClientCountsByBranch(allBranches),
         getBirthdayCountsByBranch(allBranches),
@@ -91,6 +98,9 @@ export function DataProvider({ children }) {
         getBirthdayCallers(),
         getActiveEnrollmentCount(false),
         getActiveEnrollmentCount(true),
+        getAllClients(null),
+        getAllEnrollments(false),
+        getAllEnrollments(true),
       ]);
 
       setData((prev) => ({
@@ -103,26 +113,10 @@ export function DataProvider({ children }) {
         birthdayCallers,
         activeGymEnrollmentCount,
         activeSpaEnrollmentCount,
-      }));
-      setLoading(false);
-
-      const [clients, gymEnrollments, spaEnrollments] = await Promise.all([
-        getAllClients(null),
-        getAllEnrollments(false),
-        getAllEnrollments(true),
-      ]);
-
-      setData((prev) => ({
-        ...prev,
         allClients: clients,
         globalClients: clients,
         gymEnrollments,
         spaEnrollments,
-        branches: allBranches,
-        clientCountsByBranch: clientCounts,
-        birthdayCountsByBranch: birthdayCounts,
-        activeGymEnrollmentCount,
-        activeSpaEnrollmentCount,
         lastFetched: now,
       }));
     } catch (error) {
