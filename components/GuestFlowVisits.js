@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePageVisibility } from '@/lib/usePageVisibility';
+import { extractAllPhoneNumbers } from '@/lib/phoneUtils';
 import {
   checkInGuestFlowClient,
   checkOutGuestFlowVisit,
@@ -51,6 +52,7 @@ export default function GuestFlowVisits({ onBack, clients = [] }) {
   const [checkInLoading, setCheckInLoading] = useState(false);
   const [selectedDate, setSelectedDate] = useState(null); // null = today
   const todayKey = getKampalaDateKey();
+  const isHistoricalDate = Boolean(selectedDate && selectedDate !== todayKey);
   const canCheckOut = profile?.role === 'Admin' || profile?.permissions?.clients?.edit === true;
   const canCheckIn = profile?.role === 'Admin' || profile?.permissions?.clients?.view === true;
   const canDelete = profile?.role === 'Admin' && profile?.email?.toLowerCase() === 'alphacortexai@gmail.com';
@@ -89,6 +91,18 @@ export default function GuestFlowVisits({ onBack, clients = [] }) {
   }, [clientSearch, clients]);
   const selectedClient = clients.find((client) => client.id === selectedClientId);
   const activeCount = visits.filter((visit) => !visit.checkedOutAt).length;
+  function getContactPhone(phoneNumber) {
+    return extractAllPhoneNumbers(phoneNumber)[0] || '';
+  }
+  function getCallLink(phoneNumber) {
+    const normalized = getContactPhone(phoneNumber);
+    return normalized ? `tel:${normalized}` : '';
+  }
+  function getWhatsAppLink(phoneNumber) {
+    const normalized = getContactPhone(phoneNumber);
+    if (!normalized) return '';
+    return `https://wa.me/256${normalized.replace(/^0/, '')}`;
+  }
 
   function openCheckIn() {
     setError('');
@@ -191,7 +205,7 @@ export default function GuestFlowVisits({ onBack, clients = [] }) {
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <div className="border-b border-slate-100 px-5 py-4 dark:border-slate-800"><h3 className="font-black text-slate-900 dark:text-white">{selectedDate ? `${selectedDate} register` : "Today's register"}</h3><p className="mt-1 text-xs font-medium text-slate-500">Check-outs are recorded in the shared visit log.</p></div>
         {loading ? <div className="p-10 text-center text-sm font-semibold text-slate-500">Loading check-ins…</div> : visits.length === 0 ? <div className="p-10 text-center text-sm font-semibold text-slate-500">No arrivals have been recorded for this date.</div> : (
-          <div className="overflow-x-auto"><table className="w-full min-w-[760px] text-left"><thead><tr className="border-b border-slate-100 bg-slate-50 text-[10px] font-black uppercase tracking-wider text-slate-500 dark:border-slate-800 dark:bg-slate-950/60"><th className="px-5 py-3">Client</th><th className="px-5 py-3">Phone</th><th className="px-5 py-3">Branch</th><th className="px-5 py-3">Check-in</th><th className="px-5 py-3">Check-out</th><th className="px-5 py-3">Status</th><th className="px-5 py-3">Action</th></tr></thead><tbody>{visits.map((visit) => <tr key={visit.id} className="border-b border-slate-100 last:border-0 dark:border-slate-800"><td className="px-5 py-4 text-sm font-bold text-slate-900 dark:text-white">{visit.clientName || 'Client'}</td><td className="px-5 py-4 text-sm text-slate-600 dark:text-slate-300">{visit.phoneNumber || '—'}</td><td className="px-5 py-4 text-sm text-slate-600 dark:text-slate-300">{visit.branch || '—'}</td><td className="px-5 py-4 text-sm font-semibold text-slate-700 dark:text-slate-200">{timeLabel(visit.checkedInAt)}</td><td className="px-5 py-4 text-sm font-semibold text-slate-700 dark:text-slate-200">{timeLabel(visit.checkedOutAt)}</td><td className="px-5 py-4"><span className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-wide ${visit.checkedOutAt ? 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300' : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300'}`}>{visit.checkedOutAt ? 'Checked out' : 'On site'}</span></td><td className="px-5 py-4"><div className="flex items-center gap-2">{!visit.checkedOutAt && canCheckOut && <button type="button" onClick={() => checkOut(visit)} disabled={workingId === visit.id} className="inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-3 py-2 text-xs font-bold text-white hover:bg-slate-700 disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900">{workingId === visit.id ? 'Saving…' : 'Check out'}</button>}{canDelete && <button type="button" onClick={() => deleteVisit(visit)} disabled={workingId === visit.id} className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 px-3 py-2 text-xs font-bold text-rose-700 hover:bg-rose-50 disabled:opacity-50 dark:border-rose-900/60 dark:text-rose-300" title="Delete check-in"><Icon name="trash" /> Delete</button>}{!canCheckOut && !canDelete && <span className="text-xs font-semibold text-slate-400">View only</span>}</div></td></tr>)}</tbody></table></div>
+          <div className="overflow-x-auto"><table className="w-full min-w-[760px] text-left"><thead><tr className="border-b border-slate-100 bg-slate-50 text-[10px] font-black uppercase tracking-wider text-slate-500 dark:border-slate-800 dark:bg-slate-950/60"><th className="px-5 py-3">Client</th><th className="px-5 py-3">Phone</th><th className="px-5 py-3">Branch</th><th className="px-5 py-3">Check-in</th><th className="px-5 py-3">Check-out</th><th className="px-5 py-3">Status</th><th className="px-5 py-3">Action</th></tr></thead><tbody>{visits.map((visit) => { const callLink = getCallLink(visit.phoneNumber); const whatsappLink = getWhatsAppLink(visit.phoneNumber); return <tr key={visit.id} className="border-b border-slate-100 last:border-0 dark:border-slate-800"><td className="px-5 py-4 text-sm font-bold text-slate-900 dark:text-white">{visit.clientName || 'Client'}</td><td className="px-5 py-4 text-sm text-slate-600 dark:text-slate-300">{visit.phoneNumber || '—'}</td><td className="px-5 py-4 text-sm text-slate-600 dark:text-slate-300">{visit.branch || '—'}</td><td className="px-5 py-4 text-sm font-semibold text-slate-700 dark:text-slate-200">{timeLabel(visit.checkedInAt)}</td><td className="px-5 py-4 text-sm font-semibold text-slate-700 dark:text-slate-200">{timeLabel(visit.checkedOutAt)}</td><td className="px-5 py-4"><span className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-wide ${visit.checkedOutAt ? 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300' : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300'}`}>{visit.checkedOutAt ? 'Checked out' : 'On site'}</span></td><td className="px-5 py-4"><div className="flex flex-wrap items-center gap-2">{isHistoricalDate && callLink && <a href={callLink} className="inline-flex items-center rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-bold text-blue-700 hover:bg-blue-100 dark:border-blue-900/60 dark:bg-blue-950/30 dark:text-blue-300" title={`Call ${visit.clientName || 'client'}`}>Call</a>}{isHistoricalDate && whatsappLink && <a href={whatsappLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700 hover:bg-emerald-100 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-300" title={`WhatsApp ${visit.clientName || 'client'}`}>WhatsApp</a>}{!visit.checkedOutAt && canCheckOut && <button type="button" onClick={() => checkOut(visit)} disabled={workingId === visit.id} className="inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-3 py-2 text-xs font-bold text-white hover:bg-slate-700 disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900">{workingId === visit.id ? 'Saving…' : 'Check out'}</button>}{canDelete && <button type="button" onClick={() => deleteVisit(visit)} disabled={workingId === visit.id} className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 px-3 py-2 text-xs font-bold text-rose-700 hover:bg-rose-50 disabled:opacity-50 dark:border-rose-900/60 dark:text-rose-300" title="Delete check-in"><Icon name="trash" /> Delete</button>}{!isHistoricalDate && !canCheckOut && !canDelete && <span className="text-xs font-semibold text-slate-400">View only</span>}</div></td></tr>; })}</tbody></table></div>
         )}
       </div>
 
