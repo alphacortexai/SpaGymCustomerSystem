@@ -143,7 +143,7 @@ export default function UserManagement() {
               <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Role</th>
               <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Access Permissions</th>
               <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Assigned Branches</th>
-              <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Spa Intake Branches</th>
+              <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Spa Intake / Check-in Branches</th>
               <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Status</th>
               <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Joined</th>
               <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-right">Actions</th>
@@ -248,7 +248,7 @@ export default function UserManagement() {
                       >
                         {branches.map((branch) => <option key={branch.id} value={branch.name}>{branch.name}</option>)}
                       </select>
-                      <p className="mt-1 max-w-40 text-[10px] text-slate-400">Select none, one, or both. SPA View permission is also required.</p>
+                      <p className="mt-1 max-w-48 text-[10px] text-slate-400">Choose none, one, or both (Ctrl/Cmd-click). SPA View for members; Client View for check-ins.</p>
                     </>
                   ) : user.email?.toLowerCase() === 'alphacortexai@gmail.com' ? (
                     <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">All branches (top admin)</span>

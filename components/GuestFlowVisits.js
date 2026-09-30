@@ -9,8 +9,7 @@ import {
   checkInGuestFlowClient,
   checkOutGuestFlowVisit,
   deleteGuestFlowVisit,
-  getGuestFlowVisitsForDate,
-  getTodayGuestFlowVisits,
+  getSpaIntakeGuestFlowVisitsForDate,
   getKampalaDateKey,
 } from '@/lib/guestflowVisits';
 
@@ -40,6 +39,11 @@ function timeLabel(value) {
 
 export default function GuestFlowVisits({ onBack, clients = [], branches = [] }) {
   const { user, profile } = useAuth();
+  const isPlatformAdmin = user?.email?.toLowerCase() === 'alphacortexai@gmail.com';
+  const spaIntakeBranches = useMemo(
+    () => Array.isArray(profile?.spaIntakeBranches) ? profile.spaIntakeBranches : [],
+    [profile?.spaIntakeBranches]
+  );
   const isVisible = usePageVisibility();
   const [visits, setVisits] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -63,19 +67,21 @@ export default function GuestFlowVisits({ onBack, clients = [], branches = [] })
     setLoading(true);
     setError('');
     try {
-      if (selectedDate) {
-        setVisits(await getGuestFlowVisitsForDate(selectedDate, { canCheckOut }));
-      } else {
-        setVisits(await getTodayGuestFlowVisits({ canCheckOut }));
+      if (!user || (!isPlatformAdmin && spaIntakeBranches.length === 0)) {
+        setVisits([]);
+        setRefreshedAt(new Date());
+        return;
       }
+      setVisits(await getSpaIntakeGuestFlowVisitsForDate(selectedDate || todayKey));
       setRefreshedAt(new Date());
     } catch (loadError) {
       console.error('Unable to load GuestFlow visits:', loadError);
+      setVisits([]);
       setError('Could not load check-in records for the selected date.');
     } finally {
       setLoading(false);
     }
-  }, [canCheckOut, selectedDate]);
+  }, [isPlatformAdmin, selectedDate, spaIntakeBranches, todayKey, user]);
 
   useEffect(() => { loadVisits(); }, [loadVisits]);
   useEffect(() => {
@@ -92,9 +98,25 @@ export default function GuestFlowVisits({ onBack, clients = [], branches = [] })
     return sorted.filter((client) => `${client.name || ''} ${client.phoneNumber || ''}`.toLowerCase().includes(term)).slice(0, 12);
   }, [clientSearch, clients]);
   const selectedClient = clients.find((client) => client.id === selectedClientId);
-  const branchOptions = useMemo(() => [...new Set([...branches.map((branch) => String(branch.name || branch || '').trim()), ...visits.map((visit) => String(visit.branch || '').trim())].filter(Boolean))].sort((a, b) => a.localeCompare(b)), [branches, visits]);
-  const filteredVisits = useMemo(() => branchFilter === 'all' ? visits : visits.filter((visit) => String(visit.checkedInBranch || visit.branch || '').trim() === branchFilter), [branchFilter, visits]);
+  const branchOptions = useMemo(() => {
+    const availableBranches = isPlatformAdmin
+      ? [...branches.map((branch) => String(branch.name || branch || '').trim()), ...visits.map((visit) => String(visit.checkedInBranch || visit.branch || '').trim())]
+      : spaIntakeBranches;
+    return [...new Set(availableBranches.map((branch) => String(branch || '').trim()).filter(Boolean))]
+      .sort((a, b) => a.localeCompare(b));
+  }, [branches, isPlatformAdmin, spaIntakeBranches, visits]);
+  const permittedVisits = useMemo(
+    () => visits.filter((visit) => isPlatformAdmin || spaIntakeBranches.includes(String(visit.checkedInBranch || visit.branch || '').trim())),
+    [isPlatformAdmin, spaIntakeBranches, visits]
+  );
+  const filteredVisits = useMemo(() => branchFilter === 'all' ? permittedVisits : permittedVisits.filter((visit) => String(visit.checkedInBranch || visit.branch || '').trim() === branchFilter), [branchFilter, permittedVisits]);
   const activeCount = filteredVisits.filter((visit) => !visit.checkedOutAt).length;
+
+  useEffect(() => {
+    if (!isPlatformAdmin && branchFilter !== 'all' && !spaIntakeBranches.includes(branchFilter)) {
+      setBranchFilter('all');
+    }
+  }, [branchFilter, isPlatformAdmin, spaIntakeBranches]);
   function getRegisteredBranch(visit) {
     return visit.registeredBranch || clients.find((client) => client.id === visit.clientId)?.branch || '';
   }
@@ -202,6 +224,7 @@ export default function GuestFlowVisits({ onBack, clients = [], branches = [] })
 
       {success && <div role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-300">{success}</div>}
       {error && <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-300">{error}</div>}
+      {!isPlatformAdmin && spaIntakeBranches.length === 0 && <div role="status" className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200">No spa check-in branch access is assigned. Ask the top admin to grant one or both branches.</div>}
 
       <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200 bg-white p-2 dark:border-slate-800 dark:bg-slate-900" role="tablist" aria-label="Check-in branch registers">
         <button type="button" role="tab" aria-selected={branchFilter === 'all'} onClick={() => setBranchFilter('all')} className={`rounded-xl px-4 py-2 text-sm font-black transition ${branchFilter === 'all' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'}`}>All branches <span className="ml-1 opacity-75">({visits.length})</span></button>
