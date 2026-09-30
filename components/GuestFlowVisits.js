@@ -113,10 +113,12 @@ export default function GuestFlowVisits({ onBack, clients = [], branches = [] })
   const activeCount = filteredVisits.filter((visit) => !visit.checkedOutAt).length;
 
   useEffect(() => {
-    if (!isPlatformAdmin && branchFilter !== 'all' && !spaIntakeBranches.includes(branchFilter)) {
+    if (branchOptions.length === 1) {
+      if (branchFilter !== branchOptions[0]) setBranchFilter(branchOptions[0]);
+    } else if (branchFilter !== 'all' && !branchOptions.includes(branchFilter)) {
       setBranchFilter('all');
     }
-  }, [branchFilter, isPlatformAdmin, spaIntakeBranches]);
+  }, [branchFilter, branchOptions]);
   function getRegisteredBranch(visit) {
     return visit.registeredBranch || clients.find((client) => client.id === visit.clientId)?.branch || '';
   }
@@ -227,8 +229,8 @@ export default function GuestFlowVisits({ onBack, clients = [], branches = [] })
       {!isPlatformAdmin && spaIntakeBranches.length === 0 && <div role="status" className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200">No spa check-in branch access is assigned. Ask the top admin to grant one or both branches.</div>}
 
       <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200 bg-white p-2 dark:border-slate-800 dark:bg-slate-900" role="tablist" aria-label="Check-in branch registers">
-        <button type="button" role="tab" aria-selected={branchFilter === 'all'} onClick={() => setBranchFilter('all')} className={`rounded-xl px-4 py-2 text-sm font-black transition ${branchFilter === 'all' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'}`}>All branches <span className="ml-1 opacity-75">({visits.length})</span></button>
-        {branchOptions.map((branch) => <button type="button" role="tab" aria-selected={branchFilter === branch} key={branch} onClick={() => setBranchFilter(branch)} className={`rounded-xl px-4 py-2 text-sm font-black transition ${branchFilter === branch ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'}`}>{branch} <span className="ml-1 opacity-75">({visits.filter((visit) => String(visit.checkedInBranch || visit.branch || '').trim() === branch).length})</span></button>)}
+        {branchOptions.length > 1 && <button type="button" role="tab" aria-selected={branchFilter === 'all'} onClick={() => setBranchFilter('all')} className={`rounded-xl px-4 py-2 text-sm font-black transition ${branchFilter === 'all' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'}`}>All branches <span className="ml-1 opacity-75">({permittedVisits.length})</span></button>}
+        {branchOptions.map((branch) => <button type="button" role="tab" aria-selected={branchFilter === branch} key={branch} onClick={() => setBranchFilter(branch)} className={`rounded-xl px-4 py-2 text-sm font-black transition ${branchFilter === branch ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'}`}>{branch} <span className="ml-1 opacity-75">({permittedVisits.filter((visit) => String(visit.checkedInBranch || visit.branch || '').trim() === branch).length})</span></button>)}
       </div>
       <div className="grid gap-3 sm:grid-cols-3">
         <div className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900"><div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-slate-500"><Icon name="users" /> {selectedDate ? `Arrivals for ${selectedDate}` : 'Arrivals today'}</div><div className="mt-2 text-3xl font-black text-slate-900 dark:text-white">{filteredVisits.length}</div></div>
