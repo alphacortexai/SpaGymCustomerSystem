@@ -1094,6 +1094,7 @@ export default function Home() {
             <GuestFlowVisits
               onBack={() => setActiveTab('home')}
               clients={globalClients.length ? globalClients : cachedGlobalClients}
+              branches={branches.length ? branches : cachedBranches}
             />
           )}
 

@@ -62,7 +62,7 @@ async function handle(request, context) {
 
     if (path === 'check-ins' && method === 'POST') {
       const body = await request.json();
-      const result = await recordCheckIn(body?.phone || body?.phoneNumber, body?.clientId || '');
+      const result = await recordCheckIn(body?.phone || body?.phoneNumber, body?.clientId || '', body?.branchId || body?.branch || '');
       return json(result, result.alreadyCheckedIn ? 200 : 201);
     }
 
