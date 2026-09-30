@@ -1,14 +1,30 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
-import { collection, query, getDocs, orderBy, where } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { format } from 'date-fns';
 import MembershipDetailsModal from './MembershipDetailsModal';
 import { getAllBranches } from '@/lib/branches';
 import LoadingState from '@/components/LoadingState';
+import { useAuth } from '@/contexts/AuthContext';
+
+function parseDate(value) {
+  if (!value) return null;
+  if (value instanceof Date) return value;
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
 
 export default function SpaMembershipList() {
+  const { user, profile } = useAuth();
+  const isPlatformAdmin = user?.email?.toLowerCase() === 'alphacortexai@gmail.com';
+  const canViewSpa = isPlatformAdmin || (
+    profile?.status === 'approved' &&
+    (profile?.role === 'Admin' || profile?.permissions?.spa?.view === true)
+  );
+  const spaIntakeBranches = useMemo(
+    () => Array.isArray(profile?.spaIntakeBranches) ? profile.spaIntakeBranches : [],
+    [profile?.spaIntakeBranches]
+  );
   const [enrollments, setEnrollments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedEnrollment, setSelectedEnrollment] = useState(null);
@@ -17,55 +33,77 @@ export default function SpaMembershipList() {
   const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState('table'); // 'table' or 'card'
   const [currentPage, setCurrentPage] = useState(1);
+  const [branchesLoaded, setBranchesLoaded] = useState(false);
   const itemsPerPage = 20;
 
-  const loadInitialData = async () => {
-    const allBranches = await getAllBranches();
-    setBranches(allBranches);
-  };
+  const loadInitialData = useCallback(async () => {
+    if (isPlatformAdmin) {
+      const allBranches = await getAllBranches();
+      setBranches(allBranches);
+    } else {
+      setBranches(spaIntakeBranches.map((name) => ({ id: name, name })));
+    }
+    setBranchesLoaded(true);
+  }, [isPlatformAdmin, spaIntakeBranches]);
 
-  const loadEnrollments = async () => {
+  const loadEnrollments = useCallback(async () => {
+    if (!branchesLoaded) return;
     setLoading(true);
     try {
-      let q = query(collection(db, 'spa_enrollments'), orderBy('createdAt', 'desc'));
-      
-      if (selectedBranch) {
-        q = query(
-          collection(db, 'spa_enrollments'),
-          where('branch', '==', selectedBranch),
-          orderBy('createdAt', 'desc')
-        );
+      if (!user || !canViewSpa) {
+        setEnrollments([]);
+        return;
+      }
+      if (!isPlatformAdmin && spaIntakeBranches.length === 0) {
+        setEnrollments([]);
+        return;
+      }
+      if (!isPlatformAdmin && selectedBranch && !spaIntakeBranches.includes(selectedBranch)) {
+        setEnrollments([]);
+        return;
       }
 
-      const snapshot = await getDocs(q);
-      const data = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        startDate: doc.data().startDate?.toDate(),
-        expiryDate: doc.data().expiryDate?.toDate(),
+      const idToken = await user.getIdToken();
+      const params = new URLSearchParams();
+      if (selectedBranch) params.set('branch', selectedBranch);
+      const search = params.toString();
+      const response = await fetch(`/api/spa-intake${search ? `?${search}` : ''}`, {
+        headers: { Authorization: `Bearer ${idToken}` },
+        cache: 'no-store',
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Unable to load spa intake records.');
+      const data = (result.enrollments || []).map((enrollment) => ({
+        ...enrollment,
+        startDate: parseDate(enrollment.startDate),
+        expiryDate: parseDate(enrollment.expiryDate),
       }));
       setEnrollments(data);
     } catch (error) {
       console.error('Error loading spa enrollments:', error);
+      setEnrollments([]);
     } finally {
       setLoading(false);
     }
-  };
+  }, [branchesLoaded, canViewSpa, isPlatformAdmin, selectedBranch, spaIntakeBranches, user]);
 
   useEffect(() => {
     loadInitialData();
-  }, []);
+  }, [loadInitialData]);
 
   useEffect(() => {
     loadEnrollments();
-  }, [selectedBranch]);
+  }, [loadEnrollments]);
 
   const filteredEnrollments = useMemo(() => {
-    return enrollments.filter(enrollment => 
-      enrollment.clientName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      enrollment.membershipType?.toLowerCase().includes(searchTerm.toLowerCase())
+    return enrollments.filter(enrollment =>
+      (canViewSpa && (isPlatformAdmin || spaIntakeBranches.includes(enrollment.branch))) &&
+      (
+        enrollment.clientName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        enrollment.membershipType?.toLowerCase().includes(searchTerm.toLowerCase())
+      )
     );
-  }, [enrollments, searchTerm]);
+  }, [enrollments, searchTerm, isPlatformAdmin, canViewSpa, spaIntakeBranches]);
 
   const totalPages = Math.ceil(filteredEnrollments.length / itemsPerPage);
   const paginatedEnrollments = useMemo(() => {
@@ -77,9 +115,17 @@ export default function SpaMembershipList() {
     setCurrentPage(1);
   }, [searchTerm, selectedBranch]);
 
+  useEffect(() => {
+    if (!isPlatformAdmin && selectedBranch && !spaIntakeBranches.includes(selectedBranch)) {
+      setSelectedBranch('');
+    }
+  }, [isPlatformAdmin, selectedBranch, spaIntakeBranches]);
+
   if (loading && enrollments.length === 0) {
     return <LoadingState title="Loading spa memberships" description="Preparing spa membership records." />;
   }
+
+  const hasNoSpaIntakeBranches = canViewSpa && !isPlatformAdmin && spaIntakeBranches.length === 0;
 
   const StatusBadge = ({ enrollment }) => {
     const isExpired = new Date() > enrollment.expiryDate;
@@ -166,7 +212,12 @@ export default function SpaMembershipList() {
         </div>
       </div>
 
-      {filteredEnrollments.length === 0 ? (
+      {hasNoSpaIntakeBranches ? (
+        <div className="bg-white dark:bg-slate-900 p-12 rounded-2xl border border-slate-200 dark:border-slate-800 text-center">
+          <h3 className="text-lg font-medium text-slate-900 dark:text-white">No spa intake branch access</h3>
+          <p className="text-slate-500 mt-1">Ask the top admin to assign one or more branches to your account.</p>
+        </div>
+      ) : filteredEnrollments.length === 0 ? (
         <div className="bg-white dark:bg-slate-900 p-12 rounded-2xl border border-slate-200 dark:border-slate-800 text-center">
           <h3 className="text-lg font-medium text-slate-900 dark:text-white">No spa memberships found</h3>
           <p className="text-slate-500 mt-1">Try adjusting your search criteria.</p>
@@ -293,7 +344,7 @@ export default function SpaMembershipList() {
         </div>
       )}
 
-      {selectedEnrollment && (
+      {selectedEnrollment && canViewSpa && (isPlatformAdmin || spaIntakeBranches.includes(selectedEnrollment.branch)) && (
         <MembershipDetailsModal 
           enrollment={enrollments.find(e => e.id === selectedEnrollment.id) ?? selectedEnrollment} 
           onClose={() => setSelectedEnrollment(null)}
