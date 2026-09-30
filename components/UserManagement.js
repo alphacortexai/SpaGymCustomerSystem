@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getAllUsers, updateUserRole, updateUserStatus, updateUserPermissions, updateUserBranches, ROLES, ROLE_PERMISSIONS } from '@/lib/users';
+import { getAllUsers, updateUserRole, updateUserStatus, updateUserPermissions, updateUserBranches, updateUserSpaIntakeBranches, ROLES, ROLE_PERMISSIONS } from '@/lib/users';
 import { getAllBranches } from '@/lib/branches';
 import { useNotifications } from '@/contexts/NotificationContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -11,7 +11,8 @@ import { format } from 'date-fns';
 export default function UserManagement() {
   const { toast } = useNotifications();
   const { profile } = useAuth();
-  const canManageUsers = profile?.role === ROLES.ADMIN && profile?.status === 'approved';
+  const isPlatformAdmin = profile?.email?.toLowerCase() === 'alphacortexai@gmail.com';
+  const canManageUsers = (profile?.role === ROLES.ADMIN || isPlatformAdmin) && profile?.status === 'approved';
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(null);
@@ -63,6 +64,19 @@ export default function UserManagement() {
       await loadUsers();
     } else {
       toast('Error updating branches: ' + result.error, 'error');
+    }
+    setUpdating(null);
+  };
+
+  const handleSpaIntakeBranchChange = async (uid, event) => {
+    if (!isPlatformAdmin) return;
+    const spaIntakeBranches = Array.from(event.target.selectedOptions, (option) => option.value);
+    setUpdating(uid);
+    const result = await updateUserSpaIntakeBranches(uid, spaIntakeBranches);
+    if (result.success) {
+      await loadUsers();
+    } else {
+      toast('Error updating spa intake access: ' + result.error, 'error');
     }
     setUpdating(null);
   };
@@ -129,6 +143,7 @@ export default function UserManagement() {
               <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Role</th>
               <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Access Permissions</th>
               <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Assigned Branches</th>
+              <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Spa Intake Branches</th>
               <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Status</th>
               <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Joined</th>
               <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-right">Actions</th>
@@ -219,6 +234,29 @@ export default function UserManagement() {
                     {branches.map((branch) => <option key={branch.id} value={branch.name}>{branch.name}</option>)}
                   </select>
                   <p className="mt-1 text-[10px] text-slate-400">Ctrl/Cmd-click for multiple</p>
+                </td>
+                <td className="px-6 py-4">
+                  {isPlatformAdmin && user.email?.toLowerCase() !== 'alphacortexai@gmail.com' ? (
+                    <>
+                      <select
+                        multiple
+                        value={user.spaIntakeBranches || []}
+                        disabled={updating === user.uid}
+                        onChange={(e) => handleSpaIntakeBranchChange(user.uid, e)}
+                        className="min-w-36 rounded-lg border border-slate-200 bg-white p-1 text-xs dark:border-slate-700 dark:bg-slate-900"
+                        aria-label={`Spa intake branches for ${user.displayName || user.email}`}
+                      >
+                        {branches.map((branch) => <option key={branch.id} value={branch.name}>{branch.name}</option>)}
+                      </select>
+                      <p className="mt-1 max-w-40 text-[10px] text-slate-400">Select none, one, or both. SPA View permission is also required.</p>
+                    </>
+                  ) : user.email?.toLowerCase() === 'alphacortexai@gmail.com' ? (
+                    <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">All branches (top admin)</span>
+                  ) : (
+                    <span className="text-xs text-slate-500 dark:text-slate-400">
+                      {(user.spaIntakeBranches || []).join(', ') || 'No branch access'}
+                    </span>
+                  )}
                 </td>
                 <td className="px-6 py-4">
                   <select
