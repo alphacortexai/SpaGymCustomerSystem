@@ -2,6 +2,10 @@
 
 import { useMemo, useState } from 'react';
 
+const ITEMS_PER_BATCH = 20;
+const MAX_PARALLEL_BATCHES = 3;
+const REPORT_DESCRIPTION = 'Review saved caller feedback across a selected date range. AI flags entries that may need a follow-up; every flagged item retains its caller and client details.';
+
 const dateKey = (date) => {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -25,13 +29,104 @@ const severityStyle = {
   attention: 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200',
 };
 
+async function postReviewRequest(token, body) {
+  const response = await fetch('/api/admin/ai-feedback-review', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify(body),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload.error || 'Unable to review feedback. Please try again.');
+  return payload;
+}
+
 export default function FeedbackAttentionAdmin({ user, profile, onBack, onOpenSettings }) {
   const initialRange = useMemo(getInitialRange, []);
   const [startDate, setStartDate] = useState(initialRange.start);
   const [endDate, setEndDate] = useState(initialRange.end);
   const [result, setResult] = useState(null);
+  const [reviewSession, setReviewSession] = useState(null);
+  const [progress, setProgress] = useState({ completed: 0, total: 0 });
+  const [phase, setPhase] = useState('');
   const [loading, setLoading] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [error, setError] = useState('');
+
+  const executeBatches = async (token, session, existingResults = {}) => {
+    const results = { ...existingResults };
+    let nextBatch = 0;
+    let failure = null;
+    let failedBatch = null;
+    const completedCount = () => Object.keys(results).length;
+
+    setProgress({ completed: completedCount(), total: session.batches.length });
+
+    const worker = async () => {
+      while (!failure) {
+        const batchIndex = nextBatch;
+        nextBatch += 1;
+        if (batchIndex >= session.batches.length) return;
+        if (results[batchIndex]) continue;
+
+        try {
+          const batch = session.batches[batchIndex].map(({ item, feedback }) => ({ item, feedback }));
+          const batchResult = await postReviewRequest(token, { phase: 'analyze', items: batch });
+          results[batchIndex] = batchResult;
+          const savedResults = { ...results };
+          setProgress({ completed: completedCount(), total: session.batches.length });
+          setReviewSession((current) => current ? { ...current, results: savedResults, failedBatch: null } : current);
+        } catch (batchError) {
+          if (!failure) {
+            failure = batchError;
+            failedBatch = batchIndex;
+          }
+        }
+      }
+    };
+
+    const workerCount = Math.min(MAX_PARALLEL_BATCHES, session.batches.length);
+    await Promise.all(Array.from({ length: workerCount }, () => worker()));
+
+    if (failure) {
+      const savedResults = { ...results };
+      setReviewSession({ ...session, results: savedResults, failedBatch });
+      setError(`${failure.message} Completed ${completedCount()} of ${session.batches.length} batches. Retry to continue without repeating completed batches.`);
+      return;
+    }
+
+    const indexedItems = new Map(session.feedbackItems.map((entry) => [entry.item, entry]));
+    const orderedResults = session.batches.map((_, index) => results[index]);
+    const findings = [];
+    for (const batchResult of orderedResults) {
+      for (const finding of batchResult?.findings || []) {
+        const source = indexedItems.get(Number(finding.item));
+        if (!source || !['urgent', 'attention'].includes(finding.severity)) continue;
+        findings.push({
+          ...source,
+          severity: finding.severity,
+          reason: finding.reason,
+          suggestedAction: finding.suggestedAction,
+        });
+      }
+    }
+    findings.sort((a, b) => (
+      a.severity === b.severity
+        ? String(a.reportDate || '').localeCompare(String(b.reportDate || ''))
+        : a.severity === 'urgent' ? -1 : 1
+    ));
+
+    setResult({
+      startDate: session.startDate,
+      endDate: session.endDate,
+      provider: session.provider,
+      reportCount: session.reportCount,
+      feedbackCount: session.feedbackCount,
+      summary: orderedResults.map((entry) => entry?.summary).filter(Boolean).join('\n\n'),
+      findings,
+    });
+    setProgress({ completed: session.batches.length, total: session.batches.length });
+    setReviewSession(null);
+  };
 
   const reviewFeedback = async () => {
     if (!startDate || !endDate || startDate > endDate) {
@@ -39,22 +134,183 @@ export default function FeedbackAttentionAdmin({ user, profile, onBack, onOpenSe
       return;
     }
     setLoading(true);
+    setPhase('prepare');
     setError('');
     setResult(null);
+    setReviewSession(null);
+    setProgress({ completed: 0, total: 0 });
     try {
       const token = await user.getIdToken();
-      const response = await fetch('/api/admin/ai-feedback-review', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ startDate, endDate }),
-      });
-      const payload = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(payload.error || 'Unable to review feedback. Please try again.');
-      setResult(payload);
+      const prepared = await postReviewRequest(token, { phase: 'prepare', startDate, endDate });
+      const feedbackItems = Array.isArray(prepared.feedbackItems) ? prepared.feedbackItems : [];
+      if (!feedbackItems.length) {
+        setResult({
+          startDate: prepared.startDate,
+          endDate: prepared.endDate,
+          provider: prepared.provider,
+          reportCount: prepared.reportCount,
+          feedbackCount: 0,
+          summary: prepared.summary || 'No client feedback entries were recorded in this date range.',
+          findings: [],
+        });
+        return;
+      }
+
+      const batches = [];
+      for (let offset = 0; offset < feedbackItems.length; offset += ITEMS_PER_BATCH) {
+        batches.push(feedbackItems.slice(offset, offset + ITEMS_PER_BATCH));
+      }
+      const session = {
+        startDate: prepared.startDate,
+        endDate: prepared.endDate,
+        provider: prepared.provider,
+        reportCount: prepared.reportCount,
+        feedbackCount: prepared.feedbackCount,
+        feedbackItems,
+        batches,
+        results: {},
+      };
+      setReviewSession(session);
+      setPhase('analyze');
+      await executeBatches(token, session);
     } catch (reviewError) {
       setError(reviewError.message || 'Unable to review feedback. Please try again.');
     } finally {
       setLoading(false);
+      setPhase('');
+    }
+  };
+
+  const resumeReview = async () => {
+    if (!reviewSession || loading) return;
+    setLoading(true);
+    setPhase('analyze');
+    setError('');
+    try {
+      const token = await user.getIdToken();
+      await executeBatches(token, reviewSession, reviewSession.results || {});
+    } catch (reviewError) {
+      setError(reviewError.message || 'Unable to resume the review. Please try again.');
+    } finally {
+      setLoading(false);
+      setPhase('');
+    }
+  };
+
+  const exportPdf = async () => {
+    if (!result || exporting) return;
+    setExporting(true);
+    try {
+      const { jsPDF } = await import('jspdf');
+      const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+      pdf.setProperties({ title: 'Feedback attention', subject: REPORT_DESCRIPTION, author: 'SpaGym Admin', creator: 'SpaGym Customer System' });
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const margin = 16;
+      const contentWidth = pageWidth - margin * 2;
+      let y = 19;
+
+      const ensureSpace = (needed = 8) => {
+        if (y + needed <= pageHeight - 17) return;
+        pdf.addPage();
+        y = 18;
+      };
+      const addParagraph = (value, { size = 9, color = [51, 65, 85], bold = false, lineHeight = 4.5 } = {}) => {
+        const normalizedText = String(value || 'Not recorded')
+          .replace(/[–—]/g, '-')
+          .replace(/·/g, '|')
+          .replace(/…/g, '...')
+          .replace(/[“”]/g, '"')
+          .replace(/[‘’]/g, "'");
+        const lines = pdf.splitTextToSize(normalizedText, contentWidth);
+        pdf.setFont('helvetica', bold ? 'bold' : 'normal');
+        pdf.setFontSize(size);
+        pdf.setTextColor(...color);
+        for (const line of lines) {
+          ensureSpace(lineHeight + 1);
+          pdf.text(line, margin, y);
+          y += lineHeight;
+        }
+      };
+      const addField = (label, value) => {
+        ensureSpace(10);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(8);
+        pdf.setTextColor(100, 116, 139);
+        pdf.text(String(label).toUpperCase(), margin, y);
+        y += 4;
+        addParagraph(value || 'Not recorded', { size: 9, lineHeight: 4.5 });
+        y += 2;
+      };
+      const addSectionTitle = (title) => {
+        ensureSpace(12);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(12);
+        pdf.setTextColor(30, 64, 175);
+        pdf.text(title, margin, y);
+        y += 6;
+        pdf.setDrawColor(226, 232, 240);
+        pdf.line(margin, y, pageWidth - margin, y);
+        y += 5;
+      };
+
+      pdf.setFillColor(15, 23, 42);
+      pdf.rect(0, 0, pageWidth, 12, 'F');
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(21);
+      pdf.setTextColor(15, 23, 42);
+      pdf.text('Feedback attention', margin, y);
+      y += 7;
+      addParagraph(REPORT_DESCRIPTION, { size: 9, color: [71, 85, 105], lineHeight: 4.5 });
+      y += 3;
+      addParagraph(`Date range: ${formatDate(result.startDate)} – ${formatDate(result.endDate)}`, { size: 9, bold: true });
+      addParagraph(`Reports reviewed: ${result.reportCount}   |   Feedback entries: ${result.feedbackCount}   |   Urgent: ${result.findings.filter((item) => item.severity === 'urgent').length}   |   Needs attention: ${result.findings.filter((item) => item.severity !== 'urgent').length}`, { size: 9 });
+      addParagraph(`AI provider: ${result.provider === 'gemini' ? 'Google Gemini' : 'OpenAI'}   |   Generated: ${new Date().toLocaleString()}`, { size: 8, color: [100, 116, 139] });
+      y += 4;
+
+      addSectionTitle('AI summary');
+      addParagraph(result.summary || 'No recurring concern themes were identified.', { size: 10, lineHeight: 5 });
+      y += 5;
+      addSectionTitle('Feedback requiring attention');
+
+      if (!result.findings.length) {
+        addParagraph('No feedback requiring attention was identified in this range. This is an AI-assisted review, not a guarantee that every issue was detected.', { size: 9, lineHeight: 4.5 });
+      } else {
+        result.findings.forEach((item, index) => {
+          ensureSpace(16);
+          const urgent = item.severity === 'urgent';
+          pdf.setFont('helvetica', 'bold');
+          pdf.setFontSize(11);
+          pdf.setTextColor(...(urgent ? [190, 18, 60] : [180, 83, 9]));
+          pdf.text(`${index + 1}. ${urgent ? 'URGENT CONCERN' : 'NEEDS ATTENTION'}`, margin, y);
+          y += 7;
+          addField('Report date / branch / source', `${formatDate(item.reportDate)} · ${item.branch || 'Branch not recorded'} · ${item.section || 'Feedback'}`);
+          addField('Caller', item.callerName || 'Caller not recorded');
+          addField('Client', item.clientName || 'Client name not recorded');
+          addField('Phone', item.phoneNumber || 'Phone not recorded');
+          addField('Original feedback', item.feedback || 'No feedback text recorded');
+          addField('Why it was flagged', item.reason);
+          addField('Suggested next step', item.suggestedAction);
+          ensureSpace(5);
+          pdf.setDrawColor(226, 232, 240);
+          pdf.line(margin, y, pageWidth - margin, y);
+          y += 5;
+        });
+      }
+
+      const pageCount = pdf.getNumberOfPages();
+      for (let page = 1; page <= pageCount; page += 1) {
+        pdf.setPage(page);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(8);
+        pdf.setTextColor(148, 163, 184);
+        pdf.text(`Feedback attention | Page ${page} of ${pageCount}`, margin, pageHeight - 8);
+      }
+      pdf.save(`feedback-attention-${result.startDate}-to-${result.endDate}.pdf`);
+    } catch (exportError) {
+      setError(exportError.message || 'Unable to export the PDF. Please try again.');
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -65,6 +321,7 @@ export default function FeedbackAttentionAdmin({ user, profile, onBack, onOpenSe
   const findings = result?.findings || [];
   const urgentCount = findings.filter((item) => item.severity === 'urgent').length;
   const attentionCount = findings.length - urgentCount;
+  const progressPercent = progress.total ? Math.round((progress.completed / progress.total) * 100) : 0;
 
   return <div className="space-y-6 animate-in fade-in duration-300">
     <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -73,21 +330,27 @@ export default function FeedbackAttentionAdmin({ user, profile, onBack, onOpenSe
           <button type="button" onClick={onBack} aria-label="Back to Admin" className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-100 dark:border-slate-800 dark:text-slate-400 dark:hover:bg-slate-800">←</button>
           <div><p className="text-[11px] font-black uppercase tracking-[0.2em] text-rose-600 dark:text-rose-300">Admin review</p><h2 className="mt-1 text-3xl font-black tracking-tight text-slate-900 dark:text-white">Feedback attention</h2></div>
         </div>
-        <p className="mt-2 max-w-2xl text-sm font-medium leading-6 text-slate-500 dark:text-slate-400">Review saved caller feedback across a selected date range. AI flags entries that may need a follow-up; every flagged item retains its caller and client details.</p>
+        <p className="mt-2 max-w-2xl text-sm font-medium leading-6 text-slate-500 dark:text-slate-400">{REPORT_DESCRIPTION}</p>
       </div>
       <button type="button" onClick={onOpenSettings} className="shrink-0 rounded-xl border border-violet-200 bg-white px-4 py-2.5 text-sm font-bold text-violet-700 shadow-sm hover:bg-violet-50 dark:border-violet-900/50 dark:bg-slate-900 dark:text-violet-200 dark:hover:bg-violet-950/30">AI key settings</button>
     </div>
 
     <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
       <div className="grid gap-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
-        <label className="text-xs font-bold uppercase tracking-wider text-slate-500">From<input type="date" value={startDate} max={endDate || undefined} onChange={(event) => setStartDate(event.target.value)} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200" /></label>
-        <label className="text-xs font-bold uppercase tracking-wider text-slate-500">To<input type="date" value={endDate} min={startDate || undefined} onChange={(event) => setEndDate(event.target.value)} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200" /></label>
-        <button type="button" onClick={reviewFeedback} disabled={loading || !user} className="rounded-xl bg-rose-600 px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-rose-700 disabled:cursor-wait disabled:opacity-60">{loading ? 'Reviewing feedback…' : 'Review with AI'}</button>
+        <label className="text-xs font-bold uppercase tracking-wider text-slate-500">From<input type="date" value={startDate} max={endDate || undefined} disabled={loading} onChange={(event) => { setStartDate(event.target.value); setReviewSession(null); }} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-semibold text-slate-700 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200" /></label>
+        <label className="text-xs font-bold uppercase tracking-wider text-slate-500">To<input type="date" value={endDate} min={startDate || undefined} disabled={loading} onChange={(event) => { setEndDate(event.target.value); setReviewSession(null); }} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-semibold text-slate-700 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200" /></label>
+        <button type="button" onClick={reviewFeedback} disabled={loading || !user} className="rounded-xl bg-rose-600 px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-rose-700 disabled:cursor-wait disabled:opacity-60">{loading ? (phase === 'prepare' ? 'Preparing review…' : 'Reviewing batches…') : 'Review with AI'}</button>
       </div>
-      <p className="mt-3 text-xs font-medium text-slate-500">The AI receives feedback text only. Caller names, client names, and phone numbers are attached to results on the server and shown here for follow-up.</p>
+      <p className="mt-3 text-xs font-medium text-slate-500">Only feedback text is sent to the selected AI provider; caller and client details are joined to flagged results separately.</p>
     </section>
 
-    {error && <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-200">{error}{/key|configured/i.test(error) && <button type="button" onClick={onOpenSettings} className="ml-2 underline underline-offset-2">Open AI key settings</button>}</div>}
+    {loading && <section role="status" aria-live="polite" className="rounded-2xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-900/50 dark:bg-blue-950/20">
+      <div className="flex flex-wrap items-center justify-between gap-2 text-sm font-bold text-blue-900 dark:text-blue-100"><span>{phase === 'prepare' ? 'Preparing reports and feedback…' : `Reviewing feedback batches${progress.total ? ` (${progress.completed} of ${progress.total} complete)` : '…'}`}</span>{progress.total > 0 && <span>{progressPercent}%</span>}</div>
+      <div className="mt-3 h-2 overflow-hidden rounded-full bg-blue-100 dark:bg-slate-800"><div className="h-full rounded-full bg-blue-600 transition-all" style={{ width: `${progressPercent}%` }} /></div>
+      <p className="mt-2 text-xs font-medium text-blue-800/80 dark:text-blue-200/80">Long date ranges are processed in separate requests, so Vercel does not need to keep one function running for the entire review.</p>
+    </section>}
+
+    {error && <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-200">{error}{/key|configured/i.test(error) && <button type="button" onClick={onOpenSettings} className="ml-2 underline underline-offset-2">Open AI key settings</button>}{reviewSession && !loading && <button type="button" onClick={resumeReview} className="ml-3 rounded-lg bg-rose-700 px-3 py-1.5 text-xs font-black text-white hover:bg-rose-800">Retry unfinished batches</button>}</div>}
 
     {result && <>
       <div className="grid gap-3 sm:grid-cols-3">
@@ -97,7 +360,7 @@ export default function FeedbackAttentionAdmin({ user, profile, onBack, onOpenSe
       </div>
 
       <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"><div><h3 className="text-lg font-black text-slate-900 dark:text-white">AI summary</h3><p className="mt-1 text-xs font-medium text-slate-500">{formatDate(result.startDate)} – {formatDate(result.endDate)}</p></div><span className="self-start rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">{findings.length} flagged</span></div>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><h3 className="text-lg font-black text-slate-900 dark:text-white">AI summary</h3><p className="mt-1 text-xs font-medium text-slate-500">{formatDate(result.startDate)} – {formatDate(result.endDate)}</p></div><div className="flex items-center gap-2"><span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">{findings.length} flagged</span><button type="button" onClick={exportPdf} disabled={exporting} className="rounded-xl bg-blue-700 px-4 py-2 text-xs font-black text-white shadow-sm hover:bg-blue-800 disabled:opacity-60">{exporting ? 'Preparing PDF…' : 'Export PDF'}</button></div></div>
         <p className="mt-4 whitespace-pre-line text-sm font-medium leading-6 text-slate-700 dark:text-slate-200">{result.summary || 'No recurring concern themes were identified.'}</p>
       </section>
 
