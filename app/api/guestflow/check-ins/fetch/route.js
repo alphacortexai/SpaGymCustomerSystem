@@ -13,8 +13,20 @@ export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
     const date = searchParams.get('date');
-    const allowedBranches = access.isPlatformAdmin ? null : access.spaIntakeBranches;
-    const visits = await listCheckIns(date || undefined, '', allowedBranches);
+    const branch = (searchParams.get('branch') || '').trim();
+    const spaBranches = access.spaIntakeBranches.map((allowed) => String(allowed).trim()).filter(Boolean);
+    const reportBranches = Array.isArray(access.profile.assignedBranches)
+      ? access.profile.assignedBranches.map((allowed) => String(allowed).trim()).filter(Boolean)
+      : [];
+    const allowedBranches = access.isPlatformAdmin
+      ? null
+      : branch
+        ? [...new Set([...spaBranches, ...reportBranches])]
+        : spaBranches;
+    if (branch && !access.isPlatformAdmin && !allowedBranches.some((allowed) => allowed.toLowerCase() === branch.toLowerCase())) {
+      return NextResponse.json({ error: 'You do not have access to spa check-ins for this branch.' }, { status: 403 });
+    }
+    const visits = await listCheckIns(date || undefined, branch, allowedBranches);
 
     return NextResponse.json({ visits }, { headers: { 'Cache-Control': 'private, no-store, max-age=0' } });
   } catch (error) {

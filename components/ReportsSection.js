@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { deleteReport, getAllReports, getReportForDate, createEmptyReport, saveReport, toDateKey } from '@/lib/reports';
 import { generateReportPdf } from '@/lib/reportPdf';
 import { getAllClients, getClientSearchHints } from '@/lib/clients';
+import { getSpaIntakeGuestFlowVisitsForDate } from '@/lib/guestflowVisits';
 
 const REPORT_TYPE = 'feedback-birthdays-whatsapp-calls';
 const REPORT_TYPE_LABEL = 'Feedback, Birthdays, WhatsApp & Calls Report';
@@ -20,6 +21,11 @@ const feedbackLabels = [
 ];
 const feedbackLabelPattern = new RegExp(`(?:\\n?)(?:${feedbackLabels.map((option) => option.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&')).join('|')})$`);
 const todayKey = () => toDateKey(new Date());
+const previousDateKey = (dateKey) => {
+  const date = new Date(`${String(dateKey || todayKey()).slice(0, 10)}T12:00:00`);
+  date.setDate(date.getDate() - 1);
+  return toDateKey(date);
+};
 
 const formatDate = (dateKey) => {
   if (!dateKey) return 'No date';
@@ -195,6 +201,7 @@ export default function ReportsSection({ user, profile, clients = [], birthdayCa
   const [selectedDate, setSelectedDate] = useState(todayKey());
   const [selectedBranch, setSelectedBranch] = useState(profile?.assignedBranches?.[0] || '');
   const [newReportDate, setNewReportDate] = useState(todayKey());
+  const [spaCheckInDate, setSpaCheckInDate] = useState(previousDateKey(todayKey()));
   const [report, setReport] = useState(null);
   const [reports, setReports] = useState([]);
   const [reportClients, setReportClients] = useState([]);
@@ -202,6 +209,7 @@ export default function ReportsSection({ user, profile, clients = [], birthdayCa
   const [columnDialogOpen, setColumnDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoadingSpaCheckIns, setIsLoadingSpaCheckIns] = useState(false);
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
 
@@ -255,6 +263,7 @@ export default function ReportsSection({ user, profile, clients = [], birthdayCa
   const startNewReport = async (dateKey = selectedDate, branch = selectedBranch) => {
     setError('');
     setSelectedDate(dateKey);
+    setSpaCheckInDate(previousDateKey(dateKey));
     const existing = await getReportForDate(dateKey, user?.uid);
     const nextReport = existing || createEmptyReport({ dateKey, ownerId: user?.uid, ownerName: user?.displayName || user?.email, callerId: selectedUser.id, callerName: selectedUser.name, branch });
     const approvalEnabled = isApprovedAdmin && Boolean(nextReport.includeUncalledBirthdays);
@@ -265,7 +274,7 @@ export default function ReportsSection({ user, profile, clients = [], birthdayCa
     setWorkspaceStep('editor');
   };
 
-  const openReport = (item) => { setSelectedDate(item.reportDateKey); setSelectedBranch(item.branch || ''); const hydrated = enrichReportRows(item, clientDirectory); const caller = callerOptions.find((candidate) => candidate.id === item.callerId) || normalizeUser({ id: item.callerId, name: item.callerName }); const approvedForScope = isApprovedAdmin && Boolean(item.includeUncalledBirthdays); setReport({ ...hydrated, birthdayClients: getBirthdayRowsForReport(hydrated.birthdayClients, clientDirectory, item.reportDateKey, caller, item.branch, { allowUncalled: approvedForScope }) }); setWorkspaceStep('editor'); setNotice(item.ownerId === user?.uid ? 'Your report is ready to continue editing.' : isApprovedAdmin ? 'Admin approval is available for this caller, date, and branch.' : 'Viewing another user’s report in read-only mode.'); };
+  const openReport = (item) => { setSelectedDate(item.reportDateKey); setSelectedBranch(item.branch || ''); setSpaCheckInDate(previousDateKey(item.reportDateKey)); const hydrated = enrichReportRows(item, clientDirectory); const caller = callerOptions.find((candidate) => candidate.id === item.callerId) || normalizeUser({ id: item.callerId, name: item.callerName }); const approvedForScope = isApprovedAdmin && Boolean(item.includeUncalledBirthdays); setReport({ ...hydrated, birthdayClients: getBirthdayRowsForReport(hydrated.birthdayClients, clientDirectory, item.reportDateKey, caller, item.branch, { allowUncalled: approvedForScope }) }); setWorkspaceStep('editor'); setNotice(item.ownerId === user?.uid ? 'Your report is ready to continue editing.' : isApprovedAdmin ? 'Admin approval is available for this caller, date, and branch.' : 'Viewing another user’s report in read-only mode.'); };
   const handleBranchContinue = () => { if (!selectedBranch) { setError('Select the branch for this report before continuing.'); return; } startNewReport(newReportDate, selectedBranch); };
 
   const handleCellSave = (value, matchedClient) => {
@@ -315,6 +324,55 @@ export default function ReportsSection({ user, profile, clients = [], birthdayCa
 
   const downloadCurrentReport = () => { if (!report) return; const link = document.createElement('a'); link.href = generateReportPdf(report); link.download = `spa-ems-report-${report.reportDateKey || todayKey()}.pdf`; link.click(); };
   const loadBirthdayCalls = () => { if (!report || !canEdit) return; const birthdayRows = getBirthdayRowsForReport(report.birthdayClients, clientDirectory, report.reportDateKey, reportCaller, report.branch, { reload: true, allowUncalled: adminBirthdayApproval }); setReport((current) => ({ ...current, callerId: reportCaller.id, callerName: reportCaller.name, birthdayClients: birthdayRows })); setNotice(birthdayRows.length ? `${birthdayRows.length} birthday entr${birthdayRows.length === 1 ? 'y' : 'ies'} loaded for ${adminBirthdayApproval ? 'the approved branch' : reportCaller.name}.` : `No matching birthday entries found for this date, ${adminBirthdayApproval ? 'approved branch' : 'caller'}, and branch.`); };
+  const loadSpaCheckIns = async () => {
+    if (!report || !canEdit || isLoadingSpaCheckIns) return;
+    if (!report.branch) { setError('Select a report branch before loading spa check-ins.'); return; }
+    if (!spaCheckInDate) { setError('Choose the visit date to load.'); return; }
+    setIsLoadingSpaCheckIns(true);
+    setError('');
+    try {
+      const visits = await getSpaIntakeGuestFlowVisitsForDate(spaCheckInDate, report.branch);
+      const branchKey = String(report.branch).trim().toLowerCase();
+      const branchVisits = visits.filter((visit) => String(visit.checkedInBranch || visit.branch || '').trim().toLowerCase() === branchKey);
+      const existingRows = (report.previousDayVisits || []).filter((row) => rowHasContent(row, report.customColumns));
+      const importedRows = [];
+      branchVisits.forEach((visit) => {
+        const clientId = String(visit.clientId || '');
+        const clientName = String(visit.clientName || visit.name || '').trim();
+        const phoneNumber = String(visit.phoneNumber || visit.phone || '').trim();
+        const phoneDigits = phoneNumber.replace(/\D/g, '');
+        const isDuplicate = [...existingRows, ...importedRows].some((row) => {
+          if (clientId && row.clientId && clientId === row.clientId) return true;
+          const rowPhone = String(row.phoneNumber || '').replace(/\D/g, '');
+          if (phoneDigits && rowPhone) return phoneDigits === rowPhone;
+          return !phoneDigits && clientName && String(row.clientName || '').trim().toLowerCase() === clientName.toLowerCase();
+        });
+        if (!isDuplicate) importedRows.push(makeRow({
+          clientId,
+          clientName: clientName || 'Unnamed client',
+          phoneNumber,
+          branch: visit.checkedInBranch || visit.branch || report.branch,
+          source: 'spa-check-in',
+        }));
+      });
+      if (importedRows.length) {
+        setReport((current) => ({
+          ...current,
+          previousDayVisits: [...(current.previousDayVisits || []).filter((row) => rowHasContent(row, current.customColumns)), ...importedRows],
+        }));
+      }
+      setNotice(importedRows.length
+        ? `Loaded ${importedRows.length} ${importedRows.length === 1 ? 'client' : 'clients'} from ${spaCheckInDate} at ${report.branch}. Add a contact mode and feedback for each client.`
+        : branchVisits.length
+          ? `All ${branchVisits.length} matching ${branchVisits.length === 1 ? 'check-in is' : 'check-ins are'} already in this report.`
+          : `No spa check-ins found for ${report.branch} on ${spaCheckInDate}.`);
+    } catch (loadError) {
+      console.error('Unable to load spa check-ins for feedback report:', loadError);
+      setError(loadError.message || 'Could not load spa check-ins. Confirm that you have access to this branch.');
+    } finally {
+      setIsLoadingSpaCheckIns(false);
+    }
+  };
   const birthdayEntryCount = report?.birthdayClients?.filter((row) => rowHasContent(row, report.customColumns)).length || 0;
 
   return <div className="space-y-6 animate-in fade-in duration-300">
@@ -352,7 +410,7 @@ export default function ReportsSection({ user, profile, clients = [], birthdayCa
         </div>
         <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
           <div className="grid gap-3 sm:grid-cols-2">
-            <label className="text-xs font-bold text-slate-500">Report date<input type="date" value={report.reportDateKey} disabled={!canEdit} onChange={(event) => { const reportDateKey = event.target.value; setReport((current) => ({ ...current, reportDateKey, birthdayClients: getBirthdayRowsForReport(current.birthdayClients, clientDirectory, reportDateKey, reportCaller, current.branch, { allowUncalled: adminBirthdayApproval }) })); }} className="mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold outline-none disabled:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:disabled:bg-slate-900" /></label>
+            <label className="text-xs font-bold text-slate-500">Report date<input type="date" value={report.reportDateKey} disabled={!canEdit} onChange={(event) => { const reportDateKey = event.target.value; setSpaCheckInDate(previousDateKey(reportDateKey)); setReport((current) => ({ ...current, reportDateKey, birthdayClients: getBirthdayRowsForReport(current.birthdayClients, clientDirectory, reportDateKey, reportCaller, current.branch, { allowUncalled: adminBirthdayApproval }) })); }} className="mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold outline-none disabled:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:disabled:bg-slate-900" /></label>
             <label className="text-xs font-bold text-slate-500">Branch<select value={report.branch || ''} disabled={!canEdit} onChange={(event) => { const branch = event.target.value; setReport((current) => ({ ...current, branch, birthdayClients: getBirthdayRowsForReport(current.birthdayClients, clientDirectory, current.reportDateKey, reportCaller, branch, { allowUncalled: adminBirthdayApproval }) })); }} className="mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold outline-none disabled:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:disabled:bg-slate-900"><option value="" disabled>Select branch</option>{visibleBranches.map((branch) => <option key={branch} value={branch}>{branch}</option>)}</select></label>
           </div>
           <div className="rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50 via-white to-violet-50 p-4 sm:p-5 dark:border-blue-900/30 dark:from-blue-950/20 dark:via-slate-900 dark:to-violet-950/20">
@@ -365,7 +423,19 @@ export default function ReportsSection({ user, profile, clients = [], birthdayCa
           </div>
         </div>
         {sectionMeta.map((section) => (
-          <ReportTable key={section.key} section={section} rows={report[section.key] || []} customColumns={report.customColumns || []} readOnly={!canEdit} onCellClick={(rowIndex, field, columnLabel) => openCell(section.key, rowIndex, field, columnLabel)} onAddRow={() => addRow(section.key)} onRemoveRow={(rowIndex) => removeRow(section.key, rowIndex)} onAddColumn={() => setColumnDialogOpen(true)} />
+          <div key={section.key} className="space-y-3">
+            {section.key === 'previousDayVisits' && canEdit && <div className="rounded-2xl border border-emerald-200 bg-white p-4 shadow-sm dark:border-emerald-900/40 dark:bg-slate-900 sm:flex sm:items-end sm:justify-between sm:gap-4">
+              <div className="max-w-xl">
+                <p className="text-sm font-black text-slate-900 dark:text-white">Load spa check-ins</p>
+                <p className="mt-1 text-xs font-medium leading-5 text-slate-500">Starts with the day before this report. Imported clients are limited to the selected report branch; existing feedback is kept.</p>
+              </div>
+              <div className="mt-3 flex flex-wrap items-end gap-2 sm:mt-0">
+                <label className="text-xs font-bold text-slate-500">Visit date<input type="date" value={spaCheckInDate} onChange={(event) => setSpaCheckInDate(event.target.value)} className="mt-1 block rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold outline-none focus:border-emerald-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200" /></label>
+                <button type="button" onClick={loadSpaCheckIns} disabled={isLoadingSpaCheckIns || !report.branch || !spaCheckInDate} className="rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-black text-white shadow-sm hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50">{isLoadingSpaCheckIns ? 'Loading check-ins…' : 'Load check-ins'}</button>
+              </div>
+            </div>}
+            <ReportTable section={section} rows={report[section.key] || []} customColumns={report.customColumns || []} readOnly={!canEdit} onCellClick={(rowIndex, field, columnLabel) => openCell(section.key, rowIndex, field, columnLabel)} onAddRow={() => addRow(section.key)} onRemoveRow={(rowIndex) => removeRow(section.key, rowIndex)} onAddColumn={() => setColumnDialogOpen(true)} />
+          </div>
         ))}
         <section className="dashboard-surface rounded-2xl p-4 sm:p-5">
           <label className="text-xs font-black uppercase tracking-[0.16em] text-slate-400">Additional notes<textarea value={report.notes || ''} disabled={!canEdit} onChange={(event) => setReport((current) => ({ ...current, notes: event.target.value }))} rows={4} placeholder="Add handover notes, unresolved actions, or observations for the team..." className="mt-2 block w-full resize-y rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm leading-6 text-slate-700 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 disabled:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:disabled:bg-slate-900" /></label>
