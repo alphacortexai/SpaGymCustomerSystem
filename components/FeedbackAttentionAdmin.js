@@ -1,6 +1,7 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { getAllBranches } from '@/lib/branches';
 
 const ITEMS_PER_BATCH = 20;
 const MAX_PARALLEL_BATCHES = 3;
@@ -67,6 +68,12 @@ export default function FeedbackAttentionAdmin({ user, profile, onBack, onOpenSe
   const initialRange = useMemo(getInitialRange, []);
   const [startDate, setStartDate] = useState(initialRange.start);
   const [endDate, setEndDate] = useState(initialRange.end);
+  const [selectedBranch, setSelectedBranch] = useState('');
+  const [guidance, setGuidance] = useState('');
+  const [branches, setBranches] = useState([]);
+  const [savedReviews, setSavedReviews] = useState([]);
+  const [saveTitle, setSaveTitle] = useState('');
+  const [savingReview, setSavingReview] = useState(false);
   const [result, setResult] = useState(null);
   const [reviewSession, setReviewSession] = useState(null);
   const [progress, setProgress] = useState({ completed: 0, total: 0 });
@@ -74,6 +81,16 @@ export default function FeedbackAttentionAdmin({ user, profile, onBack, onOpenSe
   const [loading, setLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    let active = true;
+    Promise.all([getAllBranches(), user?.getIdToken?.().then((token) => fetch('/api/admin/ai-feedback-reviews', { headers: { Authorization: `Bearer ${token}` } }).then((response) => response.ok ? response.json() : { reviews: [] })).catch(() => ({ reviews: [] }))]).then(([branchList, reviewPayload]) => {
+      if (!active) return;
+      setBranches(Array.isArray(branchList) ? branchList : []);
+      setSavedReviews(Array.isArray(reviewPayload?.reviews) ? reviewPayload.reviews : []);
+    });
+    return () => { active = false; };
+  }, [user]);
 
   const executeBatches = async (token, session, existingResults = {}) => {
     const results = { ...existingResults };
@@ -93,7 +110,7 @@ export default function FeedbackAttentionAdmin({ user, profile, onBack, onOpenSe
 
         try {
           const batch = session.batches[batchIndex].map(({ item, feedback }) => ({ item, feedback }));
-          const batchResult = await postReviewRequest(token, { phase: 'analyze', items: batch });
+          const batchResult = await postReviewRequest(token, { phase: 'analyze', items: batch, guidance: session.guidance });
           results[batchIndex] = batchResult;
           const savedResults = { ...results };
           setProgress({ completed: completedCount(), total: session.batches.length });
@@ -144,7 +161,7 @@ export default function FeedbackAttentionAdmin({ user, profile, onBack, onOpenSe
     if (batchSummaries.length) {
       setPhase('summarize');
       try {
-        const aggregated = await postReviewRequest(token, { phase: 'summarize', summaries: batchSummaries });
+        const aggregated = await postReviewRequest(token, { phase: 'summarize', summaries: batchSummaries, guidance: session.guidance });
         if (aggregated.summary) summary = formatSummaryBullets(aggregated.summary);
         else summaryFallback = true;
       } catch {
@@ -156,6 +173,8 @@ export default function FeedbackAttentionAdmin({ user, profile, onBack, onOpenSe
       startDate: session.startDate,
       endDate: session.endDate,
       provider: session.provider,
+      branch: session.branch,
+      guidance: session.guidance,
       reportCount: session.reportCount,
       feedbackCount: session.feedbackCount,
       summary,
@@ -179,13 +198,15 @@ export default function FeedbackAttentionAdmin({ user, profile, onBack, onOpenSe
     setProgress({ completed: 0, total: 0 });
     try {
       const token = await user.getIdToken();
-      const prepared = await postReviewRequest(token, { phase: 'prepare', startDate, endDate });
+      const prepared = await postReviewRequest(token, { phase: 'prepare', startDate, endDate, branch: selectedBranch, guidance });
       const feedbackItems = Array.isArray(prepared.feedbackItems) ? prepared.feedbackItems : [];
       if (!feedbackItems.length) {
         setResult({
           startDate: prepared.startDate,
           endDate: prepared.endDate,
           provider: prepared.provider,
+          branch: prepared.branch || selectedBranch,
+          guidance: prepared.guidance || guidance,
           reportCount: prepared.reportCount,
           feedbackCount: 0,
           summary: prepared.summary || 'No client feedback entries were recorded in this date range.',
@@ -202,6 +223,8 @@ export default function FeedbackAttentionAdmin({ user, profile, onBack, onOpenSe
         startDate: prepared.startDate,
         endDate: prepared.endDate,
         provider: prepared.provider,
+        branch: prepared.branch || selectedBranch,
+        guidance: prepared.guidance || guidance,
         reportCount: prepared.reportCount,
         feedbackCount: prepared.feedbackCount,
         feedbackItems,
@@ -233,6 +256,41 @@ export default function FeedbackAttentionAdmin({ user, profile, onBack, onOpenSe
       setLoading(false);
       setPhase('');
     }
+  };
+
+
+  const saveReview = async () => {
+    if (!result || savingReview) return;
+    setSavingReview(true);
+    setError('');
+    try {
+      const token = await user.getIdToken();
+      const response = await fetch('/api/admin/ai-feedback-reviews', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ title: saveTitle, result }) });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || 'Unable to save this review.');
+      setSavedReviews((current) => [payload.review, ...current.filter((review) => review.id !== payload.review.id)]);
+      setSaveTitle('');
+    } catch (saveError) { setError(saveError.message); } finally { setSavingReview(false); }
+  };
+
+  const deleteSavedReview = async (review) => {
+    if (!window.confirm(`Delete the saved review “${review.title}”?`)) return;
+    try {
+      const token = await user.getIdToken();
+      const response = await fetch(`/api/admin/ai-feedback-reviews?id=${encodeURIComponent(review.id)}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+      if (!response.ok) throw new Error('Unable to delete the saved review.');
+      setSavedReviews((current) => current.filter((entry) => entry.id !== review.id));
+    } catch (deleteError) { setError(deleteError.message); }
+  };
+
+  const openSavedReview = (review) => {
+    setResult(review);
+    setSelectedBranch(review.branch || '');
+    setGuidance(review.guidance || '');
+    setStartDate(review.startDate || startDate);
+    setEndDate(review.endDate || endDate);
+    setReviewSession(null);
+    setError('');
   };
 
   const exportPdf = async () => {
@@ -272,11 +330,13 @@ export default function FeedbackAttentionAdmin({ user, profile, onBack, onOpenSe
     </div>
 
     <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-      <div className="grid gap-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1fr_auto]">
         <label className="text-xs font-bold uppercase tracking-wider text-slate-500">From<input type="date" value={startDate} max={endDate || undefined} disabled={loading} onChange={(event) => { setStartDate(event.target.value); setReviewSession(null); }} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-semibold text-slate-700 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200" /></label>
         <label className="text-xs font-bold uppercase tracking-wider text-slate-500">To<input type="date" value={endDate} min={startDate || undefined} disabled={loading} onChange={(event) => { setEndDate(event.target.value); setReviewSession(null); }} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-semibold text-slate-700 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200" /></label>
+        <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Branch<select value={selectedBranch} disabled={loading} onChange={(event) => { setSelectedBranch(event.target.value); setReviewSession(null); }} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-semibold text-slate-700 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"><option value="">Both branches</option>{branches.map((branch) => <option key={branch.id} value={branch.name}>{branch.name}</option>)}</select></label>
         <button type="button" onClick={reviewFeedback} disabled={loading || !user} className="rounded-xl bg-rose-600 px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-rose-700 disabled:cursor-wait disabled:opacity-60">{loading ? (phase === 'prepare' ? 'Preparing review…' : phase === 'summarize' ? 'Compressing summary…' : 'Reviewing batches…') : 'Review with AI'}</button>
       </div>
+      <label className="mt-4 block text-xs font-bold uppercase tracking-wider text-slate-500">AI guidance or instructions<textarea value={guidance} disabled={loading} onChange={(event) => { setGuidance(event.target.value); setReviewSession(null); }} maxLength={3000} rows={3} placeholder="Example: Treat complaints about delayed service as attention-worthy, but ignore compliments and routine suggestions." className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-medium normal-case tracking-normal text-slate-700 outline-none focus:border-rose-400 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200" /></label>
       <p className="mt-3 text-xs font-medium text-slate-500">Only feedback text is sent to the selected AI provider; caller and client details are joined to flagged results separately.</p>
     </section>
 
@@ -287,6 +347,8 @@ export default function FeedbackAttentionAdmin({ user, profile, onBack, onOpenSe
     </section>}
 
     {error && <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-200">{error}{/key|configured/i.test(error) && <button type="button" onClick={onOpenSettings} className="ml-2 underline underline-offset-2">Open AI key settings</button>}{reviewSession && !loading && <button type="button" onClick={resumeReview} className="ml-3 rounded-lg bg-rose-700 px-3 py-1.5 text-xs font-black text-white hover:bg-rose-800">Retry unfinished batches</button>}</div>}
+
+    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900"><div className="flex items-center justify-between gap-3"><div><h3 className="text-lg font-black text-slate-900 dark:text-white">Saved feedback reviews</h3><p className="mt-1 text-xs font-medium text-slate-500">Open a previous review or remove one that is no longer needed.</p></div><span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">{savedReviews.length}</span></div>{savedReviews.length ? <div className="mt-4 grid gap-2">{savedReviews.map((review) => <div key={review.id} className="flex flex-col gap-3 rounded-xl border border-slate-200 p-3 sm:flex-row sm:items-center sm:justify-between dark:border-slate-700"><div><p className="text-sm font-black text-slate-800 dark:text-slate-100">{review.title}</p><p className="mt-1 text-xs font-medium text-slate-500">{formatDate(review.startDate)} – {formatDate(review.endDate)} · {review.branch || 'Both branches'} · {review.findings?.length || 0} flagged</p></div><div className="flex gap-2"><button type="button" onClick={() => openSavedReview(review)} className="rounded-lg bg-blue-700 px-3 py-2 text-xs font-black text-white hover:bg-blue-800">View</button><button type="button" onClick={() => deleteSavedReview(review)} className="rounded-lg border border-rose-200 px-3 py-2 text-xs font-black text-rose-700 hover:bg-rose-50 dark:border-rose-900/50 dark:text-rose-300">Delete</button></div></div>)}</div> : <p className="mt-4 text-sm font-medium text-slate-500">No saved reviews yet.</p>}</section>
 
     {result && <>
       <div className="grid gap-3 sm:grid-cols-3">
@@ -301,6 +363,7 @@ export default function FeedbackAttentionAdmin({ user, profile, onBack, onOpenSe
         {hasBulletSummary ? <ul className="mt-4 space-y-2 text-sm font-medium leading-6 text-slate-700 dark:text-slate-200">{summaryLines.map((line, index) => <li key={`${index}-${line}`} className="flex gap-2"><span aria-hidden="true" className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-blue-600" /><span>{line.replace(/^[-*•]\s*/, '')}</span></li>)}</ul> : <p className="mt-4 whitespace-pre-line text-sm font-medium leading-6 text-slate-700 dark:text-slate-200">{result.summary || 'No recurring concern themes were identified.'}</p>}
       </section>
 
+      <section className="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-4 dark:border-emerald-900/50 dark:bg-emerald-950/20"><div className="flex flex-col gap-3 sm:flex-row sm:items-end"><label className="flex-1 text-xs font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-200">Save this review for later<input value={saveTitle} onChange={(event) => setSaveTitle(event.target.value)} placeholder={`Feedback review - ${result.startDate} to ${result.endDate}`} className="mt-1.5 w-full rounded-xl border border-emerald-200 bg-white px-3 py-2.5 text-sm font-semibold normal-case tracking-normal text-slate-700 dark:border-emerald-900/60 dark:bg-slate-900 dark:text-slate-200" /></label><button type="button" onClick={saveReview} disabled={savingReview || !user} className="rounded-xl bg-emerald-700 px-4 py-2.5 text-xs font-black text-white hover:bg-emerald-800 disabled:opacity-60">{savingReview ? 'Saving…' : 'Save review'}</button></div></section>
       <section className="space-y-3">
         <div><h3 className="text-lg font-black text-slate-900 dark:text-white">Feedback requiring attention</h3><p className="mt-1 text-xs font-medium text-slate-500">Sorted urgent first, then items that may benefit from follow-up.</p></div>
         {findings.length ? findings.map((item, index) => <article key={`${item.sourceId || index}-${index}`} className={`rounded-2xl border p-5 shadow-sm ${severityStyle[item.severity] || severityStyle.attention}`}>
