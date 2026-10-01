@@ -40,6 +40,29 @@ async function postReviewRequest(token, body) {
   return payload;
 }
 
+function deduplicateBatchSummaries(summaries) {
+  const unique = [];
+  const seen = new Set();
+  for (const summary of summaries) {
+    for (const rawLine of String(summary || '').split(/\r?\n/)) {
+      const line = rawLine.replace(/^\s*[-*•]\s*/, '').trim();
+      const key = line.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+      if (!line || !key || seen.has(key)) continue;
+      seen.add(key);
+      unique.push(line);
+    }
+  }
+  return unique.slice(0, 5).map((line) => `- ${line}`).join('\n') || '- No recurring concern themes were identified.';
+}
+
+function formatSummaryBullets(summary) {
+  const lines = String(summary || '').split(/\r?\n/)
+    .map((line) => line.replace(/^\s*[-*•]\s*/, '').trim())
+    .filter(Boolean)
+    .slice(0, 5);
+  return lines.length ? lines.map((line) => `- ${line}`).join('\n') : '- No recurring concern themes were identified.';
+}
+
 export default function FeedbackAttentionAdmin({ user, profile, onBack, onOpenSettings }) {
   const initialRange = useMemo(getInitialRange, []);
   const [startDate, setStartDate] = useState(initialRange.start);
@@ -115,13 +138,28 @@ export default function FeedbackAttentionAdmin({ user, profile, onBack, onOpenSe
         : a.severity === 'urgent' ? -1 : 1
     ));
 
+    const batchSummaries = orderedResults.map((entry) => entry?.summary).filter(Boolean).map((summary) => summary.slice(0, 400));
+    let summary = deduplicateBatchSummaries(batchSummaries);
+    let summaryFallback = false;
+    if (batchSummaries.length) {
+      setPhase('summarize');
+      try {
+        const aggregated = await postReviewRequest(token, { phase: 'summarize', summaries: batchSummaries });
+        if (aggregated.summary) summary = formatSummaryBullets(aggregated.summary);
+        else summaryFallback = true;
+      } catch {
+        summaryFallback = true;
+      }
+    }
+
     setResult({
       startDate: session.startDate,
       endDate: session.endDate,
       provider: session.provider,
       reportCount: session.reportCount,
       feedbackCount: session.feedbackCount,
-      summary: orderedResults.map((entry) => entry?.summary).filter(Boolean).join('\n\n'),
+      summary,
+      summaryFallback,
       findings,
     });
     setProgress({ completed: session.batches.length, total: session.batches.length });
@@ -201,112 +239,8 @@ export default function FeedbackAttentionAdmin({ user, profile, onBack, onOpenSe
     if (!result || exporting) return;
     setExporting(true);
     try {
-      const { jsPDF } = await import('jspdf');
-      const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
-      pdf.setProperties({ title: 'Feedback attention', subject: REPORT_DESCRIPTION, author: 'SpaGym Admin', creator: 'SpaGym Customer System' });
-      const pageWidth = pdf.internal.pageSize.getWidth();
-      const pageHeight = pdf.internal.pageSize.getHeight();
-      const margin = 16;
-      const contentWidth = pageWidth - margin * 2;
-      let y = 19;
-
-      const ensureSpace = (needed = 8) => {
-        if (y + needed <= pageHeight - 17) return;
-        pdf.addPage();
-        y = 18;
-      };
-      const addParagraph = (value, { size = 9, color = [51, 65, 85], bold = false, lineHeight = 4.5 } = {}) => {
-        const normalizedText = String(value || 'Not recorded')
-          .replace(/[–—]/g, '-')
-          .replace(/·/g, '|')
-          .replace(/…/g, '...')
-          .replace(/[“”]/g, '"')
-          .replace(/[‘’]/g, "'");
-        const lines = pdf.splitTextToSize(normalizedText, contentWidth);
-        pdf.setFont('helvetica', bold ? 'bold' : 'normal');
-        pdf.setFontSize(size);
-        pdf.setTextColor(...color);
-        for (const line of lines) {
-          ensureSpace(lineHeight + 1);
-          pdf.text(line, margin, y);
-          y += lineHeight;
-        }
-      };
-      const addField = (label, value) => {
-        ensureSpace(10);
-        pdf.setFont('helvetica', 'bold');
-        pdf.setFontSize(8);
-        pdf.setTextColor(100, 116, 139);
-        pdf.text(String(label).toUpperCase(), margin, y);
-        y += 4;
-        addParagraph(value || 'Not recorded', { size: 9, lineHeight: 4.5 });
-        y += 2;
-      };
-      const addSectionTitle = (title) => {
-        ensureSpace(12);
-        pdf.setFont('helvetica', 'bold');
-        pdf.setFontSize(12);
-        pdf.setTextColor(30, 64, 175);
-        pdf.text(title, margin, y);
-        y += 6;
-        pdf.setDrawColor(226, 232, 240);
-        pdf.line(margin, y, pageWidth - margin, y);
-        y += 5;
-      };
-
-      pdf.setFillColor(15, 23, 42);
-      pdf.rect(0, 0, pageWidth, 12, 'F');
-      pdf.setFont('helvetica', 'bold');
-      pdf.setFontSize(21);
-      pdf.setTextColor(15, 23, 42);
-      pdf.text('Feedback attention', margin, y);
-      y += 7;
-      addParagraph(REPORT_DESCRIPTION, { size: 9, color: [71, 85, 105], lineHeight: 4.5 });
-      y += 3;
-      addParagraph(`Date range: ${formatDate(result.startDate)} – ${formatDate(result.endDate)}`, { size: 9, bold: true });
-      addParagraph(`Reports reviewed: ${result.reportCount}   |   Feedback entries: ${result.feedbackCount}   |   Urgent: ${result.findings.filter((item) => item.severity === 'urgent').length}   |   Needs attention: ${result.findings.filter((item) => item.severity !== 'urgent').length}`, { size: 9 });
-      addParagraph(`AI provider: ${result.provider === 'gemini' ? 'Google Gemini' : 'OpenAI'}   |   Generated: ${new Date().toLocaleString()}`, { size: 8, color: [100, 116, 139] });
-      y += 4;
-
-      addSectionTitle('AI summary');
-      addParagraph(result.summary || 'No recurring concern themes were identified.', { size: 10, lineHeight: 5 });
-      y += 5;
-      addSectionTitle('Feedback requiring attention');
-
-      if (!result.findings.length) {
-        addParagraph('No feedback requiring attention was identified in this range. This is an AI-assisted review, not a guarantee that every issue was detected.', { size: 9, lineHeight: 4.5 });
-      } else {
-        result.findings.forEach((item, index) => {
-          ensureSpace(16);
-          const urgent = item.severity === 'urgent';
-          pdf.setFont('helvetica', 'bold');
-          pdf.setFontSize(11);
-          pdf.setTextColor(...(urgent ? [190, 18, 60] : [180, 83, 9]));
-          pdf.text(`${index + 1}. ${urgent ? 'URGENT CONCERN' : 'NEEDS ATTENTION'}`, margin, y);
-          y += 7;
-          addField('Report date / branch / source', `${formatDate(item.reportDate)} · ${item.branch || 'Branch not recorded'} · ${item.section || 'Feedback'}`);
-          addField('Caller', item.callerName || 'Caller not recorded');
-          addField('Client', item.clientName || 'Client name not recorded');
-          addField('Phone', item.phoneNumber || 'Phone not recorded');
-          addField('Original feedback', item.feedback || 'No feedback text recorded');
-          addField('Why it was flagged', item.reason);
-          addField('Suggested next step', item.suggestedAction);
-          ensureSpace(5);
-          pdf.setDrawColor(226, 232, 240);
-          pdf.line(margin, y, pageWidth - margin, y);
-          y += 5;
-        });
-      }
-
-      const pageCount = pdf.getNumberOfPages();
-      for (let page = 1; page <= pageCount; page += 1) {
-        pdf.setPage(page);
-        pdf.setFont('helvetica', 'normal');
-        pdf.setFontSize(8);
-        pdf.setTextColor(148, 163, 184);
-        pdf.text(`Feedback attention | Page ${page} of ${pageCount}`, margin, pageHeight - 8);
-      }
-      pdf.save(`feedback-attention-${result.startDate}-to-${result.endDate}.pdf`);
+      const { generateFeedbackAttentionPdf } = await import('@/lib/feedbackAttentionPdf');
+      generateFeedbackAttentionPdf(result);
     } catch (exportError) {
       setError(exportError.message || 'Unable to export the PDF. Please try again.');
     } finally {
@@ -322,6 +256,8 @@ export default function FeedbackAttentionAdmin({ user, profile, onBack, onOpenSe
   const urgentCount = findings.filter((item) => item.severity === 'urgent').length;
   const attentionCount = findings.length - urgentCount;
   const progressPercent = progress.total ? Math.round((progress.completed / progress.total) * 100) : 0;
+  const summaryLines = (result?.summary || '').split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  const hasBulletSummary = summaryLines.length > 0 && summaryLines.every((line) => /^[-*•]\s/.test(line));
 
   return <div className="space-y-6 animate-in fade-in duration-300">
     <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -339,13 +275,13 @@ export default function FeedbackAttentionAdmin({ user, profile, onBack, onOpenSe
       <div className="grid gap-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
         <label className="text-xs font-bold uppercase tracking-wider text-slate-500">From<input type="date" value={startDate} max={endDate || undefined} disabled={loading} onChange={(event) => { setStartDate(event.target.value); setReviewSession(null); }} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-semibold text-slate-700 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200" /></label>
         <label className="text-xs font-bold uppercase tracking-wider text-slate-500">To<input type="date" value={endDate} min={startDate || undefined} disabled={loading} onChange={(event) => { setEndDate(event.target.value); setReviewSession(null); }} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-semibold text-slate-700 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200" /></label>
-        <button type="button" onClick={reviewFeedback} disabled={loading || !user} className="rounded-xl bg-rose-600 px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-rose-700 disabled:cursor-wait disabled:opacity-60">{loading ? (phase === 'prepare' ? 'Preparing review…' : 'Reviewing batches…') : 'Review with AI'}</button>
+        <button type="button" onClick={reviewFeedback} disabled={loading || !user} className="rounded-xl bg-rose-600 px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-rose-700 disabled:cursor-wait disabled:opacity-60">{loading ? (phase === 'prepare' ? 'Preparing review…' : phase === 'summarize' ? 'Compressing summary…' : 'Reviewing batches…') : 'Review with AI'}</button>
       </div>
       <p className="mt-3 text-xs font-medium text-slate-500">Only feedback text is sent to the selected AI provider; caller and client details are joined to flagged results separately.</p>
     </section>
 
     {loading && <section role="status" aria-live="polite" className="rounded-2xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-900/50 dark:bg-blue-950/20">
-      <div className="flex flex-wrap items-center justify-between gap-2 text-sm font-bold text-blue-900 dark:text-blue-100"><span>{phase === 'prepare' ? 'Preparing reports and feedback…' : `Reviewing feedback batches${progress.total ? ` (${progress.completed} of ${progress.total} complete)` : '…'}`}</span>{progress.total > 0 && <span>{progressPercent}%</span>}</div>
+      <div className="flex flex-wrap items-center justify-between gap-2 text-sm font-bold text-blue-900 dark:text-blue-100"><span>{phase === 'prepare' ? 'Preparing reports and feedback…' : phase === 'summarize' ? 'Compressing repeated themes into a short summary…' : `Reviewing feedback batches${progress.total ? ` (${progress.completed} of ${progress.total} complete)` : '…'}`}</span>{progress.total > 0 && <span>{progressPercent}%</span>}</div>
       <div className="mt-3 h-2 overflow-hidden rounded-full bg-blue-100 dark:bg-slate-800"><div className="h-full rounded-full bg-blue-600 transition-all" style={{ width: `${progressPercent}%` }} /></div>
       <p className="mt-2 text-xs font-medium text-blue-800/80 dark:text-blue-200/80">Long date ranges are processed in separate requests, so Vercel does not need to keep one function running for the entire review.</p>
     </section>}
@@ -361,7 +297,8 @@ export default function FeedbackAttentionAdmin({ user, profile, onBack, onOpenSe
 
       <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><h3 className="text-lg font-black text-slate-900 dark:text-white">AI summary</h3><p className="mt-1 text-xs font-medium text-slate-500">{formatDate(result.startDate)} – {formatDate(result.endDate)}</p></div><div className="flex items-center gap-2"><span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">{findings.length} flagged</span><button type="button" onClick={exportPdf} disabled={exporting} className="rounded-xl bg-blue-700 px-4 py-2 text-xs font-black text-white shadow-sm hover:bg-blue-800 disabled:opacity-60">{exporting ? 'Preparing PDF…' : 'Export PDF'}</button></div></div>
-        <p className="mt-4 whitespace-pre-line text-sm font-medium leading-6 text-slate-700 dark:text-slate-200">{result.summary || 'No recurring concern themes were identified.'}</p>
+        {result.summaryFallback && <p className="mt-4 rounded-lg bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800 dark:bg-amber-950/30 dark:text-amber-200">AI summary consolidation was unavailable, so distinct batch notes are shown instead.</p>}
+        {hasBulletSummary ? <ul className="mt-4 space-y-2 text-sm font-medium leading-6 text-slate-700 dark:text-slate-200">{summaryLines.map((line, index) => <li key={`${index}-${line}`} className="flex gap-2"><span aria-hidden="true" className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-blue-600" /><span>{line.replace(/^[-*•]\s*/, '')}</span></li>)}</ul> : <p className="mt-4 whitespace-pre-line text-sm font-medium leading-6 text-slate-700 dark:text-slate-200">{result.summary || 'No recurring concern themes were identified.'}</p>}
       </section>
 
       <section className="space-y-3">
