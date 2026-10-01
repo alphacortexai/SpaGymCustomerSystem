@@ -36,6 +36,7 @@ All SpaGym endpoints are under `/api/integrations/guestflow` and require `Author
 | `GET` | `/clients?search=...&limit=...` | Search by name/phone; at most 100 results |
 | `GET` | `/clients/lookup?phone=...` | Look up one client by normalized phone |
 | `POST` | `/clients` | Create a client; optional `branchId` assigns the SpaGym branch; returns an existing matching client rather than duplicating it |
+| `POST` | `/clients/reassign` | Repair an unassigned client with `{ "clientId": "...", "branchId": "..." }`; assigns the profile and any blank-branch GuestFlow visits transactionally |
 | `POST` | `/check-ins` | Check in by phone or `clientId` (the ID returned by client creation); the visit uses the client's saved branch; repeat active sign-ins return the existing visit |
 | `GET` | `/check-ins?date=YYYY-MM-DD&branchId=...` | Read the visit register for a date, optionally filtered by branch (Kampala date is used by default) |
 | `POST` | `/check-ins/checkout` | Record check-out with JSON `{ "id": "<visit-id>", "staffName": "<optional>" }` |
@@ -50,3 +51,4 @@ New clients created in GuestFlow require a name, phone, and birthday month/day; 
 - Keep the API key private and rotate both copies together if it is exposed.
 - Deploy SpaGym and GuestFlow with the same secret before testing the GuestFlow kiosk.
 - Use the signed-in SpaGym dashboard's **Spa check-ins** section to review arrivals and record departures.
+- The GuestFlow admin **Branch management → Fix an unassigned client** tool uses `/clients/reassign`; deploy this SpaGym integration update before enabling the GuestFlow UI.

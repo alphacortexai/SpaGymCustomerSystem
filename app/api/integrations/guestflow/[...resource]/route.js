@@ -9,6 +9,7 @@ import {
   lookupClient,
   recordCheckIn,
   recordCheckOut,
+  repairClientBranch,
   searchClients,
 } from '@/lib/guestflowApi';
 
@@ -58,6 +59,12 @@ async function handle(request, context) {
       const body = await request.json();
       const result = await createClient(body);
       return json(result, result.created ? 201 : 200);
+    }
+
+    if (path === 'clients/reassign' && method === 'POST') {
+      const body = await request.json();
+      const result = await repairClientBranch(body?.clientId, body?.branchId);
+      return json(result);
     }
 
     if (path === 'check-ins' && method === 'POST') {
