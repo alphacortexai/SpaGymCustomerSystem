@@ -22,7 +22,7 @@ export async function GET(request) {
     const snapshot = await settingsRef().get();
     const settings = snapshot.data() || {};
     const updatedAt = settings.updatedAt?.toDate?.()?.toISOString?.() || '';
-    return NextResponse.json({ configured: Boolean(settings.apiKey), updatedAt });
+    return NextResponse.json({ configured: Boolean(settings.apiKey), provider: settings.provider === 'gemini' ? 'gemini' : 'openai', updatedAt });
   } catch (error) {
     console.error('Unable to read AI settings status:', error?.code || error?.message);
     return NextResponse.json({ error: 'Unable to read AI settings.' }, { status: 500 });
@@ -35,12 +35,14 @@ export async function PUT(request) {
   try {
     const body = await request.json();
     const apiKey = typeof body.apiKey === 'string' ? body.apiKey.trim() : '';
+    const provider = body.provider === 'gemini' ? 'gemini' : body.provider === 'openai' ? 'openai' : '';
     if (apiKey.length < 20 || apiKey.length > 500) {
-      return NextResponse.json({ error: 'Enter a valid OpenAI API key.' }, { status: 400 });
+      return NextResponse.json({ error: 'Enter a valid API key for the selected provider.' }, { status: 400 });
     }
+    if (!provider) return NextResponse.json({ error: 'Choose OpenAI or Gemini as the AI provider.' }, { status: 400 });
     const now = new Date();
-    await settingsRef().set({ apiKey, updatedAt: now, updatedBy: access.uid }, { merge: true });
-    return NextResponse.json({ success: true, configured: true, updatedAt: now.toISOString() });
+    await settingsRef().set({ apiKey, provider, updatedAt: now, updatedBy: access.uid }, { merge: true });
+    return NextResponse.json({ success: true, configured: true, provider, updatedAt: now.toISOString() });
   } catch (error) {
     console.error('Unable to save AI settings:', error?.code || error?.message);
     return NextResponse.json({ error: 'Unable to save AI settings.' }, { status: 500 });
