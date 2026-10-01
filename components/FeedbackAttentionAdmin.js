@@ -6,6 +6,7 @@ import { getAllBranches } from '@/lib/branches';
 const ITEMS_PER_BATCH = 20;
 const MAX_PARALLEL_BATCHES = 3;
 const REPORT_DESCRIPTION = 'Review saved caller feedback across a selected date range. AI flags entries that may need a follow-up; every flagged item retains its caller and client details.';
+const REVIEW_SECTIONS = ['Birthday feedback', 'Visit feedback', 'Follow-up feedback', 'WhatsApp feedback'];
 
 const dateKey = (date) => {
   const year = date.getFullYear();
@@ -74,6 +75,7 @@ export default function FeedbackAttentionAdmin({ user, profile, onBack, onOpenSe
   const [savedReviews, setSavedReviews] = useState([]);
   const [saveTitle, setSaveTitle] = useState('');
   const [savingReview, setSavingReview] = useState(false);
+  const [excludedSections, setExcludedSections] = useState([]);
   const [result, setResult] = useState(null);
   const [reviewSession, setReviewSession] = useState(null);
   const [progress, setProgress] = useState({ completed: 0, total: 0 });
@@ -194,6 +196,7 @@ export default function FeedbackAttentionAdmin({ user, profile, onBack, onOpenSe
     setPhase('prepare');
     setError('');
     setResult(null);
+    setExcludedSections([]);
     setReviewSession(null);
     setProgress({ completed: 0, total: 0 });
     try {
@@ -259,13 +262,24 @@ export default function FeedbackAttentionAdmin({ user, profile, onBack, onOpenSe
   };
 
 
+  const filteredResult = useMemo(() => {
+    if (!result) return null;
+    const excluded = new Set(excludedSections);
+    const findings = (Array.isArray(result.findings) ? result.findings : []).filter((item) => !excluded.has(item.section));
+    return { ...result, findings, excludedSections: [...excluded] };
+  }, [result, excludedSections]);
+
+  const toggleSection = (section) => {
+    setExcludedSections((current) => current.includes(section) ? current.filter((item) => item !== section) : [...current, section]);
+  };
+
   const saveReview = async () => {
     if (!result || savingReview) return;
     setSavingReview(true);
     setError('');
     try {
       const token = await user.getIdToken();
-      const response = await fetch('/api/admin/ai-feedback-reviews', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ title: saveTitle, result }) });
+      const response = await fetch('/api/admin/ai-feedback-reviews', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ title: saveTitle, result: filteredResult }) });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.error || 'Unable to save this review.');
       setSavedReviews((current) => [payload.review, ...current.filter((review) => review.id !== payload.review.id)]);
@@ -285,6 +299,7 @@ export default function FeedbackAttentionAdmin({ user, profile, onBack, onOpenSe
 
   const openSavedReview = (review) => {
     setResult(review);
+    setExcludedSections(Array.isArray(review.excludedSections) ? review.excludedSections : []);
     setSelectedBranch(review.branch || '');
     setGuidance(review.guidance || '');
     setStartDate(review.startDate || startDate);
@@ -298,7 +313,7 @@ export default function FeedbackAttentionAdmin({ user, profile, onBack, onOpenSe
     setExporting(true);
     try {
       const { generateFeedbackAttentionPdf } = await import('@/lib/feedbackAttentionPdf');
-      generateFeedbackAttentionPdf(result);
+      generateFeedbackAttentionPdf(filteredResult);
     } catch (exportError) {
       setError(exportError.message || 'Unable to export the PDF. Please try again.');
     } finally {
@@ -310,7 +325,8 @@ export default function FeedbackAttentionAdmin({ user, profile, onBack, onOpenSe
     return <div className="rounded-2xl border border-rose-200 bg-rose-50 p-8 text-center text-sm font-semibold text-rose-700">This page is available to administrators only.</div>;
   }
 
-  const findings = result?.findings || [];
+  const findings = filteredResult?.findings || [];
+  const excludedSectionCount = excludedSections.length;
   const urgentCount = findings.filter((item) => item.severity === 'urgent').length;
   const attentionCount = findings.length - urgentCount;
   const progressPercent = progress.total ? Math.round((progress.completed / progress.total) * 100) : 0;
@@ -351,6 +367,7 @@ export default function FeedbackAttentionAdmin({ user, profile, onBack, onOpenSe
     <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900"><div className="flex items-center justify-between gap-3"><div><h3 className="text-lg font-black text-slate-900 dark:text-white">Saved feedback reviews</h3><p className="mt-1 text-xs font-medium text-slate-500">Open a previous review or remove one that is no longer needed.</p></div><span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">{savedReviews.length}</span></div>{savedReviews.length ? <div className="mt-4 grid gap-2">{savedReviews.map((review) => <div key={review.id} className="flex flex-col gap-3 rounded-xl border border-slate-200 p-3 sm:flex-row sm:items-center sm:justify-between dark:border-slate-700"><div><p className="text-sm font-black text-slate-800 dark:text-slate-100">{review.title}</p><p className="mt-1 text-xs font-medium text-slate-500">{formatDate(review.startDate)} – {formatDate(review.endDate)} · {review.branch || 'Both branches'} · {review.findings?.length || 0} flagged</p></div><div className="flex gap-2"><button type="button" onClick={() => openSavedReview(review)} className="rounded-lg bg-blue-700 px-3 py-2 text-xs font-black text-white hover:bg-blue-800">View</button><button type="button" onClick={() => deleteSavedReview(review)} className="rounded-lg border border-rose-200 px-3 py-2 text-xs font-black text-rose-700 hover:bg-rose-50 dark:border-rose-900/50 dark:text-rose-300">Delete</button></div></div>)}</div> : <p className="mt-4 text-sm font-medium text-slate-500">No saved reviews yet.</p>}</section>
 
     {result && <>
+      <section className="rounded-2xl border border-violet-200 bg-violet-50/70 p-4 dark:border-violet-900/50 dark:bg-violet-950/20"><div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><h3 className="text-sm font-black text-violet-900 dark:text-violet-100">Review sections</h3><p className="mt-1 text-xs font-medium text-violet-800/80 dark:text-violet-200/80">Exclude a section from this live view, the counts, saved review, and PDF. Nothing is deleted from the original feedback records.</p></div>{excludedSectionCount > 0 && <button type="button" onClick={() => setExcludedSections([])} className="text-xs font-black text-violet-700 underline underline-offset-2 dark:text-violet-200">Restore all sections</button>}</div><div className="mt-3 grid gap-2 sm:grid-cols-2">{REVIEW_SECTIONS.map((section) => { const count = (result.findings || []).filter((item) => item.section === section).length; const excluded = excludedSections.includes(section); return <label key={section} className={`flex cursor-pointer items-center justify-between rounded-xl border px-3 py-2.5 text-xs font-bold transition ${excluded ? 'border-slate-300 bg-slate-100 text-slate-400 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-500' : 'border-violet-200 bg-white text-violet-900 dark:border-violet-900/50 dark:bg-slate-900 dark:text-violet-100'}`}><span className="flex items-center gap-2"><input type="checkbox" checked={!excluded} onChange={() => toggleSection(section)} className="h-4 w-4 rounded border-slate-300 text-violet-600 focus:ring-violet-500" />{section}</span><span>{count} flagged</span></label>; })}</div>{excludedSectionCount > 0 && <p className="mt-3 text-xs font-semibold text-violet-800 dark:text-violet-200">{excludedSections.join(', ')} {excludedSectionCount === 1 ? 'is' : 'are'} excluded. The original entries remain available in the source reports.</p>}</section>
       <div className="grid gap-3 sm:grid-cols-3">
         <div className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900"><p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Reports reviewed</p><p className="mt-2 text-2xl font-black text-slate-900 dark:text-white">{result.reportCount}</p><p className="mt-1 text-xs font-semibold text-slate-500">{result.feedbackCount} feedback entries</p></div>
         <div className="rounded-2xl border border-rose-200 bg-rose-50/70 p-4 dark:border-rose-900/50 dark:bg-rose-950/20"><p className="text-[10px] font-black uppercase tracking-wider text-rose-600 dark:text-rose-300">Urgent</p><p className="mt-2 text-2xl font-black text-rose-800 dark:text-rose-200">{urgentCount}</p><p className="mt-1 text-xs font-semibold text-rose-700/80 dark:text-rose-200/70">Prioritize follow-up</p></div>

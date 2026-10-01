@@ -50,6 +50,7 @@ export async function POST(request) {
       summary: clean(result.summary),
       summaryFallback: Boolean(result.summaryFallback),
       findings: Array.isArray(result.findings) ? result.findings.slice(0, 300) : [],
+      excludedSections: Array.isArray(result.excludedSections) ? result.excludedSections.map((section) => clean(section)).filter(Boolean).slice(0, 20) : [],
       createdBy: access.uid,
       createdByName: access.profile?.displayName || access.profile?.email || access.uid,
       createdAt: now,
