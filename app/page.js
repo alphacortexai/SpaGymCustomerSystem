@@ -2,12 +2,10 @@
 
 import { isValidElement, useState, useEffect, useMemo, useRef } from 'react';
 import Image from 'next/image';
-import * as XLSX from 'xlsx';
 import dynamic from 'next/dynamic';
 import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
 import { signOut } from '@/lib/auth';
-import ClientList from '@/components/ClientList';
 import { searchClients, filterClientsBySearch } from '@/lib/clients';
 import { affirmations } from '@/lib/affirmations';
 import { getActiveNotesCount } from '@/lib/notes';
@@ -20,6 +18,7 @@ const LazySectionFallback = () => (
   </div>
 );
 
+const ClientList = dynamic(() => import('@/components/ClientList'), { loading: LazySectionFallback });
 const ClientForm = dynamic(() => import('@/components/ClientForm'), { loading: LazySectionFallback });
 const ExcelUpload = dynamic(() => import('@/components/ExcelUpload'), { loading: LazySectionFallback });
 const BranchForm = dynamic(() => import('@/components/BranchForm'), { loading: LazySectionFallback });
@@ -393,7 +392,9 @@ export default function Home() {
     birthdayCallers: cachedBirthdayCallers,
     patchClient,
     refreshBirthdayData,
-    loading: isDataLoading,
+    coreDataReady,
+    clientDataLoaded,
+    loadClientData,
     fullDataLoading: isFullDataLoading,
     activeGymEnrollmentCount,
     activeSpaEnrollmentCount,
@@ -436,6 +437,13 @@ export default function Home() {
   useEffect(() => {
     workspaceRestoredRef.current = false;
     setWorkspaceReady(false);
+    setIsInitialLoading(true);
+    setDataLoaded(false);
+    setBranches([]);
+    setAllBirthdays([]);
+    setTodaysBirthdays([]);
+    setAllClients([]);
+    setGlobalClients([]);
     if (!user?.uid) return undefined;
 
     const storageKey = `spa-ems-workspace:${user.uid}`;
@@ -485,27 +493,35 @@ export default function Home() {
     }
   }, [user?.uid, workspaceReady, activeTab, gymSubTab, spaSubTab, selectedBranch, selectedMonth, selectedDay, currentPage, showAdminSection, returnToAdmin, searchTerm]);
 
-  const handleExportAllClients = () => {
+  const handleExportAllClients = async () => {
     if (!isRootAdmin) return;
-    const exportableClients = globalClients.length ? globalClients : cachedGlobalClients;
-    if (!exportableClients.length) return;
-    const formatDateOfBirth = (client) => {
-      const month = Number(client.birthMonth);
-      const day = Number(client.birthDay);
-      if (!month || !day) return 'Not provided';
-      return new Date(2000, month - 1, day).toLocaleDateString(undefined, { month: 'long', day: 'numeric' });
-    };
-    const rows = exportableClients.map((client) => ({
-      'Name of Client': client.name || 'Not provided',
-      'Date of Birth': formatDateOfBirth(client),
-      Branch: client.branch || 'Not provided',
-      'Phone Number': client.phoneNumber || 'Not provided',
-    }));
-    const worksheet = XLSX.utils.json_to_sheet(rows);
-    worksheet['!cols'] = [{ wch: 28 }, { wch: 20 }, { wch: 24 }, { wch: 20 }];
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'All Clients');
-    XLSX.writeFile(workbook, `clients-database-${new Date().toISOString().slice(0, 10)}.xlsx`);
+    const clients = globalClients.length ? globalClients : cachedGlobalClients;
+    try {
+      const [exportableClients, XLSX] = await Promise.all([
+        clients.length ? Promise.resolve(clients) : loadClientData(),
+        import('xlsx'),
+      ]);
+      if (!exportableClients.length) return;
+      const formatDateOfBirth = (client) => {
+        const month = Number(client.birthMonth);
+        const day = Number(client.birthDay);
+        if (!month || !day) return 'Not provided';
+        return new Date(2000, month - 1, day).toLocaleDateString(undefined, { month: 'long', day: 'numeric' });
+      };
+      const rows = exportableClients.map((client) => ({
+        'Name of Client': client.name || 'Not provided',
+        'Date of Birth': formatDateOfBirth(client),
+        Branch: client.branch || 'Not provided',
+        'Phone Number': client.phoneNumber || 'Not provided',
+      }));
+      const worksheet = XLSX.utils.json_to_sheet(rows);
+      worksheet['!cols'] = [{ wch: 28 }, { wch: 20 }, { wch: 24 }, { wch: 20 }];
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'All Clients');
+      XLSX.writeFile(workbook, `clients-database-${new Date().toISOString().slice(0, 10)}.xlsx`);
+    } catch (error) {
+      console.error('Unable to export clients:', error);
+    }
   };
 
   useEffect(() => {
@@ -513,18 +529,26 @@ export default function Home() {
     getActiveNotesCount(user, profile).then(setActiveNotesCount);
   }, [profile, user]);
 
-  // Sync with cached data from DataContext (single source of truth). Branch filter applied client-side.
+  // Show the dashboard as soon as lightweight data is ready; large client lists load on demand.
   useEffect(() => {
-    if (!isDataLoading && cachedBranches.length > 0) {
+    if (coreDataReady) {
       setBranches(cachedBranches);
       setAllBirthdays(cachedAllBirthdays);
-      setGlobalClients(cachedGlobalClients);
-      setAllClients(selectedBranch ? cachedAllClients.filter(c => c.branch === selectedBranch) : cachedAllClients);
       setTodaysBirthdays(selectedBranch ? cachedTodaysBirthdays.filter(c => c.branch === selectedBranch) : cachedTodaysBirthdays);
+      if (clientDataLoaded) {
+        setGlobalClients(cachedGlobalClients);
+        setAllClients(selectedBranch ? cachedAllClients.filter(c => c.branch === selectedBranch) : cachedAllClients);
+      }
       setIsInitialLoading(false);
       setDataLoaded(true);
     }
-  }, [isDataLoading, cachedBranches, cachedAllBirthdays, cachedGlobalClients, cachedAllClients, cachedTodaysBirthdays, selectedBranch]);
+  }, [coreDataReady, clientDataLoaded, cachedBranches, cachedAllBirthdays, cachedGlobalClients, cachedAllClients, cachedTodaysBirthdays, selectedBranch]);
+
+  useEffect(() => {
+    if (activeTab === 'dashboard' || activeTab === 'birthdays') {
+      loadClientData();
+    }
+  }, [activeTab, loadClientData]);
 
   const birthdayReminderMessages = useMemo(() => {
     const assignedBranches = Array.isArray(profile?.assignedBranches) ? profile.assignedBranches.filter(Boolean) : [];
@@ -675,7 +699,7 @@ export default function Home() {
     if (['dashboard', 'birthdays', 'unrecognized'].includes(activeTab)) {
       setCurrentPage(1);
     }
-  }, [activeTab, selectedBranch]);
+  }, [activeTab, selectedBranch, returnToAdmin]);
 
   const handleSetDefaultBranch = (branchName) => {
     localStorage.setItem('defaultBirthdayBranch', branchName);
@@ -727,7 +751,7 @@ export default function Home() {
     });
   }, [todaysBirthdays, allBirthdays, allClients, selectedMonth, selectedDay, selectedBranch]);
 
-  const isFullDatasetLoading = isFullDataLoading && cachedAllClients.length === 0;
+  const isFullDatasetLoading = !clientDataLoaded || (isFullDataLoading && cachedAllClients.length === 0);
 
   const activeGymMembers = useMemo(() => {
     if (typeof activeGymEnrollmentCount === 'number') return activeGymEnrollmentCount;

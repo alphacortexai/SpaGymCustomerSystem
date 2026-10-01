@@ -3,16 +3,13 @@
 import { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import { useAuth } from './AuthContext';
 import { getAllClients, getTodaysBirthdays, getClientCountsByBranch, getBirthdayCountsByBranch } from '@/lib/clients';
-import { getAllEnrollments, getActiveEnrollmentCount } from '@/lib/memberships';
 import { getAllBranches } from '@/lib/branches';
 import { getBirthdayCallers } from '@/lib/birthdayCallers';
 
 const DataContext = createContext({});
 
-export function DataProvider({ children }) {
-  const { user } = useAuth();
-  const loadingRef = useRef(false);
-  const [data, setData] = useState({
+function createEmptyData() {
+  return {
     allClients: [],
     globalClients: [],
     branches: [],
@@ -26,8 +23,20 @@ export function DataProvider({ children }) {
     activeGymEnrollmentCount: 0,
     activeSpaEnrollmentCount: 0,
     lastFetched: null,
-  });
+  };
+}
+
+export function DataProvider({ children }) {
+  const { user } = useAuth();
+  const loadingRef = useRef(false);
+  const activeUserIdRef = useRef(null);
+  const requestGenerationRef = useRef(0);
+  const clientLoadPromiseRef = useRef(null);
+  const clientDataLoadedRef = useRef(false);
+  const [data, setData] = useState(createEmptyData);
   const [loading, setLoading] = useState(false);
+  const [coreDataReady, setCoreDataReady] = useState(false);
+  const [clientDataLoaded, setClientDataLoaded] = useState(false);
   const [fullDataLoading, setFullDataLoading] = useState(false);
 
   const patchClient = useCallback((clientId, patch) => {
@@ -42,21 +51,54 @@ export function DataProvider({ children }) {
     }));
   }, []);
 
+  const loadClientData = useCallback(async (force = false) => {
+    if (!user) return [];
+    if (clientLoadPromiseRef.current) return clientLoadPromiseRef.current;
+    if (!force && clientDataLoadedRef.current) return data.allClients;
+
+    const generation = requestGenerationRef.current;
+    setFullDataLoading(true);
+    const request = getAllClients(null)
+      .then((clients) => {
+        if (generation === requestGenerationRef.current) {
+          clientDataLoadedRef.current = true;
+          setData((prev) => ({ ...prev, allClients: clients, globalClients: clients }));
+          setClientDataLoaded(true);
+        }
+        return clients;
+      })
+      .catch((error) => {
+        console.error('Error loading client list:', error);
+        if (generation === requestGenerationRef.current) {
+          clientDataLoadedRef.current = true;
+          setClientDataLoaded(true);
+        }
+        return [];
+      })
+      .finally(() => {
+        if (generation === requestGenerationRef.current) setFullDataLoading(false);
+        if (clientLoadPromiseRef.current === request) clientLoadPromiseRef.current = null;
+      });
+    clientLoadPromiseRef.current = request;
+    return request;
+  }, [user, data.allClients]);
+
   const refreshBirthdayData = useCallback(async () => {
     if (!user) return;
+    const generation = requestGenerationRef.current;
     try {
       const [birthdays, birthdayCallers, clients] = await Promise.all([
         getTodaysBirthdays(null),
         getBirthdayCallers(),
-        getAllClients(null),
+        clientDataLoadedRef.current ? getAllClients(null) : Promise.resolve(null),
       ]);
+      if (generation !== requestGenerationRef.current) return;
       setData((prev) => ({
         ...prev,
         todaysBirthdays: birthdays,
         allBirthdays: birthdays,
         birthdayCallers,
-        allClients: clients,
-        globalClients: clients,
+        ...(clients !== null ? { allClients: clients, globalClients: clients } : {}),
       }));
     } catch (error) {
       console.error('Error refreshing birthday data:', error);
@@ -65,68 +107,80 @@ export function DataProvider({ children }) {
 
   const loadData = useCallback(async (force = false) => {
     const now = Date.now();
-    if (!force && data.lastFetched && (now - data.lastFetched < 5 * 60 * 1000)) {
-      return;
-    }
-
+    if (!force && data.lastFetched && (now - data.lastFetched < 5 * 60 * 1000)) return;
     if (!user || loadingRef.current) return;
 
+    const generation = requestGenerationRef.current;
     loadingRef.current = true;
     setLoading(true);
-    setFullDataLoading(true);
 
     try {
-      const allBranches = await getAllBranches();
-      
-      // Single Promise.all for ALL data — eliminates the two-wave waterfall
-      // where the second wave waited unnecessarily for the first to complete
-      // and intermediate setData calls.
-      const [
-        clientCounts,
-        birthdayCounts,
-        birthdays,
-        birthdayCallers,
-        activeGymEnrollmentCount,
-        activeSpaEnrollmentCount,
-        clients,
-        gymEnrollments,
-        spaEnrollments,
-      ] = await Promise.all([
-        getClientCountsByBranch(allBranches),
-        getBirthdayCountsByBranch(allBranches),
+      const [allBranches, birthdays, birthdayCallers] = await Promise.all([
+        getAllBranches(),
         getTodaysBirthdays(null),
         getBirthdayCallers(),
-        getActiveEnrollmentCount(false),
-        getActiveEnrollmentCount(true),
-        getAllClients(null),
-        getAllEnrollments(false),
-        getAllEnrollments(true),
       ]);
 
+      if (generation !== requestGenerationRef.current) return;
       setData((prev) => ({
         ...prev,
         branches: allBranches,
-        clientCountsByBranch: clientCounts,
-        birthdayCountsByBranch: birthdayCounts,
         todaysBirthdays: birthdays,
         allBirthdays: birthdays,
         birthdayCallers,
-        activeGymEnrollmentCount,
-        activeSpaEnrollmentCount,
-        allClients: clients,
-        globalClients: clients,
-        gymEnrollments,
-        spaEnrollments,
-        lastFetched: now,
+        lastFetched: Date.now(),
       }));
+      setCoreDataReady(true);
+
+      // Counts (including active-membership aggregates) hydrate badges after the shell is usable.
+      Promise.all([
+        getClientCountsByBranch(allBranches),
+        getBirthdayCountsByBranch(allBranches),
+        import('@/lib/memberships').then(({ getActiveEnrollmentCount }) => Promise.all([
+          getActiveEnrollmentCount(false),
+          getActiveEnrollmentCount(true),
+        ])),
+      ]).then(([clientCounts, birthdayCounts, activeEnrollmentCounts]) => {
+        if (generation !== requestGenerationRef.current) return;
+        const [activeGymEnrollmentCount, activeSpaEnrollmentCount] = activeEnrollmentCounts;
+        setData((prev) => ({
+          ...prev,
+          clientCountsByBranch: clientCounts,
+          birthdayCountsByBranch: birthdayCounts,
+          activeGymEnrollmentCount,
+          activeSpaEnrollmentCount,
+        }));
+      }).catch((error) => console.error('Error loading dashboard counts:', error));
     } catch (error) {
-      console.error('Error loading data:', error);
+      console.error('Error loading dashboard data:', error);
     } finally {
-      loadingRef.current = false;
-      setLoading(false);
-      setFullDataLoading(false);
+      if (generation === requestGenerationRef.current) {
+        loadingRef.current = false;
+        setLoading(false);
+      }
     }
   }, [user, data.lastFetched]);
+
+  const refreshData = useCallback(async () => {
+    await loadData(true);
+    if (clientDataLoadedRef.current) await loadClientData(true);
+  }, [loadData, loadClientData]);
+
+  useEffect(() => {
+    const nextUserId = user?.uid || null;
+    if (activeUserIdRef.current === nextUserId) return;
+
+    activeUserIdRef.current = nextUserId;
+    requestGenerationRef.current += 1;
+    loadingRef.current = false;
+    clientLoadPromiseRef.current = null;
+    clientDataLoadedRef.current = false;
+    setData(createEmptyData());
+    setCoreDataReady(false);
+    setClientDataLoaded(false);
+    setLoading(false);
+    setFullDataLoading(false);
+  }, [user?.uid]);
 
   useEffect(() => {
     if (user && !data.lastFetched) {
@@ -138,10 +192,13 @@ export function DataProvider({ children }) {
     <DataContext.Provider value={{
       ...data,
       loading,
+      coreDataReady,
+      clientDataLoaded,
       fullDataLoading,
+      loadClientData,
       patchClient,
       refreshBirthdayData,
-      refreshData: () => loadData(true),
+      refreshData,
     }}>
       {children}
     </DataContext.Provider>

@@ -49,7 +49,8 @@ export function AuthProvider({ children }) {
         }
 
         setProfile(userProfile);
-        await logUserLogin(firebaseUser.uid, firebaseUser.email, firebaseUser.displayName || firebaseUser.email);
+        logUserLogin(firebaseUser.uid, firebaseUser.email, firebaseUser.displayName || firebaseUser.email)
+          .catch((error) => console.error('Login audit logging failed:', error));
 
         activityIntervalRef.current = setInterval(() => {
           // Only log activity when the tab is visible (pauses when minimized/backgrounded)
