@@ -48,6 +48,8 @@ const BirthdayCallersManager = dynamic(() => import('@/components/BirthdayCaller
 const BirthdayCommunicationsAnalytics = dynamic(() => import('@/components/BirthdayCommunicationsAnalytics'), { loading: LazySectionFallback });
 const ReportsSection = dynamic(() => import('@/components/ReportsSection'), { loading: LazySectionFallback });
 const CallerAnalyticsAdmin = dynamic(() => import('@/components/CallerAnalyticsAdmin'), { loading: LazySectionFallback });
+const FeedbackAttentionAdmin = dynamic(() => import('@/components/FeedbackAttentionAdmin'), { loading: LazySectionFallback });
+const AiFeedbackSettings = dynamic(() => import('@/components/AiFeedbackSettings'), { loading: LazySectionFallback });
 const GuestFlowVisits = dynamic(() => import('@/components/GuestFlowVisits'), { loading: LazySectionFallback });
 
 const NavCard = ({ onClick, icon, title, titleLines, description, badge, isImage, fullBg, centerBadge, accent = 'blue', eyebrow }) => {
@@ -632,7 +634,7 @@ export default function Home() {
     return () => clearInterval(interval);
   }, []);
 
-  const adminSubsectionTabs = ['upload', 'unrecognized', 'history', 'users', 'birthday-callers', 'branches', 'duplicates', 'timeline', 'invoice-list', 'caller-analytics'];
+  const adminSubsectionTabs = ['upload', 'unrecognized', 'history', 'users', 'birthday-callers', 'branches', 'duplicates', 'timeline', 'invoice-list', 'caller-analytics', 'feedback-attention', 'ai-settings'];
 
   const openAdminTool = (tab) => {
     setReturnToAdmin(true);
@@ -1068,6 +1070,12 @@ export default function Home() {
                       <NavCard onClick={() => openAdminTool('caller-analytics')} icon={<QuickActionIcon name="analytics" />} title="Caller Analytics" description="Birthday, feedback and WhatsApp totals." accent="violet" eyebrow="Reporting" />
                     )}
                     {profile?.role === 'Admin' && (
+                      <NavCard onClick={() => openAdminTool('feedback-attention')} icon={<QuickActionIcon name="issues" />} title="Feedback Attention" description="Find client feedback that may need follow-up." accent="rose" eyebrow="AI review" />
+                    )}
+                    {profile?.role === 'Admin' && (
+                      <NavCard onClick={() => openAdminTool('ai-settings')} icon={<QuickActionIcon name="analytics" />} title="AI Key Settings" description="Securely add or replace the AI provider key." accent="violet" eyebrow="Configuration" />
+                    )}
+                    {profile?.role === 'Admin' && (
                       <NavCard onClick={() => openAdminTool('invoice-list')} icon={<QuickActionIcon name="invoices" />} title="All Invoices" description="View, search and recreate PDFs." accent="emerald" eyebrow="Finance" />
                     )}
                     {isRootAdmin && (
@@ -1441,6 +1449,14 @@ export default function Home() {
 
           {activeTab === 'caller-analytics' && profile?.role === 'Admin' && (
             <CallerAnalyticsAdmin profile={profile} onBack={goBackFromSection} />
+          )}
+
+          {activeTab === 'feedback-attention' && profile?.role === 'Admin' && (
+            <FeedbackAttentionAdmin user={user} profile={profile} onBack={goBackFromSection} onOpenSettings={() => openAdminTool('ai-settings')} />
+          )}
+
+          {activeTab === 'ai-settings' && profile?.role === 'Admin' && (
+            <AiFeedbackSettings user={user} profile={profile} onBack={goBackFromSection} />
           )}
 
           {activeTab === 'duplicates' && (
