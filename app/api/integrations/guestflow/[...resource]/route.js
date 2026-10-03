@@ -2,15 +2,19 @@ import { NextResponse } from 'next/server';
 import {
   ApiError,
   createClient,
+  getGuestFlowDevice,
   getSummary,
   isAuthorizedGuestFlowRequest,
   listBranches,
+  listGuestFlowDevices,
   listCheckIns,
   lookupClient,
   recordCheckIn,
   recordCheckOut,
   repairClientBranch,
+  requestGuestFlowDevice,
   searchClients,
+  updateGuestFlowDevice,
 } from '@/lib/guestflowApi';
 
 export const runtime = 'nodejs';
@@ -36,6 +40,18 @@ async function handle(request, context) {
 
     if (path === 'branches' && method === 'GET') {
       return json({ branches: await listBranches() });
+    }
+
+    if (path === 'devices' && method === 'GET') return json({ devices: await listGuestFlowDevices(url.searchParams.get('status') || '') });
+    if (path === 'devices' && method === 'POST') return json({ device: await requestGuestFlowDevice(await request.json()) }, 201);
+    if (path === 'devices/verify' && method === 'GET') {
+      const device = await getGuestFlowDevice({ deviceIdHash: url.searchParams.get('deviceIdHash') || '', id: url.searchParams.get('id') || '' });
+      return device ? json({ device }) : json({ error: 'Device not found.' }, 404);
+    }
+    const deviceActionMatch = path.match(/^devices\/([^/]+)\/(approve|revoke)$/);
+    if (deviceActionMatch && method === 'POST') {
+      const body = await request.json().catch(() => ({}));
+      return json({ device: await updateGuestFlowDevice(decodeURIComponent(deviceActionMatch[1]), deviceActionMatch[2], body?.actor) });
     }
 
     if (path === 'clients' && method === 'GET') {
