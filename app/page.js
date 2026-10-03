@@ -51,6 +51,7 @@ const CheckInAnalyticsAdmin = dynamic(() => import('@/components/CheckInAnalytic
 const FeedbackAttentionAdmin = dynamic(() => import('@/components/FeedbackAttentionAdmin'), { loading: LazySectionFallback });
 const AiFeedbackSettings = dynamic(() => import('@/components/AiFeedbackSettings'), { loading: LazySectionFallback });
 const GuestFlowVisits = dynamic(() => import('@/components/GuestFlowVisits'), { loading: LazySectionFallback });
+const GuestFlowDeviceAccess = dynamic(() => import('@/components/GuestFlowDeviceAccess'), { loading: LazySectionFallback });
 
 const NavCard = ({ onClick, icon, title, titleLines, description, badge, isImage, fullBg, centerBadge, accent = 'blue', eyebrow }) => {
   const accentStyles = {
@@ -659,7 +660,7 @@ export default function Home() {
     return () => clearInterval(interval);
   }, []);
 
-  const adminSubsectionTabs = ['upload', 'unrecognized', 'history', 'users', 'birthday-callers', 'branches', 'duplicates', 'timeline', 'invoice-list', 'caller-analytics', 'check-in-analytics', 'feedback-attention', 'ai-settings'];
+  const adminSubsectionTabs = ['upload', 'unrecognized', 'history', 'users', 'birthday-callers', 'branches', 'duplicates', 'timeline', 'caller-analytics', 'check-in-analytics', 'guestflow-devices', 'feedback-attention', 'ai-settings', 'invoice-list'];
 
   const openAdminTool = (tab) => {
     setReturnToAdmin(true);
@@ -1097,6 +1098,9 @@ export default function Home() {
                     {isRootAdmin && (
                       <NavCard onClick={() => openAdminTool('check-in-analytics')} icon={<QuickActionIcon name="analytics" />} title="Check-in Analytics" description="Clients per day, compared by branch." accent="blue" eyebrow="Top admin only" />
                     )}
+                    {isRootAdmin && (
+                      <NavCard onClick={() => openAdminTool('guestflow-devices')} icon={<QuickActionIcon name="admin" />} title="GuestFlow Devices" description="Approve branch check-in phones and tablets." accent="emerald" eyebrow="Top admin only" />
+                    )}
                     {profile?.role === 'Admin' && (
                       <NavCard onClick={() => openAdminTool('feedback-attention')} icon={<QuickActionIcon name="issues" />} title="Feedback Attention" description="Find client feedback that may need follow-up." accent="rose" eyebrow="AI review" />
                     )}
@@ -1480,6 +1484,9 @@ export default function Home() {
           )}
           {activeTab === 'check-in-analytics' && isRootAdmin && (
             <CheckInAnalyticsAdmin user={user} profile={profile} onBack={goBackFromSection} />
+          )}
+          {activeTab === 'guestflow-devices' && isRootAdmin && (
+            <GuestFlowDeviceAccess user={user} onBack={goBackFromSection} />
           )}
 
           {activeTab === 'feedback-attention' && profile?.role === 'Admin' && (
