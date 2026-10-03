@@ -46,7 +46,7 @@ async function handle(request, context) {
     if (path === 'devices' && method === 'POST') return json({ device: await requestGuestFlowDevice(await request.json()) }, 201);
     if (path === 'devices/verify' && method === 'GET') {
       const device = await getGuestFlowDevice({ deviceIdHash: url.searchParams.get('deviceIdHash') || '', id: url.searchParams.get('id') || '' });
-      return device ? json({ device }) : json({ error: 'Device not found.' }, 404);
+      return json({ device: device || null });
     }
     const deviceActionMatch = path.match(/^devices\/([^/]+)\/(approve|revoke)$/);
     if (deviceActionMatch && method === 'POST') {
