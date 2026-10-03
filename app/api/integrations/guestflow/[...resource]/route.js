@@ -14,6 +14,7 @@ import {
   repairClientBranch,
   requestGuestFlowDevice,
   searchClients,
+  touchGuestFlowDevice,
   updateGuestFlowDevice,
 } from '@/lib/guestflowApi';
 
@@ -44,6 +45,7 @@ async function handle(request, context) {
 
     if (path === 'devices' && method === 'GET') return json({ devices: await listGuestFlowDevices(url.searchParams.get('status') || '') });
     if (path === 'devices' && method === 'POST') return json({ device: await requestGuestFlowDevice(await request.json()) }, 201);
+    if (path === 'devices/heartbeat' && method === 'POST') return json({ device: await touchGuestFlowDevice((await request.json()).deviceIdHash) });
     if (path === 'devices/verify' && method === 'GET') {
       const device = await getGuestFlowDevice({ deviceIdHash: url.searchParams.get('deviceIdHash') || '', id: url.searchParams.get('id') || '' });
       return json({ device: device || null });
