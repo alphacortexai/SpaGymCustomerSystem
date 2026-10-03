@@ -10,10 +10,12 @@ export async function POST(request, context) {
   if (!access.ok) return NextResponse.json({ error: 'Administrator access required.' }, { status: access.status });
   try {
     const { deviceId, action } = await context.params;
+    const input = action === 'rename' ? await request.json().catch(() => ({})) : {};
     const device = await updateGuestFlowDevice(
       decodeURIComponent(deviceId),
       action,
       access.profile?.email || access.uid,
+      input.name,
     );
     return NextResponse.json({ device }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
