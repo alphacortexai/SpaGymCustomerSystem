@@ -1,12 +1,12 @@
 'use client';
 
-import { isValidElement, useState, useEffect, useMemo, useRef } from 'react';
+import { isValidElement, useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import Image from 'next/image';
 import dynamic from 'next/dynamic';
 import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
 import { signOut } from '@/lib/auth';
-import { searchClients, filterClientsBySearch } from '@/lib/clients';
+import { searchClients, getClientsPage } from '@/lib/clients';
 import { affirmations } from '@/lib/affirmations';
 import { getActiveNotesCount } from '@/lib/notes';
 import ProtectedRoute from '@/components/ProtectedRoute';
@@ -422,6 +422,11 @@ export default function Home() {
   const [selectedDay, setSelectedDay] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const clientsPerPage = 20;
+  const [dashboardClients, setDashboardClients] = useState([]);
+  const [dashboardTotalCount, setDashboardTotalCount] = useState(0);
+  const [dashboardHasMore, setDashboardHasMore] = useState(false);
+  const [dashboardPageLoading, setDashboardPageLoading] = useState(false);
+  const dashboardCursorsRef = useRef([]);
   const [showAdminSection, setShowAdminSection] = useState(false);
   const [returnToAdmin, setReturnToAdmin] = useState(false);
   const [showBranchPrompt, setShowBranchPrompt] = useState(false);
@@ -550,7 +555,7 @@ export default function Home() {
   }, [coreDataReady, clientDataLoaded, cachedBranches, cachedAllBirthdays, cachedGlobalClients, cachedAllClients, cachedTodaysBirthdays, selectedBranch]);
 
   useEffect(() => {
-    if (['dashboard', 'birthdays', 'birthday-analytics', 'reports', 'check-ins', 'new-clients-analytics'].includes(activeTab)) {
+    if (['birthdays', 'birthday-analytics', 'reports', 'check-ins', 'new-clients-analytics'].includes(activeTab)) {
       void loadClientData();
     }
   }, [activeTab, loadClientData]);
@@ -704,6 +709,7 @@ export default function Home() {
     // Only reset page if we're actually switching to a list view
     if (['dashboard', 'birthdays', 'unrecognized'].includes(activeTab)) {
       setCurrentPage(1);
+      if (activeTab === 'dashboard') dashboardCursorsRef.current = [];
     }
   }, [activeTab, selectedBranch, returnToAdmin, coreDataReady]);
 
@@ -713,7 +719,49 @@ export default function Home() {
     setShowBranchPrompt(false);
   };
 
-  // Handle search with debouncing
+  const loadDashboardPage = useCallback(async (page, branch, search) => {
+    setDashboardPageLoading(true);
+    try {
+      if (search.trim()) {
+        const results = await searchClients(search, branch || null);
+        setDashboardClients(results || []);
+        setDashboardTotalCount((results || []).length);
+        setDashboardHasMore(false);
+        return;
+      }
+      const cursor = page > 1 ? dashboardCursorsRef.current[page - 2] : null;
+      const result = await getClientsPage(branch || null, clientsPerPage, cursor);
+      dashboardCursorsRef.current[page - 1] = result.cursor;
+      dashboardCursorsRef.current.length = page;
+      setDashboardClients(result.clients);
+      setDashboardTotalCount(result.totalCount);
+      setDashboardHasMore(result.hasMore);
+    } catch (error) {
+      console.error('Client database loading error:', error);
+      setDashboardClients([]);
+      setDashboardTotalCount(0);
+      setDashboardHasMore(false);
+    } finally {
+      setDashboardPageLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeTab !== 'dashboard') return;
+    const timeoutId = setTimeout(() => {
+      void loadDashboardPage(currentPage, selectedBranch, searchTerm);
+    }, 300);
+    return () => clearTimeout(timeoutId);
+  }, [activeTab, currentPage, selectedBranch, searchTerm, loadDashboardPage]);
+
+  const refreshDashboardPage = useCallback(async () => {
+    if (activeTab === 'dashboard') {
+      await loadDashboardPage(currentPage, selectedBranch, searchTerm);
+    }
+    await refreshData();
+  }, [activeTab, currentPage, loadDashboardPage, refreshData, searchTerm, selectedBranch]);
+
+  // Handle search with debouncing for other client-dependent sections
   useEffect(() => {
     const performSearch = async () => {
       if (!searchTerm.trim()) {
@@ -725,13 +773,8 @@ export default function Home() {
       setIsSearching(true);
       try {
         const branch = selectedBranch || null;
-        const searchPool = allClients.length ? allClients : cachedAllClients;
-        if (searchPool.length) {
-          setSearchResults(filterClientsBySearch(searchPool, searchTerm, branch));
-        } else {
-          const results = await searchClients(searchTerm, branch);
-          setSearchResults(results || []);
-        }
+        const results = await searchClients(searchTerm, branch);
+        setSearchResults(results || []);
       } catch (error) {
         console.error('Search error:', error);
         setSearchResults([]);
@@ -782,6 +825,7 @@ export default function Home() {
   const clientBadgeTotal = useMemo(() => {
     // Use cached counts if available (fast)
     if (cachedClientCounts && Object.keys(cachedClientCounts).length > 0) {
+      if (typeof cachedClientCounts.total === 'number') return cachedClientCounts.total.toString();
       return Object.values(cachedClientCounts).reduce((sum, count) => sum + count, 0).toString();
     }
 
@@ -1233,15 +1277,16 @@ export default function Home() {
               </div>
 
               <ClientList
-                clients={getPaginatedClients(searchTerm ? searchResults : allClients)}
-                totalCount={searchTerm ? searchResults.length : allClients.length}
+                clients={dashboardClients}
+                totalCount={dashboardTotalCount}
                 title={searchTerm ? `Search Results for "${searchTerm}"` : "All Clients"}
-                onClientUpdated={refreshData}
+                onClientUpdated={refreshDashboardPage}
                 onClientPatched={patchClient}
-                isLoading={isInitialLoading || isFullDatasetLoading}
+                isLoading={isInitialLoading || dashboardPageLoading}
+                disableLocalSearch
               />
 
-              {(searchTerm ? searchResults.length : allClients.length) > clientsPerPage && (
+              {!searchTerm && dashboardTotalCount > clientsPerPage && (
                 <div className="flex justify-center items-center gap-2 mt-8">
                   <button
                     disabled={currentPage === 1}
@@ -1251,10 +1296,10 @@ export default function Home() {
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
                   </button>
                   <span className="text-sm font-medium text-slate-600 dark:text-slate-400">
-                    Page {currentPage} of {getTotalPages(searchTerm ? searchResults : allClients)}
+                    Page {currentPage} of {Math.max(1, Math.ceil(dashboardTotalCount / clientsPerPage))}
                   </span>
                   <button
-                    disabled={currentPage === getTotalPages(searchTerm ? searchResults : allClients)}
+                    disabled={!dashboardHasMore}
                     onClick={() => setCurrentPage(p => p + 1)}
                     className="p-2 rounded-lg border border-slate-200 dark:border-slate-800 disabled:opacity-30 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                   >

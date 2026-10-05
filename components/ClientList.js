@@ -10,7 +10,7 @@ import LoadingState from './LoadingState';
 
 import { useAuth } from '@/contexts/AuthContext';
 
-export default function ClientList({ clients = [], totalCount, title = 'Clients', onClientUpdated, onClientPatched, isLoading = false, birthdayCallers = [], isBirthdayView = false }) {
+export default function ClientList({ clients = [], totalCount, title = 'Clients', onClientUpdated, onClientPatched, isLoading = false, birthdayCallers = [], isBirthdayView = false, disableLocalSearch = false }) {
   const { user, profile } = useAuth();
   const canEdit = profile?.permissions?.clients?.edit !== false;
   const canDelete = profile?.permissions?.clients?.delete !== false;
@@ -107,7 +107,7 @@ export default function ClientList({ clients = [], totalCount, title = 'Clients'
     }
   };
 
-  const filteredClients = useMemo(() => filterClientsBySearch(clients, searchQuery), [clients, searchQuery]);
+  const filteredClients = useMemo(() => disableLocalSearch ? clients : filterClientsBySearch(clients, searchQuery), [clients, searchQuery, disableLocalSearch]);
 
   if (isLoading) {
     return <LoadingState title="Loading client records..." description="Preparing your client database." />;
