@@ -91,7 +91,7 @@ function EmptyState({ message }) {
   return <div className="rounded-xl border border-dashed border-slate-200 px-5 py-8 text-center text-sm font-medium text-slate-500 dark:border-slate-700 dark:text-slate-400">{message}</div>;
 }
 
-export default function BirthdayCommunicationsAnalytics({ clients = [], branches = [], birthdayCallers = [], onBack }) {
+export default function BirthdayCommunicationsAnalytics({ clients = [], branches = [], birthdayCallers = [], isLoading = false, onBack }) {
   const [today] = useState(() => new Date());
   const [period, setPeriod] = useState('today');
   const [customStart, setCustomStart] = useState(format(today, 'yyyy-MM-dd'));
@@ -229,6 +229,9 @@ export default function BirthdayCommunicationsAnalytics({ clients = [], branches
         <div className="text-xs font-semibold text-slate-500">{branch || 'All branches'} · Birthday and communication activity window</div>
       </div>
 
+      {isLoading ? (
+        <div className="rounded-2xl border border-slate-200 bg-white p-10 text-center text-sm font-semibold text-slate-500 dark:border-slate-800 dark:bg-slate-900">Loading birthday client activity…</div>
+      ) : <>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
         <MetricCard label="Birthdays in period" value={analytics.total} detail="Total birthday records" accent="blue" />
         <MetricCard label="Contacted" value={analytics.contacted} detail={`${analytics.rate}% of birthdays`} accent="pink" />
@@ -271,6 +274,7 @@ export default function BirthdayCommunicationsAnalytics({ clients = [], branches
         <div className="flex flex-col gap-3 border-b border-slate-100 px-5 py-4 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between"><div><h3 className="font-black text-slate-900 dark:text-white">Birthday contact detail</h3><p className="mt-1 text-xs font-medium text-slate-500">{filteredRows.length} records in the selected view</p></div><input value={detailSearch} onChange={(event) => setDetailSearch(event.target.value)} placeholder="Search client, branch, caller..." className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 sm:w-72" /></div>
         {filteredRows.length === 0 ? <div className="p-8"><EmptyState message="No birthday records match this period and filter." /></div> : <div className="overflow-x-auto"><table className="w-full min-w-[880px] text-left"><thead className="bg-slate-50/80 dark:bg-slate-800/50"><tr>{['Birthday', 'Client', 'Branch', 'Status', 'Mode', '50% offer', 'Contacted on', 'By'].map((heading) => <th key={heading} className="px-5 py-3 text-[10px] font-black uppercase tracking-wider text-slate-500">{heading}</th>)}</tr></thead><tbody className="divide-y divide-slate-100 dark:divide-slate-800">{filteredRows.map((row) => <tr key={row.id} className="transition hover:bg-slate-50/70 dark:hover:bg-slate-800/40"><td className="px-5 py-3.5 text-sm font-bold text-slate-700 dark:text-slate-200">{format(row.birthdayDate, 'MMM d')}</td><td className="px-5 py-3.5"><div className="text-sm font-bold text-slate-900 dark:text-white">{row.name || 'Unnamed client'}</div><div className="text-xs text-slate-500">{row.phoneNumber || 'No phone'}</div></td><td className="px-5 py-3.5 text-sm text-slate-600 dark:text-slate-300">{row.branch || '—'}</td><td className="px-5 py-3.5"><span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-black ${row.contacted ? 'bg-pink-50 text-pink-700 dark:bg-pink-950/30 dark:text-pink-200' : 'bg-lime-50 text-lime-800 dark:bg-lime-950/20 dark:text-lime-200'}`}>{row.contacted ? 'Contacted' : 'Pending'}</span></td><td className="px-5 py-3.5"><span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-bold ${METHOD_STYLES[row.method] || METHOD_STYLES.not_contacted}`}>{METHOD_LABELS[row.method] || METHOD_LABELS.not_contacted}</span></td><td className="px-5 py-3.5"><span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-black ${row.redeemed ? 'bg-violet-50 text-violet-700 dark:bg-violet-950/30 dark:text-violet-200' : 'bg-slate-50 text-slate-500 dark:bg-slate-800 dark:text-slate-400'}`}>{row.redeemed ? 'Redeemed' : 'Not redeemed'}</span></td><td className="px-5 py-3.5 text-sm text-slate-600 dark:text-slate-300">{row.contactedAt ? format(row.contactedAt, 'MMM d, yyyy h:mm a') : '—'}</td><td className="px-5 py-3.5 text-sm font-bold text-slate-700 dark:text-slate-200">{row.contactedBy}</td></tr>)}</tbody></table></div>}
       </section>
+      </>}
     </div>
   );
 }

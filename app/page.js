@@ -11,6 +11,7 @@ import { affirmations } from '@/lib/affirmations';
 import { getActiveNotesCount } from '@/lib/notes';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import LoadingState from '@/components/LoadingState';
+import { usePageVisibility } from '@/lib/usePageVisibility';
 
 const LazySectionFallback = () => (
   <div className="card-bg-doc rounded-2xl border border-slate-200 dark:border-slate-800 p-8 text-center text-slate-500 dark:text-slate-400">
@@ -382,6 +383,7 @@ const SummaryPanel = ({ clients, branches, loading }) => {
 
 export default function Home() {
   const { user, profile } = useAuth();
+  const isPageVisible = usePageVisibility();
   const {
     allClients: cachedAllClients,
     globalClients: cachedGlobalClients,
@@ -548,8 +550,8 @@ export default function Home() {
   }, [coreDataReady, clientDataLoaded, cachedBranches, cachedAllBirthdays, cachedGlobalClients, cachedAllClients, cachedTodaysBirthdays, selectedBranch]);
 
   useEffect(() => {
-    if (activeTab === 'dashboard' || activeTab === 'birthdays') {
-      loadClientData();
+    if (['dashboard', 'birthdays', 'birthday-analytics', 'reports', 'check-ins', 'new-clients-analytics'].includes(activeTab)) {
+      void loadClientData();
     }
   }, [activeTab, loadClientData]);
 
@@ -644,6 +646,7 @@ export default function Home() {
   };
 
   useEffect(() => {
+    if (!isPageVisible) return undefined;
     const getAffirmation = () => {
       const now = new Date();
       // Use 5-minute intervals for rotation
@@ -659,7 +662,7 @@ export default function Home() {
     }, 60000); // Check every minute
 
     return () => clearInterval(interval);
-  }, []);
+  }, [isPageVisible]);
 
   const adminSubsectionTabs = ['upload', 'unrecognized', 'history', 'users', 'birthday-callers', 'branches', 'duplicates', 'timeline', 'caller-analytics', 'new-clients-analytics', 'check-in-analytics', 'guestflow-devices', 'feedback-attention', 'ai-settings', 'invoice-list'];
 
@@ -689,7 +692,7 @@ export default function Home() {
   useEffect(() => {
     if (activeTab !== 'home' && !returnToAdmin) setShowAdminSection(false);
 
-    if (activeTab === 'birthdays') {
+    if (activeTab === 'birthdays' && coreDataReady) {
       const defaultBranch = localStorage.getItem('defaultBirthdayBranch');
       if (defaultBranch && !selectedBranch) {
         setSelectedBranch(defaultBranch);
@@ -702,7 +705,7 @@ export default function Home() {
     if (['dashboard', 'birthdays', 'unrecognized'].includes(activeTab)) {
       setCurrentPage(1);
     }
-  }, [activeTab, selectedBranch, returnToAdmin]);
+  }, [activeTab, selectedBranch, returnToAdmin, coreDataReady]);
 
   const handleSetDefaultBranch = (branchName) => {
     localStorage.setItem('defaultBirthdayBranch', branchName);
@@ -982,7 +985,7 @@ export default function Home() {
         </header>
 
         <main className="mx-auto max-w-[1280px] px-4 py-5 sm:px-6 lg:px-8 lg:py-7">
-          {isInitialLoading ? (
+          {isInitialLoading && !workspaceReady ? (
             <div className="mx-auto max-w-2xl py-16">
               <LoadingState title="Preparing your dashboard..." description="Loading your workspaces and latest information." />
             </div>
@@ -1129,6 +1132,7 @@ export default function Home() {
               user={user}
               profile={profile}
               clients={globalClients.length ? globalClients : cachedGlobalClients}
+              clientsLoading={!clientDataLoaded}
               birthdayCallers={cachedBirthdayCallers}
               onBack={goBackFromSection}
             />
@@ -1266,6 +1270,7 @@ export default function Home() {
               clients={globalClients.length ? globalClients : cachedGlobalClients}
               branches={branches.length ? branches : cachedBranches}
               birthdayCallers={cachedBirthdayCallers}
+              isLoading={!clientDataLoaded}
               onBack={() => setActiveTab('home')}
             />
           )}
@@ -1391,7 +1396,7 @@ export default function Home() {
                 </div>
                 <AdminBackButton onBack={goBackFromSection} />
               </div>
-              <ExcelUpload onUploadComplete={refreshData} />
+              <ExcelUpload onClientsAdded={refreshData} />
             </div>
           )}
 
