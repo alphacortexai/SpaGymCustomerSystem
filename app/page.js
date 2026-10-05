@@ -48,6 +48,7 @@ const BirthdayCommunicationsAnalytics = dynamic(() => import('@/components/Birth
 const ReportsSection = dynamic(() => import('@/components/ReportsSection'), { loading: LazySectionFallback });
 const CallerAnalyticsAdmin = dynamic(() => import('@/components/CallerAnalyticsAdmin'), { loading: LazySectionFallback });
 const CheckInAnalyticsAdmin = dynamic(() => import('@/components/CheckInAnalyticsAdmin'), { loading: LazySectionFallback });
+const NewClientsAnalyticsAdmin = dynamic(() => import('@/components/NewClientsAnalyticsAdmin'), { loading: LazySectionFallback });
 const FeedbackAttentionAdmin = dynamic(() => import('@/components/FeedbackAttentionAdmin'), { loading: LazySectionFallback });
 const AiFeedbackSettings = dynamic(() => import('@/components/AiFeedbackSettings'), { loading: LazySectionFallback });
 const GuestFlowVisits = dynamic(() => import('@/components/GuestFlowVisits'), { loading: LazySectionFallback });
@@ -660,7 +661,7 @@ export default function Home() {
     return () => clearInterval(interval);
   }, []);
 
-  const adminSubsectionTabs = ['upload', 'unrecognized', 'history', 'users', 'birthday-callers', 'branches', 'duplicates', 'timeline', 'caller-analytics', 'check-in-analytics', 'guestflow-devices', 'feedback-attention', 'ai-settings', 'invoice-list'];
+  const adminSubsectionTabs = ['upload', 'unrecognized', 'history', 'users', 'birthday-callers', 'branches', 'duplicates', 'timeline', 'caller-analytics', 'new-clients-analytics', 'check-in-analytics', 'guestflow-devices', 'feedback-attention', 'ai-settings', 'invoice-list'];
 
   const openAdminTool = (tab) => {
     setReturnToAdmin(true);
@@ -1095,6 +1096,9 @@ export default function Home() {
                     {profile?.role === 'Admin' && (
                       <NavCard onClick={() => openAdminTool('caller-analytics')} icon={<QuickActionIcon name="analytics" />} title="Caller Analytics" description="Birthday, feedback and WhatsApp totals." accent="violet" eyebrow="Reporting" />
                     )}
+                    {profile?.role === 'Admin' && (
+                      <NavCard onClick={() => openAdminTool('new-clients-analytics')} icon={<QuickActionIcon name="analytics" />} title="New Clients Analytics" description="Clients added in a selected period." accent="emerald" eyebrow="Reporting" />
+                    )}
                     {isRootAdmin && (
                       <NavCard onClick={() => openAdminTool('check-in-analytics')} icon={<QuickActionIcon name="analytics" />} title="Check-in Analytics" description="Clients per day, compared by branch." accent="blue" eyebrow="Top admin only" />
                     )}
@@ -1481,6 +1485,13 @@ export default function Home() {
 
           {activeTab === 'caller-analytics' && profile?.role === 'Admin' && (
             <CallerAnalyticsAdmin profile={profile} onBack={goBackFromSection} />
+          )}
+          {activeTab === 'new-clients-analytics' && profile?.role === 'Admin' && (
+            <NewClientsAnalyticsAdmin
+              clients={globalClients.length ? globalClients : cachedGlobalClients}
+              loadClientData={loadClientData}
+              onBack={goBackFromSection}
+            />
           )}
           {activeTab === 'check-in-analytics' && isRootAdmin && (
             <CheckInAnalyticsAdmin user={user} profile={profile} onBack={goBackFromSection} />
