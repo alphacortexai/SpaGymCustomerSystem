@@ -26,6 +26,8 @@ function StatusBadge({ active }) {
 
 export default function MembershipContactsDirectory({ serviceName, enrollments = [], clients = [], isLoading = false }) {
   const [searchTerm, setSearchTerm] = useState('');
+  const [branchFilter, setBranchFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
   const [today] = useState(() => {
     const value = new Date();
     value.setHours(0, 0, 0, 0);
@@ -58,6 +60,7 @@ export default function MembershipContactsDirectory({ serviceName, enrollments =
       grouped.set(key, {
         id: key,
         clientName,
+        branch: client?.branch || enrollment.branch || '',
         phoneNumber: client?.phoneNumber || client?.phone || 'No phone number',
         memberships: [membership],
       });
@@ -68,15 +71,23 @@ export default function MembershipContactsDirectory({ serviceName, enrollments =
 
   const filteredRows = useMemo(() => {
     const query = searchTerm.trim().toLowerCase();
-    if (!query) return directoryRows;
-    return directoryRows.filter((row) => [
-      row.clientName,
-      row.phoneNumber,
-      ...row.memberships.map((membership) => membership.name),
-    ].some((value) => value?.toLowerCase().includes(query)));
-  }, [directoryRows, searchTerm]);
+    return directoryRows.filter((row) => {
+      const active = row.memberships.some((membership) => membership.active);
+      if (branchFilter && row.branch !== branchFilter) return false;
+      if (statusFilter === 'active' && !active) return false;
+      if (statusFilter === 'inactive' && active) return false;
+      if (!query) return true;
+      return [row.clientName, row.branch, row.phoneNumber, ...row.memberships.map((membership) => membership.name)]
+        .some((value) => value?.toLowerCase().includes(query));
+    });
+  }, [branchFilter, directoryRows, searchTerm, statusFilter]);
 
-  const activeMembershipCount = directoryRows.reduce(
+  const branches = useMemo(
+    () => [...new Set(directoryRows.map((row) => row.branch).filter(Boolean))].sort((a, b) => a.localeCompare(b)),
+    [directoryRows],
+  );
+
+  const activeMembershipCount = filteredRows.reduce(
     (total, row) => total + row.memberships.filter((membership) => membership.active).length,
     0,
   );
@@ -88,9 +99,10 @@ export default function MembershipContactsDirectory({ serviceName, enrollments =
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h2 className="text-xl font-bold text-slate-900 dark:text-white">Client contact details</h2>
-          <p className="mt-1 text-sm text-slate-500">{directoryRows.length} clients · {activeMembershipCount} active memberships</p>
+          <p className="mt-1 text-sm text-slate-500">{filteredRows.length} clients · {activeMembershipCount} active memberships</p>
         </div>
-        <label className="w-full md:w-72">
+        <div className="flex w-full flex-col gap-2 sm:flex-row md:w-auto">
+        <label className="w-full sm:w-64">
           <span className="sr-only">Search {serviceName.toLowerCase()} client contacts</span>
           <input
             type="search"
@@ -100,6 +112,16 @@ export default function MembershipContactsDirectory({ serviceName, enrollments =
             className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-medium outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
           />
         </label>
+        <select value={branchFilter} onChange={(event) => setBranchFilter(event.target.value)} className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-medium outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 sm:w-48">
+          <option value="">All branches</option>
+          {branches.map((branch) => <option key={branch} value={branch}>{branch}</option>)}
+        </select>
+        <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-medium outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 sm:w-36">
+          <option value="">All statuses</option>
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
+        </select>
+        </div>
       </div>
 
       {filteredRows.length === 0 ? (
