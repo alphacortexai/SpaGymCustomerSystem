@@ -400,6 +400,8 @@ export default function Home() {
     coreDataReady,
     clientDataLoaded,
     loadClientData,
+    loadEnrollmentData,
+    enrollmentDataLoaded,
     fullDataLoading: isFullDataLoading,
     activeGymEnrollmentCount,
     activeSpaEnrollmentCount,
@@ -555,10 +557,14 @@ export default function Home() {
   }, [coreDataReady, clientDataLoaded, cachedBranches, cachedAllBirthdays, cachedGlobalClients, cachedAllClients, cachedTodaysBirthdays, selectedBranch]);
 
   useEffect(() => {
-    if (['birthdays', 'birthday-analytics', 'reports', 'check-ins', 'new-clients-analytics'].includes(activeTab)) {
+    if (['birthdays', 'birthday-analytics', 'reports', 'check-ins', 'new-clients-analytics', 'gym', 'spa'].includes(activeTab)) {
       void loadClientData();
     }
   }, [activeTab, loadClientData]);
+
+  useEffect(() => {
+    if (activeTab === 'gym' || activeTab === 'spa') void loadEnrollmentData();
+  }, [activeTab, loadEnrollmentData]);
 
   const birthdayReminderMessages = useMemo(() => {
     const assignedBranches = Array.isArray(profile?.assignedBranches) ? profile.assignedBranches.filter(Boolean) : [];
@@ -1677,6 +1683,7 @@ export default function Home() {
                       serviceName="Gym"
                       enrollments={cachedGymEnrollments}
                       clients={globalClients.length ? globalClients : cachedGlobalClients}
+                      isLoading={!enrollmentDataLoaded || !clientDataLoaded}
                     />
                   )}
                 </div>
@@ -1770,6 +1777,7 @@ export default function Home() {
                       serviceName="Spa"
                       enrollments={cachedSpaEnrollments}
                       clients={globalClients.length ? globalClients : cachedGlobalClients}
+                      isLoading={!enrollmentDataLoaded || !clientDataLoaded}
                     />
                   )}
                 </div>

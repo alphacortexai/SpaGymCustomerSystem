@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import LoadingState from './LoadingState';
 
 function toDate(value) {
   if (!value) return null;
@@ -23,7 +24,7 @@ function StatusBadge({ active }) {
   );
 }
 
-export default function MembershipContactsDirectory({ serviceName, enrollments = [], clients = [] }) {
+export default function MembershipContactsDirectory({ serviceName, enrollments = [], clients = [], isLoading = false }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [today] = useState(() => {
     const value = new Date();
@@ -82,6 +83,8 @@ export default function MembershipContactsDirectory({ serviceName, enrollments =
 
   return (
     <div className="space-y-4">
+      {isLoading ? <LoadingState title={`Loading ${serviceName.toLowerCase()} contacts...`} description="Preparing membership and client records." /> : (
+      <>
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h2 className="text-xl font-bold text-slate-900 dark:text-white">Client contact details</h2>
@@ -136,7 +139,8 @@ export default function MembershipContactsDirectory({ serviceName, enrollments =
           </table>
         </div>
       )}
+      </>
+      )}
     </div>
   );
 }
-

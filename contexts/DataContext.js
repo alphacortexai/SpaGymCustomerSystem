@@ -5,6 +5,7 @@ import { useAuth } from './AuthContext';
 import { getAllClients, getTodaysBirthdays, getClientCountsByBranch, getBirthdayCountsByBranch } from '@/lib/clients';
 import { getAllBranches } from '@/lib/branches';
 import { getBirthdayCallers } from '@/lib/birthdayCallers';
+import { getAllEnrollments } from '@/lib/memberships';
 
 const DataContext = createContext({});
 
@@ -32,11 +33,14 @@ export function DataProvider({ children }) {
   const activeUserIdRef = useRef(null);
   const requestGenerationRef = useRef(0);
   const clientLoadPromiseRef = useRef(null);
+  const enrollmentLoadPromiseRef = useRef(null);
   const clientDataLoadedRef = useRef(false);
+  const enrollmentDataLoadedRef = useRef(false);
   const [data, setData] = useState(createEmptyData);
   const [loading, setLoading] = useState(false);
   const [coreDataReady, setCoreDataReady] = useState(false);
   const [clientDataLoaded, setClientDataLoaded] = useState(false);
+  const [enrollmentDataLoaded, setEnrollmentDataLoaded] = useState(false);
   const [fullDataLoading, setFullDataLoading] = useState(false);
 
   const patchClient = useCallback((clientId, patch) => {
@@ -103,6 +107,27 @@ export function DataProvider({ children }) {
     } catch (error) {
       console.error('Error refreshing birthday data:', error);
     }
+  }, [user]);
+
+  const loadEnrollmentData = useCallback(async (force = false) => {
+    if (!user) return;
+    if (enrollmentLoadPromiseRef.current) return enrollmentLoadPromiseRef.current;
+    if (!force && enrollmentDataLoadedRef.current) return;
+
+    const generation = requestGenerationRef.current;
+    const request = Promise.all([getAllEnrollments(false), getAllEnrollments(true)])
+      .then(([gymEnrollments, spaEnrollments]) => {
+        if (generation !== requestGenerationRef.current) return;
+        enrollmentDataLoadedRef.current = true;
+        setEnrollmentDataLoaded(true);
+        setData((prev) => ({ ...prev, gymEnrollments, spaEnrollments }));
+      })
+      .catch((error) => console.error('Error loading enrollment data:', error))
+      .finally(() => {
+        if (enrollmentLoadPromiseRef.current === request) enrollmentLoadPromiseRef.current = null;
+      });
+    enrollmentLoadPromiseRef.current = request;
+    return request;
   }, [user]);
 
   const loadData = useCallback(async (force = false) => {
@@ -174,10 +199,13 @@ export function DataProvider({ children }) {
     requestGenerationRef.current += 1;
     loadingRef.current = false;
     clientLoadPromiseRef.current = null;
+    enrollmentLoadPromiseRef.current = null;
     clientDataLoadedRef.current = false;
+    enrollmentDataLoadedRef.current = false;
     setData(createEmptyData());
     setCoreDataReady(false);
     setClientDataLoaded(false);
+    setEnrollmentDataLoaded(false);
     setLoading(false);
     setFullDataLoading(false);
   }, [user?.uid]);
@@ -196,6 +224,8 @@ export function DataProvider({ children }) {
       clientDataLoaded,
       fullDataLoading,
       loadClientData,
+      loadEnrollmentData,
+      enrollmentDataLoaded,
       patchClient,
       refreshBirthdayData,
       refreshData,
