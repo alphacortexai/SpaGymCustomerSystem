@@ -1,6 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { usePageVisibility } from '@/lib/usePageVisibility';
 
 function formatDate(value) {
   if (!value) return '—';
@@ -14,6 +15,8 @@ function isOnline(value) {
 }
 
 export default function GuestFlowDeviceAccess({ user, onBack }) {
+  const isVisible = usePageVisibility();
+  const wasVisibleRef = useRef(isVisible);
   const [devices, setDevices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [workingId, setWorkingId] = useState('');
@@ -22,9 +25,9 @@ export default function GuestFlowDeviceAccess({ user, onBack }) {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
 
-  const loadDevices = useCallback(async () => {
+  const loadDevices = useCallback(async ({ silent = false } = {}) => {
     if (!user) return;
-    setLoading(true);
+    if (!silent) setLoading(true);
     setError('');
     try {
       const token = await user.getIdToken();
@@ -35,15 +38,24 @@ export default function GuestFlowDeviceAccess({ user, onBack }) {
     } catch (loadError) {
       setError(loadError.message || 'Could not load device requests.');
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [user]);
 
   useEffect(() => {
-    loadDevices();
-    const interval = window.setInterval(loadDevices, 5000);
-    return () => window.clearInterval(interval);
+    void loadDevices();
   }, [loadDevices]);
+
+  useEffect(() => {
+    if (!isVisible) return undefined;
+    const interval = window.setInterval(() => { void loadDevices({ silent: true }); }, 5000);
+    return () => window.clearInterval(interval);
+  }, [isVisible, loadDevices]);
+
+  useEffect(() => {
+    if (isVisible && !wasVisibleRef.current) void loadDevices({ silent: true });
+    wasVisibleRef.current = isVisible;
+  }, [isVisible, loadDevices]);
 
   async function updateDevice(device, action, body = {}) {
     setWorkingId(device.id);

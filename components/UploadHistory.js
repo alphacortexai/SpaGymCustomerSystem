@@ -1,57 +1,41 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { getUploadHistory } from '@/lib/uploadHistory';
+import { usePageVisibility } from '@/lib/usePageVisibility';
 
 export default function UploadHistory() {
+  const isVisible = usePageVisibility();
+  const wasVisibleRef = useRef(isVisible);
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all'); // 'all', 'completed', 'failed', 'processing'
 
-  useEffect(() => {
-    loadHistory();
-  }, [filter]);
-
-  useEffect(() => {
-    // Auto-refresh every 30 seconds - but only when tab is visible
-    const interval = setInterval(() => {
-      if (!document.hidden) {
-        loadHistory();
-      }
-    }, 30000);
-    
-    return () => clearInterval(interval);
-  }, []);
-
-  // Refresh when tab becomes visible again
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (!document.hidden) {
-        loadHistory();
-      }
-    };
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, []);
-
-  const loadHistory = async () => {
-    setLoading(true);
+  const loadHistory = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
-      const allHistory = await getUploadHistory(50); // Get more to filter client-side
-      let filtered = allHistory;
-      
-      if (filter !== 'all') {
-        filtered = allHistory.filter(item => item.status === filter);
-      }
-      
+      const allHistory = await getUploadHistory(50);
+      const filtered = filter === 'all' ? allHistory : allHistory.filter((item) => item.status === filter);
       setHistory(filtered);
     } catch (error) {
       console.error('Error loading history:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [filter]);
+
+  useEffect(() => {
+    if (!isVisible) {
+      wasVisibleRef.current = false;
+      return undefined;
+    }
+    const isReturningFromBackground = !wasVisibleRef.current;
+    wasVisibleRef.current = true;
+    void loadHistory(isReturningFromBackground);
+    const interval = setInterval(() => { void loadHistory(true); }, 30000);
+    return () => clearInterval(interval);
+  }, [isVisible, loadHistory]);
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -112,7 +96,7 @@ export default function UploadHistory() {
                 {history.length}
               </span>
               <button
-                onClick={loadHistory}
+                onClick={() => loadHistory()}
                 disabled={loading}
                 className="p-2 bg-gray-100 hover:bg-gray-200 rounded-md text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 title="Refresh history"
@@ -413,4 +397,3 @@ export default function UploadHistory() {
     </div>
   );
 }
-
