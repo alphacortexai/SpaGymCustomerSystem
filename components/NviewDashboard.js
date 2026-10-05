@@ -100,7 +100,7 @@ export default function NviewDashboard() {
         subtitle: clientsByBranch.topBranch,
         color: 'blue',
         icon: '👥',
-        backgroundImage: '/clients_bg.png',
+        backgroundImage: '/clients_bg.webp',
         distribution: clientsByBranch.distribution
       },
       todaysBirthdays: {
@@ -117,7 +117,7 @@ export default function NviewDashboard() {
         subtitle: 'Active members',
         color: 'purple',
         icon: '💆‍♀️',
-        backgroundImage: '/spa_bg.jpg'
+        backgroundImage: '/spa_bg.webp'
       },
       gymMemberships: {
         value: activeGymMembers,
@@ -125,7 +125,7 @@ export default function NviewDashboard() {
         subtitle: 'Active members',
         color: 'blue',
         icon: '🏋️',
-        backgroundImage: '/gym_bg.jpg'
+        backgroundImage: '/gym_bg.webp'
       }
     };
   }, [globalClients, gymEnrollments, spaEnrollments, allBirthdays, clientsByBranch, clientCountsByBranch, activeGymEnrollmentCount, activeSpaEnrollmentCount]);

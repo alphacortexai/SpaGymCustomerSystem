@@ -49,10 +49,10 @@ export default function SignIn() {
     return (
       <div className="min-h-screen flex items-center justify-center relative overflow-hidden">
         <div className="absolute inset-0 z-0">
-          <Image 
-            src="/login_bg.jpg" 
-            alt="Background" 
-            fill 
+          <Image
+            src="/login_bg.webp"
+            alt="Background"
+            fill
             className="object-cover"
             priority
           />
@@ -70,10 +70,10 @@ export default function SignIn() {
     <div className="min-h-screen flex items-center justify-center relative overflow-hidden">
       {/* Background Image */}
       <div className="absolute inset-0 z-0">
-        <Image 
-          src="/login_bg.jpg" 
-          alt="Background" 
-          fill 
+        <Image
+          src="/login_bg.webp"
+          alt="Background"
+          fill
           className="object-cover"
           priority
         />
@@ -103,13 +103,13 @@ export default function SignIn() {
               (Birthdays & Memberships)
             </p>
           </div>
-          
+
           {error && (
             <div className="mb-6 bg-rose-500/20 border border-rose-500/30 text-white px-4 py-3 rounded-xl text-sm font-medium">
               {error}
             </div>
           )}
-          
+
           <button
             onClick={() => handleGoogleSignIn()}
             disabled={loading}
