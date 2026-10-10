@@ -6,7 +6,7 @@ import dynamic from 'next/dynamic';
 import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
 import { signOut } from '@/lib/auth';
-import { searchClients, getClientsPage } from '@/lib/clients';
+import { searchClients, getClientsPage, getBirthdayClientsByMonth } from '@/lib/clients';
 import { affirmations } from '@/lib/affirmations';
 import { getActiveNotesCount } from '@/lib/notes';
 import ProtectedRoute from '@/components/ProtectedRoute';
@@ -323,13 +323,35 @@ const isBirthdayOfferRedeemed = (client) => {
   return Boolean(client?.birthdayOfferRedeemedAt || client?.birthdayOfferRedeemedDate);
 };
 
-const SummaryPanel = ({ clients, branches, loading }) => {
+const SummaryPanel = ({ branches }) => {
   const now = new Date();
   const [birthdayMonth, setBirthdayMonth] = useState(now.getMonth() + 1);
   const [summaryBranch, setSummaryBranch] = useState('');
+  const [birthdayMonthData, setBirthdayMonthData] = useState({ month: null, clients: [] });
 
-  const branchClients = useMemo(() => summaryBranch ? clients.filter((client) => client.branch === summaryBranch) : clients, [clients, summaryBranch]);
-  const birthdayClients = useMemo(() => branchClients.filter((client) => Number(client.birthMonth) === birthdayMonth), [birthdayMonth, branchClients]);
+  useEffect(() => {
+    let cancelled = false;
+    getBirthdayClientsByMonth(birthdayMonth)
+      .then((clients) => {
+        if (!cancelled) setBirthdayMonthData({ month: birthdayMonth, clients });
+      })
+      .catch((error) => {
+        console.error('Unable to load birthday summary:', error);
+        if (!cancelled) setBirthdayMonthData({ month: birthdayMonth, clients: [] });
+      });
+    return () => { cancelled = true; };
+  }, [birthdayMonth]);
+
+  const birthdayMonthLoading = birthdayMonthData.month !== birthdayMonth;
+  const birthdayClients = useMemo(
+    () => {
+      if (birthdayMonthLoading) return [];
+      return summaryBranch
+        ? birthdayMonthData.clients.filter((client) => client.branch === summaryBranch)
+        : birthdayMonthData.clients;
+    },
+    [birthdayMonthData, birthdayMonthLoading, summaryBranch]
+  );
   const birthdayMonthLabel = useMemo(() => new Date(2000, birthdayMonth - 1, 1).toLocaleDateString(undefined, { month: 'long' }), [birthdayMonth]);
   const contactedCount = useMemo(() => birthdayClients.filter(isBirthdayContacted).length, [birthdayClients]);
   const redeemedCount = useMemo(() => birthdayClients.filter(isBirthdayOfferRedeemed).length, [birthdayClients]);
@@ -350,7 +372,7 @@ const SummaryPanel = ({ clients, branches, loading }) => {
           </select>
         </div>
       </div>
-      {loading ? <p className="mt-5 text-sm text-slate-500">Loading summary...</p> : (
+      {birthdayMonthLoading ? <p className="mt-5 text-sm text-slate-500">Loading birthday summary...</p> : (
         <div className="mt-5 rounded-2xl border border-violet-100 bg-gradient-to-r from-violet-50/70 via-white to-pink-50/60 p-5 shadow-sm dark:border-violet-900/40 dark:from-violet-950/20 dark:via-slate-900 dark:to-pink-950/20">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
             <div>
@@ -1113,7 +1135,7 @@ export default function Home() {
                   </div>
                 </section>
                 <div className="hidden md:block">
-                  <SummaryPanel clients={globalClients.length ? globalClients : cachedGlobalClients} branches={branches} loading={isFullDataLoading} />
+                  <SummaryPanel branches={branches} />
                 </div>
                 </>
               ) : (
