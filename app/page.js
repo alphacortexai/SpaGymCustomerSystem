@@ -327,17 +327,17 @@ const SummaryPanel = ({ branches }) => {
   const now = new Date();
   const [birthdayMonth, setBirthdayMonth] = useState(now.getMonth() + 1);
   const [summaryBranch, setSummaryBranch] = useState('');
-  const [birthdayMonthData, setBirthdayMonthData] = useState({ month: null, clients: [] });
+  const [birthdayMonthData, setBirthdayMonthData] = useState({ month: null, clients: [], error: false });
 
   useEffect(() => {
     let cancelled = false;
     getBirthdayClientsByMonth(birthdayMonth)
       .then((clients) => {
-        if (!cancelled) setBirthdayMonthData({ month: birthdayMonth, clients });
+        if (!cancelled) setBirthdayMonthData({ month: birthdayMonth, clients, error: false });
       })
       .catch((error) => {
         console.error('Unable to load birthday summary:', error);
-        if (!cancelled) setBirthdayMonthData({ month: birthdayMonth, clients: [] });
+        if (!cancelled) setBirthdayMonthData({ month: birthdayMonth, clients: [], error: true });
       });
     return () => { cancelled = true; };
   }, [birthdayMonth]);
@@ -345,7 +345,7 @@ const SummaryPanel = ({ branches }) => {
   const birthdayMonthLoading = birthdayMonthData.month !== birthdayMonth;
   const birthdayClients = useMemo(
     () => {
-      if (birthdayMonthLoading) return [];
+      if (birthdayMonthLoading || birthdayMonthData.error) return [];
       return summaryBranch
         ? birthdayMonthData.clients.filter((client) => client.branch === summaryBranch)
         : birthdayMonthData.clients;
@@ -372,7 +372,9 @@ const SummaryPanel = ({ branches }) => {
           </select>
         </div>
       </div>
-      {birthdayMonthLoading ? <p className="mt-5 text-sm text-slate-500">Loading birthday summary...</p> : (
+      {birthdayMonthLoading ? <p className="mt-5 text-sm text-slate-500">Loading birthday summary...</p> : birthdayMonthData.error ? (
+        <p className="mt-5 text-sm text-rose-600" role="alert">Unable to load the birthday summary. Please refresh and try again.</p>
+      ) : (
         <div className="mt-5 rounded-2xl border border-violet-100 bg-gradient-to-r from-violet-50/70 via-white to-pink-50/60 p-5 shadow-sm dark:border-violet-900/40 dark:from-violet-950/20 dark:via-slate-900 dark:to-pink-950/20">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
             <div>
