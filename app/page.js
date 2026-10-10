@@ -870,7 +870,15 @@ export default function Home() {
   const birthdayBadgeTotal = useMemo(() => {
     // Use cached counts if available (fast)
     if (cachedBirthdayCounts && Object.keys(cachedBirthdayCounts).length > 0) {
-      return Object.values(cachedBirthdayCounts).reduce((sum, count) => sum + count, 0).toString();
+      // The aggregate includes a `total` as well as per-branch subtotals.
+      // Adding every value counts the same birthdays twice.
+      if (Number.isFinite(cachedBirthdayCounts.total)) {
+        return cachedBirthdayCounts.total.toString();
+      }
+      return Object.entries(cachedBirthdayCounts)
+        .filter(([key]) => key !== 'total')
+        .reduce((sum, [, count]) => sum + (Number(count) || 0), 0)
+        .toString();
     }
 
     // Fallback to counting from array
