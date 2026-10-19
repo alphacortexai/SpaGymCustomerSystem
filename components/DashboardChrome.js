@@ -194,3 +194,89 @@ export const WorkspaceRail = ({ activeTab, setActiveTab, profile, showAdminSecti
     </div>
   </aside>
 );
+
+export const TodayDesk = ({
+  total = 0,
+  waiting = 0,
+  people = [],
+  ready = false,
+  notesCount = 0,
+  showBirthdays = true,
+  showCheckIns = false,
+  onOpenBirthdays,
+  onOpenNotes,
+  onOpenCheckIns,
+  onOpenInvoices,
+}) => {
+  const reached = waiting == null ? null : Math.max(total - waiting, 0);
+  const focusTitle = !ready
+    ? 'Checking today'
+    : !showBirthdays
+      ? (notesCount > 0 ? `${notesCount} open notes` : 'Notes are clear')
+      : waiting > 0
+        ? `${waiting} still to reach`
+        : waiting == null && total > 0
+          ? `${total} birthdays today`
+          : total > 0
+            ? 'Everyone is reached'
+            : 'No birthdays today';
+  const focusNote = !ready
+    ? 'Birthday calls will appear here.'
+    : !showBirthdays
+      ? 'Open notes to see what is waiting.'
+      : reached != null && total > 0
+        ? `${reached} of ${total} already contacted`
+        : total > 0
+          ? 'Open the list to see who still needs a call.'
+          : 'The birthday list is empty for today.';
+  const focusKicker = !showBirthdays ? 'Notes' : waiting > 0 ? 'Needs a call' : 'Birthdays';
+  const focusClass = waiting > 0 && showBirthdays ? 'is-open' : 'is-clear';
+  const onFocus = !showBirthdays ? onOpenNotes : onOpenBirthdays;
+
+  return (
+    <aside className="home-today" aria-label="Today">
+      <div className="home-today-head">
+        <h2>Today</h2>
+        {showBirthdays && (
+          <button type="button" className="home-today-see" onClick={onOpenBirthdays}>See all</button>
+        )}
+      </div>
+      <button type="button" className={`today-focus ${focusClass}`} onClick={onFocus}>
+        <span className="today-focus-kicker">{focusKicker}</span>
+        <span className="today-focus-title">{focusTitle}</span>
+        <span className="today-focus-note">{focusNote}</span>
+      </button>
+      {showBirthdays && people.length > 0 && (
+        <ul className="today-people">
+          {people.map((person) => (
+            <li key={person.id}>
+              <button type="button" onClick={onOpenBirthdays}>
+                <span className={`today-dot ${person.waiting ? 'is-waiting' : 'is-done'}`} aria-hidden="true" />
+                <span className="today-person">
+                  <span className="today-person-name">{person.name}</span>
+                  <span className="today-person-meta">{person.waiting ? 'Still to call' : 'Reached'}{person.branch ? ` · ${person.branch}` : ''}</span>
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <div className="today-links">
+        <button type="button" onClick={onOpenNotes}>
+          <span>Notes</span>
+          <span>{notesCount > 0 ? `${notesCount} open` : 'Clear'}</span>
+        </button>
+        {showCheckIns && (
+          <button type="button" onClick={onOpenCheckIns}>
+            <span>Check-ins</span>
+            <span>Open</span>
+          </button>
+        )}
+        <button type="button" onClick={onOpenInvoices}>
+          <span>Invoices</span>
+          <span>Open</span>
+        </button>
+      </div>
+    </aside>
+  );
+};

@@ -1395,3 +1395,181 @@ button { @apply transition-all duration-200 active:scale-95; }
     white-space: nowrap;
   }
 }
+
+.home-workspace {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+.home-today {
+  order: -1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.home-today-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 0.15rem;
+}
+.home-today-head h2 {
+  color: #172033;
+  font-size: 1rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+.home-today-see {
+  color: #64748b;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+.home-today-see:hover {
+  color: #4f6ef7;
+}
+.today-focus {
+  display: flex;
+  min-height: 132px;
+  width: 100%;
+  flex-direction: column;
+  align-items: flex-start;
+  border-radius: 22px;
+  padding: 1.05rem 1.1rem 1rem;
+  text-align: left;
+}
+.today-focus.is-open {
+  background: linear-gradient(160deg, #ff4fa3 0%, #ff77c2 100%);
+  color: #ffffff;
+}
+.today-focus.is-clear {
+  border: 1px solid #e6ebf3;
+  background: #f7f8fb;
+  color: #172033;
+}
+.today-focus-kicker {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.82;
+}
+.today-focus-title {
+  margin-top: 0.65rem;
+  font-size: 1.35rem;
+  font-weight: 650;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+}
+.today-focus-note {
+  margin-top: auto;
+  padding-top: 0.8rem;
+  font-size: 0.78rem;
+  opacity: 0.86;
+}
+.today-people {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.today-people button {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 0.7rem;
+  border: 1px solid #e6ebf3;
+  border-radius: 14px;
+  background: #ffffff;
+  padding: 0.65rem 0.75rem;
+  text-align: left;
+}
+.today-people button:hover {
+  border-color: #d5deea;
+}
+.today-dot {
+  width: 0.55rem;
+  height: 0.55rem;
+  flex: 0 0 0.55rem;
+  border-radius: 999px;
+  background: #d1d5db;
+}
+.today-dot.is-waiting {
+  background: #ff4fa3;
+}
+.today-dot.is-done {
+  background: #1faa62;
+}
+.today-person {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+.today-person-name {
+  overflow: hidden;
+  color: #172033;
+  font-size: 0.86rem;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.today-person-meta {
+  color: #8b95a7;
+  font-size: 0.72rem;
+}
+.today-links {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.today-links button {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  border-radius: 12px;
+  background: transparent;
+  padding: 0.45rem 0.2rem;
+  color: #172033;
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+.today-links button span:last-child {
+  color: #8b95a7;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.today-links button:hover {
+  color: #4f6ef7;
+}
+.dark .home-today-head h2,
+.dark .today-person-name,
+.dark .today-links button,
+.dark .today-focus.is-clear {
+  color: #f8fafc;
+}
+.dark .today-focus.is-clear,
+.dark .today-people button {
+  border-color: rgba(255, 255, 255, 0.08);
+  background: #1d212b;
+}
+.dark .today-person-meta,
+.dark .today-links button span:last-child {
+  color: #94a3b8;
+}
+
+@media (min-width: 1180px) {
+  .home-workspace {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 292px;
+    align-items: start;
+    gap: 1.35rem;
+  }
+  .home-today {
+    order: 0;
+  }
+  .home-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

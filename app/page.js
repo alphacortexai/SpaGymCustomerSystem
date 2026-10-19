@@ -11,7 +11,7 @@ import { affirmations } from '@/lib/affirmations';
 import { getActiveNotesCount } from '@/lib/notes';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import LoadingState from '@/components/LoadingState';
-import { NavCard, QuickActionIcon, TypedBirthdayReminder, TypedGreeting, WorkspaceRail } from '@/components/DashboardChrome';
+import { NavCard, QuickActionIcon, TodayDesk, TypedBirthdayReminder, TypedGreeting, WorkspaceRail } from '@/components/DashboardChrome';
 import { usePageVisibility } from '@/lib/usePageVisibility';
 
 const LazySectionFallback = () => (
@@ -384,6 +384,26 @@ export default function Home() {
   useEffect(() => {
     if (activeTab === 'gym' || activeTab === 'spa') void loadEnrollmentData();
   }, [activeTab, loadEnrollmentData]);
+
+  const todayBirthdayDesk = useMemo(() => {
+    const source = todaysBirthdays.length ? todaysBirthdays : cachedTodaysBirthdays;
+    const people = source.map((client, index) => ({
+      id: client.id || client.phoneNumber || `${client.name || 'client'}-${index}`,
+      name: client.name || 'Unnamed client',
+      branch: client.branch || '',
+      waiting: !isBirthdayContacted(client),
+    }));
+    const countedTotal = Number(cachedBirthdayCounts?.total);
+    const total = source.length || (Number.isFinite(countedTotal) ? countedTotal : 0);
+    const waiting = source.length ? people.filter((person) => person.waiting).length : null;
+    const ordered = [...people.filter((person) => person.waiting), ...people.filter((person) => !person.waiting)];
+    return {
+      total,
+      waiting,
+      people: ordered.slice(0, 4),
+      ready: Boolean(cachedBirthdayCounts) || dataLoaded || source.length > 0,
+    };
+  }, [cachedBirthdayCounts, cachedTodaysBirthdays, dataLoaded, todaysBirthdays]);
 
   const birthdayReminderMessages = useMemo(() => {
     const assignedBranches = Array.isArray(profile?.assignedBranches) ? profile.assignedBranches.filter(Boolean) : [];
@@ -905,27 +925,43 @@ export default function Home() {
               </div>}
 
                   {!showAdminSection ? (
-                <>
-                <section>
-                  <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-                  {profile?.permissions?.clients?.view !== false && (
-                    <NavCard onClick={() => setActiveTab('dashboard')} title="Clients" description="In the database" metric={cachedClientCounts ? clientBadgeTotal : (dataLoaded ? '...' : '—')} accentCard={profile?.permissions?.gym?.view === false} />
-                  )}
-                  {profile?.permissions?.birthdays?.view !== false && (
-                    <NavCard onClick={() => setActiveTab('birthdays')} title="Birthdays" description="Celebrating today" metric={cachedBirthdayCounts ? birthdayBadgeTotal : (dataLoaded ? '...' : '—')} />
-                  )}
-                  {profile?.permissions?.gym?.view !== false && (
-                    <NavCard onClick={() => setActiveTab('gym')} title="GYM" description="Active members" metric={dataLoaded ? activeGymMembers : '—'} accentCard />
-                  )}
-                  {profile?.permissions?.spa?.view !== false && (
-                    <NavCard onClick={() => setActiveTab('spa')} title="SPA" description="Active members" metric={dataLoaded ? activeSpaMembers : '—'} />
-                  )}
+                <div className="home-workspace">
+                  <div className="home-workspace-main space-y-6">
+                    <section>
+                      <div className="home-metrics grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+                      {profile?.permissions?.clients?.view !== false && (
+                        <NavCard onClick={() => setActiveTab('dashboard')} title="Clients" description="In the database" metric={cachedClientCounts ? clientBadgeTotal : (dataLoaded ? '...' : '—')} accentCard={profile?.permissions?.gym?.view === false} />
+                      )}
+                      {profile?.permissions?.birthdays?.view !== false && (
+                        <NavCard onClick={() => setActiveTab('birthdays')} title="Birthdays" description="Celebrating today" metric={cachedBirthdayCounts ? birthdayBadgeTotal : (dataLoaded ? '...' : '—')} />
+                      )}
+                      {profile?.permissions?.gym?.view !== false && (
+                        <NavCard onClick={() => setActiveTab('gym')} title="GYM" description="Active members" metric={dataLoaded ? activeGymMembers : '—'} accentCard />
+                      )}
+                      {profile?.permissions?.spa?.view !== false && (
+                        <NavCard onClick={() => setActiveTab('spa')} title="SPA" description="Active members" metric={dataLoaded ? activeSpaMembers : '—'} />
+                      )}
+                      </div>
+                    </section>
+                    <div className="hidden md:block">
+                      <SummaryPanel branches={branches} />
+                    </div>
+                    <p className="dashboard-quote">“{currentAffirmation}”</p>
                   </div>
-                </section>
-                <div className="hidden md:block">
-                  <SummaryPanel branches={branches} />
+                  <TodayDesk
+                    total={todayBirthdayDesk.total}
+                    waiting={todayBirthdayDesk.waiting}
+                    people={todayBirthdayDesk.people}
+                    ready={todayBirthdayDesk.ready}
+                    notesCount={activeNotesCount}
+                    showBirthdays={profile?.permissions?.birthdays?.view !== false}
+                    showCheckIns={profile?.role === 'Admin' || profile?.permissions?.clients?.view === true}
+                    onOpenBirthdays={() => setActiveTab('birthdays')}
+                    onOpenNotes={() => setActiveTab('notes')}
+                    onOpenCheckIns={() => setActiveTab('check-ins')}
+                    onOpenInvoices={() => setActiveTab('invoice')}
+                  />
                 </div>
-                </>
               ) : (
                 <div className="space-y-6">
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -987,7 +1023,6 @@ export default function Home() {
                   </div>
                 </div>
               )}
-                {!showAdminSection && <p className="dashboard-quote">“{currentAffirmation}”</p>}
               </div>
           )}
 
