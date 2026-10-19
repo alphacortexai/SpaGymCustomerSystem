@@ -33,14 +33,15 @@ export function DataProvider({ children }) {
   const activeUserIdRef = useRef(null);
   const requestGenerationRef = useRef(0);
   const clientLoadPromiseRef = useRef(null);
-  const enrollmentLoadPromiseRef = useRef(null);
+  const enrollmentLoadPromiseRef = useRef({ gym: null, spa: null });
   const clientDataLoadedRef = useRef(false);
-  const enrollmentDataLoadedRef = useRef(false);
+  const enrollmentLoadedRef = useRef({ gym: false, spa: false });
   const [data, setData] = useState(createEmptyData);
   const [loading, setLoading] = useState(false);
   const [coreDataReady, setCoreDataReady] = useState(false);
   const [clientDataLoaded, setClientDataLoaded] = useState(false);
-  const [enrollmentDataLoaded, setEnrollmentDataLoaded] = useState(false);
+  const [gymEnrollmentsLoaded, setGymEnrollmentsLoaded] = useState(false);
+  const [spaEnrollmentsLoaded, setSpaEnrollmentsLoaded] = useState(false);
   const [fullDataLoading, setFullDataLoading] = useState(false);
 
   const patchClient = useCallback((clientId, patch) => {
@@ -109,25 +110,35 @@ export function DataProvider({ children }) {
     }
   }, [user]);
 
-  const loadEnrollmentData = useCallback(async (force = false) => {
+  const loadEnrollmentData = useCallback(async (force = false, service = 'both') => {
     if (!user) return;
-    if (enrollmentLoadPromiseRef.current) return enrollmentLoadPromiseRef.current;
-    if (!force && enrollmentDataLoadedRef.current) return;
-
+    const services = service === 'gym' || service === 'spa' ? [service] : ['gym', 'spa'];
     const generation = requestGenerationRef.current;
-    const request = Promise.all([getAllEnrollments(false), getAllEnrollments(true)])
-      .then(([gymEnrollments, spaEnrollments]) => {
-        if (generation !== requestGenerationRef.current) return;
-        enrollmentDataLoadedRef.current = true;
-        setEnrollmentDataLoaded(true);
-        setData((prev) => ({ ...prev, gymEnrollments, spaEnrollments }));
-      })
-      .catch((error) => console.error('Error loading enrollment data:', error))
-      .finally(() => {
-        if (enrollmentLoadPromiseRef.current === request) enrollmentLoadPromiseRef.current = null;
-      });
-    enrollmentLoadPromiseRef.current = request;
-    return request;
+
+    const jobs = services.map((name) => {
+      if (enrollmentLoadPromiseRef.current[name]) return enrollmentLoadPromiseRef.current[name];
+      if (!force && enrollmentLoadedRef.current[name]) return Promise.resolve();
+
+      const request = getAllEnrollments(name === 'spa')
+        .then((enrollments) => {
+          if (generation !== requestGenerationRef.current) return;
+          enrollmentLoadedRef.current[name] = true;
+          setData((prev) => ({
+            ...prev,
+            ...(name === 'spa' ? { spaEnrollments: enrollments } : { gymEnrollments: enrollments }),
+          }));
+          if (name === 'spa') setSpaEnrollmentsLoaded(true);
+          else setGymEnrollmentsLoaded(true);
+        })
+        .catch((error) => console.error(`Error loading ${name} enrollment data:`, error))
+        .finally(() => {
+          if (enrollmentLoadPromiseRef.current[name] === request) enrollmentLoadPromiseRef.current[name] = null;
+        });
+      enrollmentLoadPromiseRef.current[name] = request;
+      return request;
+    });
+
+    return Promise.all(jobs);
   }, [user]);
 
   const loadData = useCallback(async (force = false) => {
@@ -199,13 +210,14 @@ export function DataProvider({ children }) {
     requestGenerationRef.current += 1;
     loadingRef.current = false;
     clientLoadPromiseRef.current = null;
-    enrollmentLoadPromiseRef.current = null;
+    enrollmentLoadPromiseRef.current = { gym: null, spa: null };
     clientDataLoadedRef.current = false;
-    enrollmentDataLoadedRef.current = false;
+    enrollmentLoadedRef.current = { gym: false, spa: false };
     setData(createEmptyData());
     setCoreDataReady(false);
     setClientDataLoaded(false);
-    setEnrollmentDataLoaded(false);
+    setGymEnrollmentsLoaded(false);
+    setSpaEnrollmentsLoaded(false);
     setLoading(false);
     setFullDataLoading(false);
   }, [user?.uid]);
@@ -225,7 +237,9 @@ export function DataProvider({ children }) {
       fullDataLoading,
       loadClientData,
       loadEnrollmentData,
-      enrollmentDataLoaded,
+      enrollmentDataLoaded: gymEnrollmentsLoaded && spaEnrollmentsLoaded,
+      gymEnrollmentsLoaded,
+      spaEnrollmentsLoaded,
       patchClient,
       refreshBirthdayData,
       refreshData,
