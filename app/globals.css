@@ -365,7 +365,36 @@ button { @apply transition-all duration-200 active:scale-95; }
   .quick-actions-glass .operations-group {
     margin-top: 0.25rem;
   }
+
+  .dashboard-desktop-rail .programs-group-chevron {
+    width: 0.9rem;
+    height: 0.9rem;
+    margin-left: auto;
+    flex: 0 0 auto;
+    transition: transform 160ms ease;
+  }
+
+  .dashboard-desktop-rail .programs-group.is-open .programs-group-chevron {
+    transform: rotate(180deg);
+  }
+
+  .dashboard-desktop-rail .programs-group-items {
+    display: none;
+  }
+
+  .dashboard-desktop-rail .programs-group.is-open .programs-group-items {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    margin-top: 0.25rem;
+    padding-left: 0.45rem;
+  }
+
+  .dashboard-desktop-rail .program-flat-link {
+    display: none;
+  }
 }
+
 .quick-actions-glass .dashboard-rail-link:hover {
   border-color: rgba(147, 197, 253, 0.9);
   background: rgba(239, 246, 255, 0.9);
@@ -847,6 +876,9 @@ button { @apply transition-all duration-200 active:scale-95; }
   .mobile-quick-actions .manage-group,
   .mobile-quick-actions .operations-group {
     display: contents !important;
+  }
+  .mobile-quick-actions .programs-group {
+    display: none !important;
   }
   .mobile-quick-actions .dashboard-rail-link {
     width: 100% !important;
