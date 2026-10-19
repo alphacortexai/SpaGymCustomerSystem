@@ -241,6 +241,7 @@ const QuickActionIcon = ({ name }) => {
     notes: 'M4 4h16v16H4zM8 8h8M8 12h8M8 16h5',
     invoices: 'M6 2h9l3 3v17H6zM15 2v4h4M9 11h6M9 15h6M9 19h4',
     tracking: 'M4 19 20 5M10 5h10v10M4 5h.01M4 12h.01M4 19h.01',
+    programs: 'M4 7h16M4 12h16M4 17h10',
     admin: 'M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8ZM4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4M2 12h2M20 12h2M12 2v2M12 20v2',
     upload: 'M12 16V3M7 8l5-5 5 5M4 14v6h16v-6',
     issues: 'M12 9v4M12 17h.01M10.3 3h3.4L21 16.5a2 2 0 0 1-1.7 3H4.7a2 2 0 0 1-1.7-3L10.3 3Z',
@@ -275,14 +276,15 @@ const ProgramsQuickGroup = ({ activeTab, setActiveTab, items }) => {
     <div className={`dashboard-rail-group programs-group ${open ? 'is-open' : ''}`}>
       <button
         type="button"
-        className={`programs-group-toggle ${isCurrent ? 'is-current' : ''}`}
+        className={`dashboard-rail-link programs-group-toggle ${!open && isCurrent ? 'is-active' : ''}`}
         onClick={() => setOpen((current) => !current)}
         aria-expanded={open}
         aria-controls={groupId}
         aria-label={`${open ? 'Collapse' : 'Expand'} SPA, GYM, and Tracking`}
       >
-        <span>SPA & GYM</span>
-        <svg className="programs-group-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6" /></svg>
+        <span className="dashboard-rail-icon"><QuickActionIcon name="programs" /></span>
+        <span className="dashboard-rail-label">SPA & GYM</span>
+        <svg className="programs-group-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
       </button>
       <div id={groupId} className="programs-group-items space-y-1">
         {items.map((item) => (
