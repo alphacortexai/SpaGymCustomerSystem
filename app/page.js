@@ -425,7 +425,8 @@ export default function Home() {
     clientDataLoaded,
     loadClientData,
     loadEnrollmentData,
-    enrollmentDataLoaded,
+    gymEnrollmentsLoaded,
+    spaEnrollmentsLoaded,
     fullDataLoading: isFullDataLoading,
     activeGymEnrollmentCount,
     activeSpaEnrollmentCount,
@@ -433,11 +434,9 @@ export default function Home() {
   } = useData();
 
   const [searchTerm, setSearchTerm] = useState('');
-  const [searchResults, setSearchResults] = useState([]);
   const [todaysBirthdays, setTodaysBirthdays] = useState([]);
   const [allClients, setAllClients] = useState([]);
   const [globalClients, setGlobalClients] = useState([]);
-  const [isSearching, setIsSearching] = useState(false);
   const [activeTab, setActiveTab] = useState('home');
   const [gymSubTab, setGymSubTab] = useState('overview');
   const [spaSubTab, setSpaSubTab] = useState('overview');
@@ -581,14 +580,16 @@ export default function Home() {
   }, [coreDataReady, clientDataLoaded, cachedBranches, cachedAllBirthdays, cachedGlobalClients, cachedAllClients, cachedTodaysBirthdays, selectedBranch]);
 
   useEffect(() => {
-    if (['birthdays', 'birthday-analytics', 'reports', 'check-ins', 'new-clients-analytics', 'gym', 'spa'].includes(activeTab)) {
-      void loadClientData();
-    }
-  }, [activeTab, loadClientData]);
+    const needsFullClients = ['birthdays', 'birthday-analytics', 'reports', 'check-ins', 'new-clients-analytics'].includes(activeTab)
+      || (activeTab === 'gym' && gymSubTab === 'client-contacts')
+      || (activeTab === 'spa' && spaSubTab === 'client-contacts');
+    if (needsFullClients) void loadClientData();
+  }, [activeTab, gymSubTab, spaSubTab, loadClientData]);
 
   useEffect(() => {
-    if (activeTab === 'gym' || activeTab === 'spa') void loadEnrollmentData();
-  }, [activeTab, loadEnrollmentData]);
+    if (activeTab === 'gym' && gymSubTab === 'client-contacts') void loadEnrollmentData(false, 'gym');
+    if (activeTab === 'spa' && spaSubTab === 'client-contacts') void loadEnrollmentData(false, 'spa');
+  }, [activeTab, gymSubTab, spaSubTab, loadEnrollmentData]);
 
   const birthdayReminderMessages = useMemo(() => {
     const assignedBranches = Array.isArray(profile?.assignedBranches) ? profile.assignedBranches.filter(Boolean) : [];
@@ -776,8 +777,16 @@ export default function Home() {
     }
   }, []);
 
+  const previousDashboardSearchRef = useRef(searchTerm);
   useEffect(() => {
-    if (activeTab !== 'dashboard') return;
+    if (activeTab !== 'dashboard') return undefined;
+    const searchChanged = previousDashboardSearchRef.current !== searchTerm;
+    previousDashboardSearchRef.current = searchTerm;
+    if (searchChanged && currentPage !== 1) {
+      dashboardCursorsRef.current = [];
+      setCurrentPage(1);
+      return undefined;
+    }
     const timeoutId = setTimeout(() => {
       void loadDashboardPage(currentPage, selectedBranch, searchTerm);
     }, 300);
@@ -790,33 +799,6 @@ export default function Home() {
     }
     await refreshData();
   }, [activeTab, currentPage, loadDashboardPage, refreshData, searchTerm, selectedBranch]);
-
-  // Handle search with debouncing for other client-dependent sections
-  useEffect(() => {
-    const performSearch = async () => {
-      if (!searchTerm.trim()) {
-        setSearchResults([]);
-        setIsSearching(false);
-        return;
-      }
-
-      setIsSearching(true);
-      try {
-        const branch = selectedBranch || null;
-        const results = await searchClients(searchTerm, branch);
-        setSearchResults(results || []);
-      } catch (error) {
-        console.error('Search error:', error);
-        setSearchResults([]);
-      } finally {
-        setIsSearching(false);
-        setCurrentPage(1);
-      }
-    };
-
-    const timeoutId = setTimeout(performSearch, 300);
-    return () => clearTimeout(timeoutId);
-  }, [allClients, cachedAllClients, searchTerm, selectedBranch]);
 
   const filteredBirthdays = useMemo(() => {
     // Use all clients for month/day searches, today’s branch-filtered birthdays for a specific branch, and the unfiltered birthday dataset for all branches.
@@ -1295,7 +1277,7 @@ export default function Home() {
               <div className="dashboard-surface rounded-[24px] p-3 sm:p-4">
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  {isSearching ? (
+                  {dashboardPageLoading ? (
                     <svg className="animate-spin h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -1715,7 +1697,7 @@ export default function Home() {
                       serviceName="Gym"
                       enrollments={cachedGymEnrollments}
                       clients={globalClients.length ? globalClients : cachedGlobalClients}
-                      isLoading={!enrollmentDataLoaded || !clientDataLoaded}
+                      isLoading={!gymEnrollmentsLoaded || !clientDataLoaded}
                     />
                   )}
                 </div>
@@ -1809,7 +1791,7 @@ export default function Home() {
                       serviceName="Spa"
                       enrollments={cachedSpaEnrollments}
                       clients={globalClients.length ? globalClients : cachedGlobalClients}
-                      isLoading={!enrollmentDataLoaded || !clientDataLoaded}
+                      isLoading={!spaEnrollmentsLoaded || !clientDataLoaded}
                     />
                   )}
                 </div>

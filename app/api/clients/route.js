@@ -1,47 +1,12 @@
 import { NextResponse } from 'next/server';
 import { addClient, getAllClients, getTodaysBirthdays } from '@/lib/clients';
+import {
+  buildIndexedSearchQueries,
+  buildRecentFallbackQuery,
+  rankSearchResults,
+  shouldUseRecentFallback,
+} from '@/lib/clientSearch';
 import { authorizeSpaGymClientRequest, getServerFirestore } from '@/lib/firebase-server';
-
-function normalizeText(value = '') {
-  return String(value)
-    .normalize('NFKD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, ' ')
-    .trim();
-}
-
-function digits(value = '') {
-  return String(value).replace(/\D/g, '');
-}
-
-function phoneVariants(value = '') {
-  const raw = digits(value);
-  const variants = new Set(raw ? [raw] : []);
-  if (/^256[789]\d{8}$/.test(raw)) variants.add(`0${raw.slice(3)}`);
-  if (/^0[789]\d{8}$/.test(raw)) variants.add(`256${raw.slice(1)}`);
-  return [...variants];
-}
-
-function scoreClient(client, search, branch) {
-  if (branch && String(client.branch || '').trim().toLowerCase() !== branch.trim().toLowerCase()) return -1;
-  const queryText = normalizeText(search);
-  const queryTokens = queryText.split(' ').filter(Boolean);
-  const nameText = normalizeText(client.name);
-  const branchText = normalizeText(client.branch);
-  const phoneText = digits(client.phoneNumber);
-  const queryDigits = phoneVariants(search);
-  const nameMatches = queryTokens.length > 0 && queryTokens.every((token) => nameText.includes(token));
-  const branchMatches = queryTokens.length > 0 && queryTokens.every((token) => branchText.includes(token));
-  const phoneMatches = queryDigits.some((queryPhone) => queryPhone.length >= 3 && phoneText.includes(queryPhone));
-  if (!nameMatches && !branchMatches && !phoneMatches) return -1;
-
-  if (nameText === queryText) return 0;
-  if (nameText.startsWith(queryText)) return 1;
-  if (phoneMatches) return 2;
-  if (nameMatches) return 3;
-  return 4;
-}
 
 function serializeClient(snapshot) {
   const data = snapshot.data();
@@ -56,6 +21,58 @@ function serializeClient(snapshot) {
 
 async function checkAuth(request, action) {
   return authorizeSpaGymClientRequest(request, action);
+}
+
+function applySearchQuery(collectionRef, spec) {
+  let clientQuery = collectionRef;
+  if (spec.branch) clientQuery = clientQuery.where('branch', '==', spec.branch);
+  if (spec.op === 'prefix') {
+    clientQuery = clientQuery.where(spec.field, '>=', spec.value).where(spec.field, '<=', `${spec.value}\uf8ff`);
+  } else if (spec.op === 'recent') {
+    clientQuery = clientQuery.orderBy('createdAt', 'desc');
+  } else {
+    clientQuery = clientQuery.where(spec.field, spec.op, spec.value);
+  }
+  return clientQuery.limit(spec.limit);
+}
+
+async function readSearchQuery(db, spec) {
+  try {
+    return await applySearchQuery(db.collection('clients'), spec).get();
+  } catch (error) {
+    if (!spec.branch) {
+      console.warn('Indexed client search query failed:', error?.message || error);
+      return null;
+    }
+    try {
+      return await applySearchQuery(db.collection('clients'), { ...spec, branch: null }).get();
+    } catch (fallbackError) {
+      console.warn('Indexed client search query failed:', fallbackError?.message || fallbackError);
+      return null;
+    }
+  }
+}
+
+async function searchClientsByIndex(search, branch) {
+  const db = getServerFirestore();
+  const matches = new Map();
+  const collect = (snapshot) => {
+    if (!snapshot) return;
+    snapshot.docs.forEach((clientSnapshot) => {
+      if (!matches.has(clientSnapshot.id)) matches.set(clientSnapshot.id, serializeClient(clientSnapshot));
+    });
+  };
+
+  const indexedSnapshots = await Promise.all(
+    buildIndexedSearchQueries(search, branch).map((spec) => readSearchQuery(db, spec))
+  );
+  indexedSnapshots.forEach(collect);
+
+  if (shouldUseRecentFallback([...matches.values()], search, branch)) {
+    collect(await readSearchQuery(db, buildRecentFallbackQuery(branch)));
+  }
+
+  return rankSearchResults([...matches.values()], search, branch);
 }
 
 export async function GET(request) {
@@ -74,21 +91,7 @@ export async function GET(request) {
     }
 
     if (search) {
-      // The scan and matching happen in the trusted server runtime. The
-      // browser receives only the bounded ranked result set.
-      const clientQuery = branch
-        ? getServerFirestore().collection('clients').where('branch', '==', branch)
-        : getServerFirestore().collection('clients');
-      const snapshot = await clientQuery.get();
-      const matches = snapshot.docs
-        .map((clientSnapshot) => {
-          const client = serializeClient(clientSnapshot);
-          return { client, score: scoreClient(client, search, branch) };
-        })
-        .filter(({ score }) => score >= 0)
-        .sort((a, b) => a.score - b.score || String(a.client.name || '').localeCompare(String(b.client.name || '')))
-        .slice(0, 100)
-        .map(({ client }) => client);
+      const matches = await searchClientsByIndex(search, branch);
       return NextResponse.json({ clients: matches });
     }
 
