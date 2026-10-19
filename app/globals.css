@@ -365,6 +365,86 @@ button { @apply transition-all duration-200 active:scale-95; }
   .quick-actions-glass .operations-group {
     margin-top: 0.25rem;
   }
+
+  .dashboard-desktop-rail .programs-group {
+    margin: 0.15rem 0 0.2rem;
+    padding: 0.35rem;
+    border: 1px solid rgba(191, 219, 254, 0.9);
+    border-radius: 14px;
+    background: rgba(239, 246, 255, 0.62);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75);
+  }
+
+  .dashboard-desktop-rail .programs-group-toggle {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.4rem;
+    margin-bottom: 0.3rem;
+    padding: 0.15rem 0.35rem 0.3rem;
+    border: 0;
+    border-bottom: 1px solid rgba(191, 219, 254, 0.75);
+    background: transparent;
+    color: #1e3a8a;
+    font-size: 0.62rem;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .dashboard-desktop-rail .programs-group:not(.is-open) .programs-group-toggle {
+    margin-bottom: 0;
+    padding-bottom: 0.15rem;
+    border-bottom: 0;
+  }
+
+  .dashboard-desktop-rail .programs-group:not(.is-open) .programs-group-toggle.is-current {
+    border-radius: 8px;
+    background: rgba(219, 234, 254, 0.95);
+    color: #1d4ed8;
+  }
+
+  .dashboard-desktop-rail .programs-group-chevron {
+    width: 0.85rem;
+    height: 0.85rem;
+    flex: 0 0 auto;
+    transition: transform 160ms ease;
+  }
+
+  .dashboard-desktop-rail .programs-group.is-open .programs-group-chevron {
+    transform: rotate(90deg);
+  }
+
+  .dashboard-desktop-rail .programs-group-items {
+    display: none;
+  }
+
+  .dashboard-desktop-rail .programs-group.is-open .programs-group-items {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .dashboard-desktop-rail .program-flat-link {
+    display: none;
+  }
+}
+
+.dark .dashboard-desktop-rail .programs-group {
+  border-color: rgba(96, 165, 250, 0.28);
+  background: rgba(30, 64, 175, 0.18);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.dark .dashboard-desktop-rail .programs-group-toggle {
+  border-bottom-color: rgba(96, 165, 250, 0.28);
+  color: #bfdbfe;
+}
+
+.dark .dashboard-desktop-rail .programs-group:not(.is-open) .programs-group-toggle.is-current {
+  background: rgba(37, 99, 235, 0.35);
+  color: #dbeafe;
 }
 .quick-actions-glass .dashboard-rail-link:hover {
   border-color: rgba(147, 197, 253, 0.9);
@@ -847,6 +927,9 @@ button { @apply transition-all duration-200 active:scale-95; }
   .mobile-quick-actions .manage-group,
   .mobile-quick-actions .operations-group {
     display: contents !important;
+  }
+  .mobile-quick-actions .programs-group {
+    display: none !important;
   }
   .mobile-quick-actions .dashboard-rail-link {
     width: 100% !important;

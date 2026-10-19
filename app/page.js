@@ -1,6 +1,6 @@
 'use client';
 
-import { isValidElement, useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { isValidElement, useId, useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import Image from 'next/image';
 import dynamic from 'next/dynamic';
 import { useAuth } from '@/contexts/AuthContext';
@@ -259,7 +259,52 @@ const QuickActionIcon = ({ name }) => {
   return <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={paths[name]} /></svg>;
 };
 
-const WorkspaceRail = ({ activeTab, setActiveTab, profile, showAdminSection, onOpenAdmin, activeNotesCount }) => (
+const ProgramsQuickGroup = ({ activeTab, setActiveTab, items }) => {
+  const groupId = useId();
+  const isCurrent = items.some((item) => item.id === activeTab);
+  const [open, setOpen] = useState(true);
+  const [trackedCurrent, setTrackedCurrent] = useState(isCurrent);
+  if (trackedCurrent !== isCurrent) {
+    setTrackedCurrent(isCurrent);
+    if (isCurrent) setOpen(true);
+  }
+
+  if (items.length < 2) return null;
+
+  return (
+    <div className={`dashboard-rail-group programs-group ${open ? 'is-open' : ''}`}>
+      <button
+        type="button"
+        className={`programs-group-toggle ${isCurrent ? 'is-current' : ''}`}
+        onClick={() => setOpen((current) => !current)}
+        aria-expanded={open}
+        aria-controls={groupId}
+        aria-label={`${open ? 'Collapse' : 'Expand'} SPA, GYM, and Tracking`}
+      >
+        <span>SPA & GYM</span>
+        <svg className="programs-group-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6" /></svg>
+      </button>
+      <div id={groupId} className="programs-group-items space-y-1">
+        {items.map((item) => (
+          <button key={item.id} type="button" onClick={() => setActiveTab(item.id)} className={`dashboard-rail-link ${activeTab === item.id ? 'is-active' : ''}`} aria-label={item.aria}>
+            <span className="dashboard-rail-icon"><QuickActionIcon name={item.icon} /></span>
+            <span className="dashboard-rail-label">{item.label}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const WorkspaceRail = ({ activeTab, setActiveTab, profile, showAdminSection, onOpenAdmin, activeNotesCount }) => {
+  const programItems = [
+    profile?.permissions?.spa?.view !== false && { id: 'spa', label: 'SPA', icon: 'spa', aria: 'Spa' },
+    profile?.permissions?.gym?.view !== false && { id: 'gym', label: 'GYM', icon: 'gym', aria: 'Gym' },
+    (profile?.role === 'Admin' || profile?.role === 'Manager') && { id: 'invoice-tracking', label: 'Tracking', icon: 'tracking', aria: 'Invoice tracking' },
+  ].filter(Boolean);
+  const groupPrograms = programItems.length >= 2;
+
+  return (
   <aside className="dashboard-rail quick-actions-glass dashboard-surface h-fit rounded-2xl p-3">
     <div className="mb-5 px-2"><span className="text-sm font-black tracking-tight text-slate-900 dark:text-white">Quick Actions</span></div>
     <div className="dashboard-rail-group manage-group space-y-1">
@@ -269,17 +314,19 @@ const WorkspaceRail = ({ activeTab, setActiveTab, profile, showAdminSection, onO
       {profile?.permissions?.birthdays?.view !== false && <button type="button" onClick={() => setActiveTab('birthdays')} className={`dashboard-rail-link ${activeTab === 'birthdays' ? 'is-active' : ''}`} aria-label="Birthdays"><span className="dashboard-rail-icon"><QuickActionIcon name="birthdays" /></span><span className="dashboard-rail-label">Birthdays</span></button>}
       {profile?.permissions?.birthdays?.view !== false && <button type="button" onClick={() => setActiveTab('birthday-analytics')} className={`dashboard-rail-link ${activeTab === 'birthday-analytics' ? 'is-active' : ''}`} aria-label="Birthday communications analytics"><span className="dashboard-rail-icon"><QuickActionIcon name="analytics" /></span><span className="dashboard-rail-label">Birthday analytics</span></button>}
       <button type="button" onClick={() => setActiveTab('reports')} className={`dashboard-rail-link ${activeTab === 'reports' ? 'is-active' : ''}`} aria-label="Reports & Feedback"><span className="dashboard-rail-icon"><QuickActionIcon name="reports" /></span><span className="dashboard-rail-label">Reports & Feedback</span></button>
-      {profile?.permissions?.gym?.view !== false && <button type="button" onClick={() => setActiveTab('gym')} className={`dashboard-rail-link ${activeTab === 'gym' ? 'is-active' : ''}`} aria-label="Gym"><span className="dashboard-rail-icon"><QuickActionIcon name="gym" /></span><span className="dashboard-rail-label">GYM</span></button>}
-      {profile?.permissions?.spa?.view !== false && <button type="button" onClick={() => setActiveTab('spa')} className={`dashboard-rail-link ${activeTab === 'spa' ? 'is-active' : ''}`} aria-label="Spa"><span className="dashboard-rail-icon"><QuickActionIcon name="spa" /></span><span className="dashboard-rail-label">SPA</span></button>}
+      {groupPrograms && <ProgramsQuickGroup activeTab={activeTab} setActiveTab={setActiveTab} items={programItems} />}
+      {profile?.permissions?.gym?.view !== false && <button type="button" onClick={() => setActiveTab('gym')} className={`dashboard-rail-link ${groupPrograms ? 'program-flat-link' : ''} ${activeTab === 'gym' ? 'is-active' : ''}`} aria-label="Gym"><span className="dashboard-rail-icon"><QuickActionIcon name="gym" /></span><span className="dashboard-rail-label">GYM</span></button>}
+      {profile?.permissions?.spa?.view !== false && <button type="button" onClick={() => setActiveTab('spa')} className={`dashboard-rail-link ${groupPrograms ? 'program-flat-link' : ''} ${activeTab === 'spa' ? 'is-active' : ''}`} aria-label="Spa"><span className="dashboard-rail-icon"><QuickActionIcon name="spa" /></span><span className="dashboard-rail-label">SPA</span></button>}
       <button type="button" onClick={() => setActiveTab('notes')} className={`dashboard-rail-link ${activeTab === 'notes' ? 'is-active' : ''}`} aria-label="Notes"><span className="dashboard-rail-icon"><QuickActionIcon name="notes" /></span><span className="dashboard-rail-label">Notes</span>{activeNotesCount > 0 && <span className="ml-auto inline-flex min-w-5 items-center justify-center rounded-full bg-blue-600 px-1.5 py-0.5 text-[10px] font-black text-white">{activeNotesCount}</span>}</button>
     </div>
     <div className="dashboard-rail-group operations-group space-y-1">
       <button type="button" onClick={() => setActiveTab('invoice')} className={`dashboard-rail-link ${activeTab === 'invoice' ? 'is-active' : ''}`} aria-label="Invoices"><span className="dashboard-rail-icon"><QuickActionIcon name="invoices" /></span><span className="dashboard-rail-label">Invoices</span></button>
-      {(profile?.role === 'Admin' || profile?.role === 'Manager') && <button type="button" onClick={() => setActiveTab('invoice-tracking')} className={`dashboard-rail-link ${activeTab === 'invoice-tracking' ? 'is-active' : ''}`} aria-label="Invoice tracking"><span className="dashboard-rail-icon"><QuickActionIcon name="tracking" /></span><span className="dashboard-rail-label">Tracking</span></button>}
+      {programItems.some((item) => item.id === 'invoice-tracking') && <button type="button" onClick={() => setActiveTab('invoice-tracking')} className={`dashboard-rail-link ${groupPrograms ? 'program-flat-link' : ''} ${activeTab === 'invoice-tracking' ? 'is-active' : ''}`} aria-label="Invoice tracking"><span className="dashboard-rail-icon"><QuickActionIcon name="tracking" /></span><span className="dashboard-rail-label">Tracking</span></button>}
       {profile?.role === 'Admin' && <button type="button" onClick={onOpenAdmin} className={`dashboard-rail-link ${showAdminSection ? 'is-active' : ''}`} aria-label="Admin"><span className="dashboard-rail-icon"><QuickActionIcon name="admin" /></span><span className="dashboard-rail-label">Admin</span></button>}
     </div>
   </aside>
-);
+  );
+};
 
 
 
