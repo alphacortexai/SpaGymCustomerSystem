@@ -1,6 +1,6 @@
 'use client';
 
-import { isValidElement, useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import Image from 'next/image';
 import dynamic from 'next/dynamic';
 import { useAuth } from '@/contexts/AuthContext';
@@ -11,6 +11,7 @@ import { affirmations } from '@/lib/affirmations';
 import { getActiveNotesCount } from '@/lib/notes';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import LoadingState from '@/components/LoadingState';
+import { NavCard, QuickActionIcon, TypedBirthdayReminder, TypedGreeting, WorkspaceRail } from '@/components/DashboardChrome';
 import { usePageVisibility } from '@/lib/usePageVisibility';
 
 const LazySectionFallback = () => (
@@ -55,157 +56,6 @@ const AiFeedbackSettings = dynamic(() => import('@/components/AiFeedbackSettings
 const GuestFlowVisits = dynamic(() => import('@/components/GuestFlowVisits'), { loading: LazySectionFallback });
 const GuestFlowDeviceAccess = dynamic(() => import('@/components/GuestFlowDeviceAccess'), { loading: LazySectionFallback });
 
-const NavCard = ({ onClick, icon, title, titleLines, description, badge, isImage, fullBg, centerBadge, accent = 'blue', eyebrow }) => {
-  const accentStyles = {
-    blue: {
-      gradient: 'from-blue-500/16 via-sky-400/10 to-cyan-300/12',
-      icon: 'bg-blue-50 text-blue-600 border-blue-100 shadow-blue-500/10 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-900/70',
-      glow: 'bg-blue-500/20',
-      badge: 'bg-blue-600 shadow-blue-500/30',
-    },
-    amber: {
-      gradient: 'from-amber-400/18 via-orange-300/10 to-yellow-200/14',
-      icon: 'bg-amber-50 text-amber-700 border-amber-100 shadow-amber-500/10 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900/60',
-      glow: 'bg-amber-400/20',
-      badge: 'bg-blue-600 shadow-blue-500/30',
-    },
-    violet: {
-      gradient: 'from-violet-500/16 via-fuchsia-400/10 to-pink-300/12',
-      icon: 'bg-violet-50 text-violet-600 border-violet-100 shadow-violet-500/10 dark:bg-violet-950/40 dark:text-violet-300 dark:border-violet-900/60',
-      glow: 'bg-violet-500/20',
-      badge: 'bg-blue-600 shadow-blue-500/30',
-    },
-    emerald: {
-      gradient: 'from-emerald-500/16 via-teal-400/10 to-lime-300/12',
-      icon: 'bg-emerald-50 text-emerald-600 border-emerald-100 shadow-emerald-500/10 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900/60',
-      glow: 'bg-emerald-500/20',
-      badge: 'bg-blue-600 shadow-blue-500/30',
-    },
-    rose: {
-      gradient: 'from-rose-500/16 via-pink-400/10 to-orange-300/12',
-      icon: 'bg-rose-50 text-rose-600 border-rose-100 shadow-rose-500/10 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-900/60',
-      glow: 'bg-rose-500/20',
-      badge: 'bg-blue-600 shadow-blue-500/30',
-    },
-    slate: {
-      gradient: 'from-slate-500/14 via-slate-300/10 to-slate-100/20',
-      icon: 'bg-slate-50 text-slate-600 border-slate-100 shadow-slate-500/10 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700',
-      glow: 'bg-slate-400/20',
-      badge: 'bg-blue-600 shadow-blue-500/30',
-    },
-  };
-  const selectedAccent = accentStyles[accent] || accentStyles.blue;
-
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`dashboard-grid-card group relative flex min-h-[166px] cursor-pointer flex-col items-start justify-end p-5 sm:p-6 ${fullBg ? 'bg-transparent' : 'card-bg-doc'} rounded-[24px] shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl text-left w-full overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2`}
-      aria-label={`Open ${title}`}
-    >
-      {fullBg && isImage && (
-        <div className="absolute inset-0 z-0">
-          <Image src={icon} alt={title} fill className="object-cover opacity-80 group-hover:opacity-100 transition-opacity duration-300" />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent z-1" />
-        </div>
-      )}
-      {!fullBg && (
-        <>
-          <div className={`absolute inset-0 bg-gradient-to-br ${selectedAccent.gradient} opacity-80 transition-opacity duration-300 group-hover:opacity-100`} />
-          <div className={`absolute -right-8 -top-8 h-24 w-24 rounded-full blur-2xl ${selectedAccent.glow} transition-transform duration-500 group-hover:scale-125`} />
-          <div className="absolute inset-x-5 top-0 h-px bg-gradient-to-r from-transparent via-white/80 to-transparent" />
-        </>
-      )}
-      {badge !== undefined && (
-        <div className={centerBadge
-          ? "absolute inset-0 flex items-center justify-center z-10 pointer-events-none"
-          : `absolute top-3 right-3 min-w-[22px] h-6 px-2 flex items-center justify-center ${selectedAccent.badge} text-white text-[10px] font-bold rounded-full shadow-lg z-10 ring-2 ring-white/80 dark:ring-slate-950/80`
-        }>
-          <div className={centerBadge
-            ? "text-white text-4xl md:text-5xl font-black drop-shadow-lg"
-            : ""
-          }>
-            {badge}
-          </div>
-        </div>
-      )}
-      <div className={`relative z-20 ${fullBg ? 'mt-auto' : ''} w-full`}>
-        {eyebrow && <div className="mb-1 text-[10px] font-black uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">{eyebrow}</div>}
-        <div className="mb-3 flex items-center justify-between gap-3">{!fullBg && <span className={`inline-flex h-9 w-9 items-center justify-center rounded-xl border text-sm shadow-sm ${selectedAccent.icon}`}>{isImage ? <span className="relative h-5 w-5"><Image src={icon} alt="" fill className="object-contain" /></span> : isValidElement(icon) ? icon : <span>{icon}</span>}</span>}</div><h3 className={`${titleLines ? 'text-2xl leading-[1.15] sm:text-3xl' : 'text-lg'} font-bold ${fullBg ? 'text-white' : 'text-slate-900 dark:text-white'} mb-1`}>{titleLines ? titleLines.map((line) => <span key={line} className="block mb-1.5 last:mb-0">{line}</span>) : title}</h3>
-        <p className={`text-sm ${fullBg ? 'text-slate-200' : 'text-slate-500 dark:text-slate-400'} leading-tight line-clamp-2 px-1`}>{description}</p>
-      </div>
-    </button>
-  );
-};
-
-const TypedGreeting = ({ firstName }) => {
-  const prefix = 'Good to see you, ';
-  const fullGreeting = `${prefix}${firstName}.`;
-  const [typedLength, setTypedLength] = useState(0);
-  const typedGreeting = fullGreeting.slice(0, typedLength);
-  const prefixText = typedGreeting.slice(0, prefix.length);
-  const nameText = typedGreeting.slice(prefix.length);
-  const isComplete = typedLength >= fullGreeting.length;
-
-  useEffect(() => {
-    let currentLength = 0;
-    const typingTimer = setInterval(() => {
-      currentLength += 1;
-      setTypedLength(currentLength);
-      if (currentLength >= fullGreeting.length) clearInterval(typingTimer);
-    }, 42);
-    return () => clearInterval(typingTimer);
-  }, [fullGreeting]);
-
-  return (
-    <h1 className="text-xl font-black tracking-tight text-slate-950 dark:text-white sm:text-3xl lg:text-4xl" aria-label={fullGreeting}>
-      {prefixText}
-      {nameText && <span className="text-blue-600 dark:text-blue-400">{nameText}</span>}
-      {!isComplete && <span className="ml-0.5 inline-block h-[1em] w-0.5 align-[-0.12em] bg-blue-600 dark:bg-blue-400" aria-hidden="true" />}
-    </h1>
-  );
-};
-
-const TypedBirthdayReminder = ({ contactedCount, remainingCount, branchName }) => {
-  const message = `${contactedCount} of today's birthday babies called, ${remainingCount} remaining for ${branchName}`;
-  const [typedLength, setTypedLength] = useState(0);
-  const isComplete = typedLength >= message.length;
-
-  useEffect(() => {
-    let currentLength = 0;
-    const typingTimer = setInterval(() => {
-      currentLength += 1;
-      setTypedLength(currentLength);
-      if (currentLength >= message.length) clearInterval(typingTimer);
-    }, 32);
-    return () => clearInterval(typingTimer);
-  }, [message]);
-
-  const contactedStart = 0;
-  const contactedEnd = String(contactedCount).length;
-  const remainingLabel = ` of today's birthday babies called, `;
-  const remainingStart = contactedEnd + remainingLabel.length;
-  const remainingEnd = remainingStart + String(remainingCount).length;
-  const branchLabel = ' remaining for ';
-  const branchStart = remainingEnd + branchLabel.length;
-  const renderSegment = (start, end, className = '') => {
-    const visibleLength = Math.min(Math.max(typedLength - start, 0), end - start);
-    if (visibleLength <= 0) return null;
-    return <span className={className}>{message.slice(start, start + visibleLength)}</span>;
-  };
-
-  return (
-    <h1 className="text-lg font-black leading-tight tracking-tight text-slate-950 dark:text-white sm:text-3xl lg:text-4xl" aria-label={message}>
-      {renderSegment(contactedStart, contactedEnd, 'text-blue-600 dark:text-blue-400')}
-      {renderSegment(contactedEnd, remainingStart)}
-      {renderSegment(remainingStart, remainingEnd, 'text-blue-600 dark:text-blue-400')}
-      {renderSegment(remainingEnd, branchStart)}
-      {renderSegment(branchStart, message.length, 'text-blue-600 dark:text-blue-400')}
-      {!isComplete && <span className="ml-0.5 inline-block h-[1em] w-0.5 align-[-0.12em] bg-blue-600 dark:bg-blue-400" aria-hidden="true" />}
-    </h1>
-  );
-};
-
 const SectionBackArrow = ({ onClick, label }) => (
   <button
     type="button"
@@ -228,60 +78,6 @@ const AdminBackButton = ({ onBack }) => (
     Back to Admin
   </button>
 );
-
-const QuickActionIcon = ({ name }) => {
-  const paths = {
-    home: 'M3 10.5 12 3l9 7.5M5 9v11h14V9M9 20v-6h6v6',
-    clients: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
-    birthdays: 'M20 12v8H4v-8M2 7h20v5H2zM12 7v13M12 7H8.5a2.5 2.5 0 1 1 0-5C12 2 12 7 12 7ZM12 7h3.5a2.5 2.5 0 1 0 0-5C12 2 12 7 12 7Z',
-    analytics: 'M4 19V5M4 19h16M8 16v-4M12 16V8M16 16v-7M20 16v-10',
-    reports: 'M6 3h12a2 2 0 0 1 2 2v14H4V5a2 2 0 0 1 2-2ZM8 8h8M8 12h8M8 16h5',
-    gym: 'M6 4v16M18 4v16M3 8v8M21 8v8M6 12h12',
-    spa: 'M12 21c4-3 7-6.5 7-11a7 7 0 0 0-14 0c0 4.5 3 8 7 11ZM9 10c1.5-1.5 4.5-1.5 6 0',
-    notes: 'M4 4h16v16H4zM8 8h8M8 12h8M8 16h5',
-    invoices: 'M6 2h9l3 3v17H6zM15 2v4h4M9 11h6M9 15h6M9 19h4',
-    tracking: 'M4 19 20 5M10 5h10v10M4 5h.01M4 12h.01M4 19h.01',
-    admin: 'M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8ZM4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4M2 12h2M20 12h2M12 2v2M12 20v2',
-    upload: 'M12 16V3M7 8l5-5 5 5M4 14v6h16v-6',
-    issues: 'M12 9v4M12 17h.01M10.3 3h3.4L21 16.5a2 2 0 0 1-1.7 3H4.7a2 2 0 0 1-1.7-3L10.3 3Z',
-    history: 'M3 12a9 9 0 1 0 3-6.7M3 4v5h5M12 7v5l3 2',
-    users: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
-    branches: 'M6 3v18M18 3v18M6 7h12M6 17h12M12 7v10',
-    duplicates: 'm3 7 4-4 4 4M7 3v11M21 17l-4 4-4-4M17 21V10',
-    timeline: 'M4 19V5M4 19h16M8 16v-3M12 16V8M16 16v-6M20 16v-9',
-    export: 'M12 3v12M7 10l5 5 5-5M4 20h16',
-    create: 'M12 5v14M5 12h14',
-    manage: 'M12 8a4 4 0 1 0 0 8 4 4 0 0 0-8ZM4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4M2 12h2M20 12h2M12 2v2M12 20v2',
-    partner: 'M8 12h8M12 8v8M5 5h5v5H5zM14 14h5v5h-5z',
-    enroll: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M19 8v6M16 11h6',
-    active: 'M20 6 9 17l-5-5',
-  };
-  return <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={paths[name]} /></svg>;
-};
-
-const WorkspaceRail = ({ activeTab, setActiveTab, profile, showAdminSection, onOpenAdmin, activeNotesCount }) => (
-  <aside className="dashboard-rail quick-actions-glass dashboard-surface h-fit rounded-2xl p-3">
-    <div className="mb-5 px-2"><span className="text-sm font-black tracking-tight text-slate-900 dark:text-white">Quick Actions</span></div>
-    <div className="dashboard-rail-group manage-group space-y-1">
-      <button type="button" onClick={() => setActiveTab('home')} className={`dashboard-rail-link ${activeTab === 'home' ? 'is-active' : ''}`} aria-label="Home"><span className="dashboard-rail-icon"><QuickActionIcon name="home" /></span><span className="dashboard-rail-label">Home</span></button>
-      {profile?.permissions?.clients?.view !== false && <button type="button" onClick={() => setActiveTab('dashboard')} className={`dashboard-rail-link ${activeTab === 'dashboard' ? 'is-active' : ''}`} aria-label="Clients"><span className="dashboard-rail-icon"><QuickActionIcon name="clients" /></span><span className="dashboard-rail-label">Clients</span></button>}
-      {(profile?.role === 'Admin' || profile?.permissions?.clients?.view === true) && <button type="button" onClick={() => setActiveTab('check-ins')} className={`dashboard-rail-link ${activeTab === 'check-ins' ? 'is-active' : ''}`} aria-label="Spa check-ins"><span className="dashboard-rail-icon"><QuickActionIcon name="active" /></span><span className="dashboard-rail-label">Spa check-ins</span></button>}
-      {profile?.permissions?.birthdays?.view !== false && <button type="button" onClick={() => setActiveTab('birthdays')} className={`dashboard-rail-link ${activeTab === 'birthdays' ? 'is-active' : ''}`} aria-label="Birthdays"><span className="dashboard-rail-icon"><QuickActionIcon name="birthdays" /></span><span className="dashboard-rail-label">Birthdays</span></button>}
-      {profile?.permissions?.birthdays?.view !== false && <button type="button" onClick={() => setActiveTab('birthday-analytics')} className={`dashboard-rail-link ${activeTab === 'birthday-analytics' ? 'is-active' : ''}`} aria-label="Birthday communications analytics"><span className="dashboard-rail-icon"><QuickActionIcon name="analytics" /></span><span className="dashboard-rail-label">Birthday analytics</span></button>}
-      <button type="button" onClick={() => setActiveTab('reports')} className={`dashboard-rail-link ${activeTab === 'reports' ? 'is-active' : ''}`} aria-label="Reports & Feedback"><span className="dashboard-rail-icon"><QuickActionIcon name="reports" /></span><span className="dashboard-rail-label">Reports & Feedback</span></button>
-      {profile?.permissions?.gym?.view !== false && <button type="button" onClick={() => setActiveTab('gym')} className={`dashboard-rail-link ${activeTab === 'gym' ? 'is-active' : ''}`} aria-label="Gym"><span className="dashboard-rail-icon"><QuickActionIcon name="gym" /></span><span className="dashboard-rail-label">GYM</span></button>}
-      {profile?.permissions?.spa?.view !== false && <button type="button" onClick={() => setActiveTab('spa')} className={`dashboard-rail-link ${activeTab === 'spa' ? 'is-active' : ''}`} aria-label="Spa"><span className="dashboard-rail-icon"><QuickActionIcon name="spa" /></span><span className="dashboard-rail-label">SPA</span></button>}
-      <button type="button" onClick={() => setActiveTab('notes')} className={`dashboard-rail-link ${activeTab === 'notes' ? 'is-active' : ''}`} aria-label="Notes"><span className="dashboard-rail-icon"><QuickActionIcon name="notes" /></span><span className="dashboard-rail-label">Notes</span>{activeNotesCount > 0 && <span className="ml-auto inline-flex min-w-5 items-center justify-center rounded-full bg-blue-600 px-1.5 py-0.5 text-[10px] font-black text-white">{activeNotesCount}</span>}</button>
-    </div>
-    <div className="dashboard-rail-group operations-group space-y-1">
-      <button type="button" onClick={() => setActiveTab('invoice')} className={`dashboard-rail-link ${activeTab === 'invoice' ? 'is-active' : ''}`} aria-label="Invoices"><span className="dashboard-rail-icon"><QuickActionIcon name="invoices" /></span><span className="dashboard-rail-label">Invoices</span></button>
-      {(profile?.role === 'Admin' || profile?.role === 'Manager') && <button type="button" onClick={() => setActiveTab('invoice-tracking')} className={`dashboard-rail-link ${activeTab === 'invoice-tracking' ? 'is-active' : ''}`} aria-label="Invoice tracking"><span className="dashboard-rail-icon"><QuickActionIcon name="tracking" /></span><span className="dashboard-rail-label">Tracking</span></button>}
-      {profile?.role === 'Admin' && <button type="button" onClick={onOpenAdmin} className={`dashboard-rail-link ${showAdminSection ? 'is-active' : ''}`} aria-label="Admin"><span className="dashboard-rail-icon"><QuickActionIcon name="admin" /></span><span className="dashboard-rail-label">Admin</span></button>}
-    </div>
-  </aside>
-);
-
-
 
 const AnimatedCount = ({ value }) => {
   const targetValue = Number(value) || 0;
@@ -357,10 +153,10 @@ const SummaryPanel = ({ branches }) => {
   const redeemedCount = useMemo(() => birthdayClients.filter(isBirthdayOfferRedeemed).length, [birthdayClients]);
 
   return (
-    <section className="dashboard-summary dashboard-surface rounded-2xl p-4 sm:p-5">
+    <section className="dashboard-summary rounded-2xl p-4 sm:p-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-600 dark:text-blue-400">Summary</p>
+          <h2 className="text-base font-semibold tracking-tight text-slate-900 dark:text-white">Birthday offers</h2>
         </div>
         <div className="flex flex-wrap gap-2">
           <select value={summaryBranch} onChange={(event) => setSummaryBranch(event.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200" aria-label="Summary branch">
@@ -375,15 +171,14 @@ const SummaryPanel = ({ branches }) => {
       {birthdayMonthLoading ? <p className="mt-5 text-sm text-slate-500">Loading birthday summary...</p> : birthdayMonthData.error ? (
         <p className="mt-5 text-sm text-rose-600" role="alert">Unable to load the birthday summary. Please refresh and try again.</p>
       ) : (
-        <div className="mt-5 rounded-2xl border border-violet-100 bg-gradient-to-r from-violet-50/70 via-white to-pink-50/60 p-5 shadow-sm dark:border-violet-900/40 dark:from-violet-950/20 dark:via-slate-900 dark:to-pink-950/20">
+        <div className="mt-5">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <h3 className="font-black text-slate-900 dark:text-white">Birthday offer performance</h3>
-              <p className="mt-1 text-xs font-medium text-slate-500">50% birthday offer redemptions compared with the birthday population and completed outreach.</p>
+              <p className="text-sm text-slate-500">Offer redemptions compared with this month&apos;s birthday list and completed outreach.</p>
             </div>
-            <div className="rounded-xl bg-white/80 px-3 py-2 text-right shadow-sm dark:bg-slate-900/70">
-              <div className="text-lg font-black text-violet-700 dark:text-violet-200"><AnimatedCount value={redeemedCount} /></div>
-              <div className="text-[10px] font-black uppercase tracking-wider text-slate-400">Redeemed offer</div>
+            <div className="rounded-2xl bg-slate-50 px-4 py-2 text-right dark:bg-slate-800">
+              <div className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-white"><AnimatedCount value={redeemedCount} /></div>
+              <div className="text-xs font-medium text-slate-400">Redeemed</div>
             </div>
           </div>
           <div className="mt-5 grid gap-4 md:grid-cols-3">
@@ -394,7 +189,7 @@ const SummaryPanel = ({ branches }) => {
             ].map((item) => (
               <div key={item.label}>
                 <div className="mb-1.5 flex items-center justify-between gap-3 text-xs font-bold text-slate-600 dark:text-slate-300"><span>{item.label}</span><span className="shrink-0">{item.value} <span className="font-medium text-slate-400">({formatSummaryPercent(item.value, item.denominator)})</span></span></div>
-                <div className="h-2.5 overflow-hidden rounded-full bg-white/80 dark:bg-slate-800"><div className={`h-full rounded-full ${item.color} transition-[width] duration-500`} style={{ width: `${Math.min(item.percent, 100)}%` }} /></div>
+                <div className="h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800"><div className={`h-full rounded-full ${item.color} transition-[width] duration-500`} style={{ width: `${Math.min(item.percent, 100)}%` }} /></div>
               </div>
             ))}
           </div>
@@ -713,6 +508,14 @@ export default function Home() {
     setReturnToAdmin(false);
   };
 
+  const selectWorkspaceTab = useCallback((tab) => {
+    setActiveTab(tab);
+    if (tab === 'home') {
+      setShowAdminSection(false);
+      setReturnToAdmin(false);
+    }
+  }, []);
+
   const goBackFromSection = () => {
     const shouldReturnToAdmin = returnToAdmin || adminSubsectionTabs.includes(activeTab);
     if (shouldReturnToAdmin) {
@@ -977,9 +780,10 @@ export default function Home() {
             </div>
           </div>
         )}
+        <div className="dashboard-frame">
         {/* Navigation */}
-        <header className="dashboard-nav bg-white/85 dark:bg-slate-900/85 backdrop-blur-xl border-b border-slate-200/80 dark:border-slate-800 sticky top-0 z-50">
-          <div className="relative mx-auto flex min-h-16 max-w-[1440px] flex-wrap items-center justify-between gap-x-5 gap-y-3 px-4 py-3 sm:px-6 lg:px-10">
+        <header className="dashboard-nav border-b border-slate-100 bg-white dark:border-slate-800 dark:bg-slate-950">
+          <div className="relative flex min-h-16 flex-wrap items-center justify-between gap-x-5 gap-y-3 px-4 py-3 sm:px-6 lg:px-8">
             <div className="flex w-full flex-wrap items-center gap-4 sm:w-auto sm:flex-nowrap sm:gap-8">
               <button onClick={() => setActiveTab('home')} aria-label="Go to home" className="flex items-center gap-3 group">
                 <div className="flex -space-x-2">
@@ -990,7 +794,7 @@ export default function Home() {
                     <Image src="/logo2.png" alt="Logo 2" fill className="object-contain p-1" />
                   </div>
                 </div>
-                <span className="text-lg font-black tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-slate-950 via-blue-700 to-slate-500 dark:from-white dark:via-blue-300 dark:to-slate-400">Spa EMS</span>
+                <span className="text-lg font-semibold tracking-tight text-slate-900 dark:text-white">Spa EMS</span>
               </button>
 
                 <nav aria-label="Primary navigation" className="mobile-primary-nav order-3 flex basis-full items-center gap-1 overflow-x-auto pb-0.5 sm:order-none sm:w-auto sm:basis-auto sm:max-w-[58vw]">
@@ -1022,12 +826,13 @@ export default function Home() {
                   onClick={() => setUserMenuOpen(!userMenuOpen)}
                   className="flex items-center gap-2 p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all border border-transparent hover:border-slate-200 dark:hover:border-slate-700"
                 >
-                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center font-bold text-xs shadow-sm relative">
+                  <div className="w-8 h-8 rounded-full bg-[#4f6ef7] text-white flex items-center justify-center font-semibold text-xs relative">
                     {user.displayName?.charAt(0) || user.email?.charAt(0) || 'U'}
                     {profile?.role === 'Admin' && (
-                      <div className="absolute -top-1 -right-1 w-3 h-3 bg-amber-400 border-2 border-white dark:border-slate-900 rounded-full"></div>
+                      <div className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-amber-400 border-2 border-white dark:border-slate-900 rounded-full"></div>
                     )}
                   </div>
+                  <span className="hidden max-w-[9rem] truncate text-sm font-semibold text-slate-800 dark:text-slate-100 sm:inline">{user.displayName?.split(' ')[0] || 'Account'}</span>
                   <svg className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${userMenuOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                 </button>
 
@@ -1066,39 +871,37 @@ export default function Home() {
           </div>
         </header>
 
-        <main className="mx-auto max-w-[1280px] px-4 py-5 sm:px-6 lg:px-8 lg:py-7">
+        <main className="px-4 py-5 sm:px-6 lg:px-8 lg:py-6">
           {isInitialLoading && !workspaceReady ? (
             <div className="mx-auto max-w-2xl py-16">
               <LoadingState title="Preparing your dashboard..." description="Loading your workspaces and latest information." />
             </div>
           ) : (
-          <div className={`dashboard-page-layout grid gap-5 lg:grid-cols-[188px_minmax(0,1fr)] ${activeTab === 'home' && !showAdminSection && !(profile?.preferences?.nviewEnabled && profile?.role === 'Admin') ? 'dashboard-home-shell' : ''}`}>
-            <div className="dashboard-desktop-rail"><WorkspaceRail activeTab={activeTab} setActiveTab={setActiveTab} profile={profile} showAdminSection={showAdminSection} onOpenAdmin={openAdminOverview} activeNotesCount={activeNotesCount} /></div>
+          <div className={`dashboard-page-layout grid gap-6 lg:grid-cols-[248px_minmax(0,1fr)] ${activeTab === 'home' && !showAdminSection && !(profile?.preferences?.nviewEnabled && profile?.role === 'Admin') ? 'dashboard-home-shell' : ''}`}>
+            <div className="dashboard-desktop-rail"><WorkspaceRail activeTab={activeTab} setActiveTab={selectWorkspaceTab} profile={profile} showAdminSection={showAdminSection} onOpenAdmin={openAdminOverview} activeNotesCount={activeNotesCount} /></div>
             <div className="dashboard-page-content min-w-0">
           {(activeTab !== 'home' || showAdminSection) && <div className="mobile-quick-actions mobile-quick-actions-global">
-            <WorkspaceRail activeTab={activeTab} setActiveTab={setActiveTab} profile={profile} showAdminSection={showAdminSection} onOpenAdmin={openAdminOverview} activeNotesCount={activeNotesCount} />
+            <WorkspaceRail activeTab={activeTab} setActiveTab={selectWorkspaceTab} profile={profile} showAdminSection={showAdminSection} onOpenAdmin={openAdminOverview} activeNotesCount={activeNotesCount} />
           </div>}
           {activeTab === 'home' && profile?.preferences?.nviewEnabled && profile?.role === 'Admin' ? (
             <NviewDashboard />
           ) : activeTab === 'home' && (
             <div className="dashboard-reveal min-w-0 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-              {!showAdminSection && <section className="dashboard-hero relative overflow-hidden p-5 sm:p-6 lg:p-7">
-                <div className="relative z-10 flex items-start justify-between gap-4">
-                  <div className="min-w-0">
-                    {birthdayReminderIndex === null ? (
-                      <TypedGreeting firstName={user?.displayName?.split(' ')[0] || 'there'} />
-                    ) : (
-                      <div key={`${birthdayReminderMessages[birthdayReminderIndex].branchName}-${birthdayReminderMessages[birthdayReminderIndex].contactedCount}-${birthdayReminderMessages[birthdayReminderIndex].remainingCount}`} className="animate-in fade-in duration-500" aria-live="polite">
-                        <TypedBirthdayReminder contactedCount={birthdayReminderMessages[birthdayReminderIndex].contactedCount} remainingCount={birthdayReminderMessages[birthdayReminderIndex].remainingCount} branchName={birthdayReminderMessages[birthdayReminderIndex].branchName} />
-                      </div>
-                    )}
-                  </div>
-                  <div className="dashboard-date-card shrink-0 rounded-xl border border-slate-200/80 bg-white/80 px-3 py-2 text-right shadow-sm dark:border-slate-700 dark:bg-slate-900/70"><div className="text-[9px] font-black uppercase tracking-[0.16em] text-slate-400">Today</div><div className="mt-0.5 text-sm font-bold text-slate-800 dark:text-white sm:text-base">{new Date().toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</div></div>
+              {!showAdminSection && <section className="dashboard-greeting px-1 pt-1">
+                <div className="min-w-0">
+                  {birthdayReminderIndex === null ? (
+                    <TypedGreeting firstName={user?.displayName?.split(' ')[0] || 'there'} />
+                  ) : (
+                    <div key={`${birthdayReminderMessages[birthdayReminderIndex].branchName}-${birthdayReminderMessages[birthdayReminderIndex].contactedCount}-${birthdayReminderMessages[birthdayReminderIndex].remainingCount}`} className="animate-in fade-in duration-500" aria-live="polite">
+                      <TypedBirthdayReminder contactedCount={birthdayReminderMessages[birthdayReminderIndex].contactedCount} remainingCount={birthdayReminderMessages[birthdayReminderIndex].remainingCount} branchName={birthdayReminderMessages[birthdayReminderIndex].branchName} />
+                    </div>
+                  )}
+                  <p className="dashboard-greeting-date">{new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' })}.</p>
                 </div>
               </section>}
 
               {!showAdminSection && <div className="mobile-quick-actions">
-                <WorkspaceRail activeTab={activeTab} setActiveTab={setActiveTab} profile={profile} showAdminSection={showAdminSection} onOpenAdmin={openAdminOverview} activeNotesCount={activeNotesCount} />
+                <WorkspaceRail activeTab={activeTab} setActiveTab={selectWorkspaceTab} profile={profile} showAdminSection={showAdminSection} onOpenAdmin={openAdminOverview} activeNotesCount={activeNotesCount} />
               </div>}
 
                   {!showAdminSection ? (
@@ -1106,33 +909,16 @@ export default function Home() {
                 <section>
                   <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
                   {profile?.permissions?.clients?.view !== false && (
-                    <NavCard onClick={() => setActiveTab('dashboard')} icon="/clients_bg.webp" title="Clients Database" description="Manage" badge={cachedClientCounts ? clientBadgeTotal : (dataLoaded ? '...' : undefined)} isImage={true} fullBg={true} />
+                    <NavCard onClick={() => setActiveTab('dashboard')} title="Clients" description="In the database" metric={cachedClientCounts ? clientBadgeTotal : (dataLoaded ? '...' : '—')} accentCard={profile?.permissions?.gym?.view === false} />
                   )}
                   {profile?.permissions?.birthdays?.view !== false && (
-                    <NavCard onClick={() => setActiveTab('birthdays')} icon="/birthday.png" title="Today's Birthdays" description="Celebrations" badge={cachedBirthdayCounts ? birthdayBadgeTotal : (dataLoaded ? '...' : undefined)} isImage={true} fullBg={true} />
+                    <NavCard onClick={() => setActiveTab('birthdays')} title="Birthdays" description="Celebrating today" metric={cachedBirthdayCounts ? birthdayBadgeTotal : (dataLoaded ? '...' : '—')} />
                   )}
-
                   {profile?.permissions?.gym?.view !== false && (
-                    <NavCard
-                      onClick={() => setActiveTab('gym')}
-                      icon="/gym_bg.webp"
-                      title="GYM"
-                      description="Memberships."
-                      isImage={true}
-                      fullBg={true}
-                      badge={dataLoaded ? activeGymMembers : undefined}
-                    />
+                    <NavCard onClick={() => setActiveTab('gym')} title="GYM" description="Active members" metric={dataLoaded ? activeGymMembers : '—'} accentCard />
                   )}
                   {profile?.permissions?.spa?.view !== false && (
-                    <NavCard
-                      onClick={() => setActiveTab('spa')}
-                      icon="/spa_bg.webp"
-                      title="SPA"
-                      description="Memberships."
-                      isImage={true}
-                      fullBg={true}
-                      badge={dataLoaded ? activeSpaMembers : undefined}
-                    />
+                    <NavCard onClick={() => setActiveTab('spa')} title="SPA" description="Active members" metric={dataLoaded ? activeSpaMembers : '—'} />
                   )}
                   </div>
                 </section>
@@ -1142,16 +928,12 @@ export default function Home() {
                 </>
               ) : (
                 <div className="space-y-6">
-                  <div className="relative overflow-hidden rounded-3xl border border-blue-100/80 bg-gradient-to-br from-white via-blue-50/70 to-slate-100 p-5 shadow-lg shadow-blue-900/5 dark:border-slate-800 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
-                    <div className="absolute right-0 top-0 h-28 w-28 rounded-full bg-blue-400/20 blur-3xl" />
-                    <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                      <div>
-                        <div className="text-xs font-black uppercase tracking-[0.24em] text-blue-600 dark:text-blue-400">Control Center</div>
-                        <div className="mt-1 flex items-center gap-3"><SectionBackArrow onClick={() => setShowAdminSection(false)} label="Back to Home" /><h2 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">Admin Tools</h2></div>
-                        <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">Operate imports, audits, locations, users, and billing from one polished workspace.</p>
-                      </div>
-                      <button onClick={() => setShowAdminSection(false)} className="inline-flex items-center justify-center rounded-2xl border border-blue-200/70 bg-white/80 px-4 py-2 text-sm font-bold text-blue-700 shadow-sm backdrop-blur hover:bg-blue-50 hover:shadow-md dark:border-blue-900/50 dark:bg-slate-900/80 dark:text-blue-300 dark:hover:bg-blue-950/40">Back to main</button>
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <div className="flex items-center gap-3"><SectionBackArrow onClick={() => setShowAdminSection(false)} label="Back to Home" /><h2 className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-white">Admin tools</h2></div>
+                      <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Imports, audits, locations, users, and billing.</p>
                     </div>
+                    <button onClick={() => setShowAdminSection(false)} className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800">Back to main</button>
                   </div>
                   <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                     {profile?.permissions?.clients?.add !== false && (
@@ -1205,7 +987,7 @@ export default function Home() {
                   </div>
                 </div>
               )}
-                {!showAdminSection && <div className="dashboard-quote mt-1 rounded-2xl border border-slate-200/80 bg-white/70 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/50"><div className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-600 dark:text-blue-300">Power quote</div><p className="mt-1 text-sm font-semibold italic leading-6 text-slate-600 dark:text-slate-200">“{currentAffirmation}”</p></div>}
+                {!showAdminSection && <p className="dashboard-quote">“{currentAffirmation}”</p>}
               </div>
           )}
 
@@ -1839,6 +1621,7 @@ export default function Home() {
           </div>
           )}
         </main>
+        </div>
       </div>
     </ProtectedRoute>
   );
