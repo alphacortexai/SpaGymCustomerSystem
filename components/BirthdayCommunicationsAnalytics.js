@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   endOfDay,
   endOfMonth,
@@ -10,6 +10,18 @@ import {
   startOfMonth,
   subDays,
 } from 'date-fns';
+import { getBirthdayClientsByMonth, getClientsContactedBetween } from '@/lib/clients';
+
+function monthsCovering(start, end) {
+  const months = new Set();
+  const cursor = new Date(start.getFullYear(), start.getMonth(), 1);
+  const last = new Date(end.getFullYear(), end.getMonth(), 1);
+  while (cursor <= last && months.size < 12) {
+    months.add(cursor.getMonth() + 1);
+    cursor.setMonth(cursor.getMonth() + 1);
+  }
+  return [...months];
+}
 
 const METHOD_LABELS = {
   called: 'Called',
@@ -91,13 +103,15 @@ function EmptyState({ message }) {
   return <div className="rounded-xl border border-dashed border-slate-200 px-5 py-8 text-center text-sm font-medium text-slate-500 dark:border-slate-700 dark:text-slate-400">{message}</div>;
 }
 
-export default function BirthdayCommunicationsAnalytics({ clients = [], branches = [], birthdayCallers = [], isLoading = false, onBack }) {
+export default function BirthdayCommunicationsAnalytics({ branches = [], birthdayCallers = [], onBack }) {
   const [today] = useState(() => new Date());
   const [period, setPeriod] = useState('today');
   const [customStart, setCustomStart] = useState(format(today, 'yyyy-MM-dd'));
   const [customEnd, setCustomEnd] = useState(format(today, 'yyyy-MM-dd'));
   const [branch, setBranch] = useState('');
   const [detailSearch, setDetailSearch] = useState('');
+  const [clients, setClients] = useState([]);
+  const [loadedKey, setLoadedKey] = useState('');
   const callerNameById = useMemo(() => new Map(birthdayCallers.map((caller) => [caller.id, caller.name])), [birthdayCallers]);
 
   const periodBounds = useMemo(() => {
@@ -112,6 +126,36 @@ export default function BirthdayCommunicationsAnalytics({ clients = [], branches
     }
     return { start: currentDay, end: endOfDay(currentDay) };
   }, [customEnd, customStart, period, today]);
+
+  const requestKey = `${periodBounds.start.getTime()}|${periodBounds.end.getTime()}`;
+  const isLoading = loadedKey !== requestKey;
+
+  useEffect(() => {
+    let cancelled = false;
+    const months = monthsCovering(periodBounds.start, periodBounds.end);
+    const key = `${periodBounds.start.getTime()}|${periodBounds.end.getTime()}`;
+    Promise.all([
+      Promise.all(months.map((month) => getBirthdayClientsByMonth(month))),
+      getClientsContactedBetween(periodBounds.start, periodBounds.end).catch((error) => {
+        console.error('Birthday contact range error:', error);
+        return [];
+      }),
+    ]).then(([monthGroups, contacted]) => {
+      if (cancelled) return;
+      const merged = new Map();
+      monthGroups.flat().forEach((client) => merged.set(client.id, client));
+      contacted.forEach((client) => merged.set(client.id, client));
+      setClients([...merged.values()]);
+      setLoadedKey(key);
+    }).catch((error) => {
+      console.error('Birthday analytics load error:', error);
+      if (!cancelled) {
+        setClients([]);
+        setLoadedKey(key);
+      }
+    });
+    return () => { cancelled = true; };
+  }, [periodBounds.end, periodBounds.start]);
 
   const birthdayRows = useMemo(() => {
     const { start, end } = periodBounds;

@@ -34,7 +34,10 @@ export async function GET(request) {
       );
     }
 
-    const requestedBranch = new URL(request.url).searchParams.get('branch') || '';
+    const url = new URL(request.url);
+    const requestedBranch = url.searchParams.get('branch') || '';
+    const pageSize = Math.min(Math.max(Number(url.searchParams.get('limit')) || 40, 1), 80);
+    const cursorId = String(url.searchParams.get('cursor') || '').trim();
     let query = getServerFirestore().collection('spa_enrollments');
 
     if (requestedBranch) {
@@ -48,12 +51,28 @@ export async function GET(request) {
       query = query.where('branch', 'in', allowedBranches);
     }
 
-    const snapshot = await query.orderBy('createdAt', 'desc').get();
+    let orderedQuery = query.orderBy('createdAt', 'desc');
+    if (cursorId && !cursorId.includes('/')) {
+      const cursorSnapshot = await getServerFirestore().collection('spa_enrollments').doc(cursorId).get();
+      if (cursorSnapshot.exists) orderedQuery = orderedQuery.startAfter(cursorSnapshot);
+    }
+    let snapshot;
+    try {
+      snapshot = await orderedQuery.limit(pageSize).get();
+    } catch (queryError) {
+      console.warn('Ordered spa enrollment page failed; reading a bounded page without sort.', queryError?.message || queryError);
+      snapshot = await query.limit(pageSize).get();
+    }
     const enrollments = snapshot.docs.map((document) => ({
       id: document.id,
       ...serializeFirestoreValue(document.data()),
     }));
-    return json({ enrollments });
+    const last = snapshot.docs.at(-1);
+    return json({
+      enrollments,
+      nextCursor: last?.id || '',
+      hasMore: snapshot.docs.length === pageSize,
+    });
   } catch (error) {
     console.error('Error loading spa intake enrollments:', error);
     return json({ error: 'Unable to load spa intake enrollments.' }, { status: 500 });

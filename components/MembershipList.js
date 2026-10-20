@@ -1,9 +1,8 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { collection, query, getDocs, orderBy } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 import { format } from 'date-fns';
+import { getEnrollmentsPage } from '@/lib/memberships';
 import MembershipDetailsModal from './MembershipDetailsModal';
 import LoadingState from '@/components/LoadingState';
 
@@ -14,24 +13,25 @@ export default function MembershipList() {
   const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState('table'); // 'table' or 'card'
   const [currentPage, setCurrentPage] = useState(1);
+  const [pageCursor, setPageCursor] = useState(null);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const itemsPerPage = 20;
 
-  const loadEnrollments = async () => {
-    setLoading(true);
+  const loadEnrollments = async (cursor = null, append = false) => {
+    if (append) setLoadingMore(true);
+    else setLoading(true);
     try {
-      const q = query(collection(db, 'enrollments'), orderBy('createdAt', 'desc'));
-      const snapshot = await getDocs(q);
-      const data = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        startDate: doc.data().startDate?.toDate(),
-        expiryDate: doc.data().expiryDate?.toDate(),
-      }));
-      setEnrollments(data);
+      const page = await getEnrollmentsPage(false, 40, cursor);
+      setEnrollments((current) => append ? [...current, ...page.enrollments] : page.enrollments);
+      setPageCursor(page.cursor);
+      setHasMore(page.hasMore);
+      if (!append) setCurrentPage(1);
     } catch (error) {
       console.error('Error loading enrollments:', error);
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
   };
 
@@ -134,7 +134,7 @@ export default function MembershipList() {
               </button>
             </div>
 
-            <button onClick={loadEnrollments} className="text-sm text-blue-600 hover:underline whitespace-nowrap">Refresh</button>
+            <button onClick={() => loadEnrollments()} className="text-sm text-blue-600 hover:underline whitespace-nowrap">Refresh</button>
           </div>
         </div>
       </div>
@@ -236,6 +236,14 @@ export default function MembershipList() {
         </div>
       )}
 
+      {hasMore && (
+        <div className="mt-4 flex justify-center">
+          <button type="button" onClick={() => loadEnrollments(pageCursor, true)} disabled={loadingMore} className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:text-slate-200">
+            {loadingMore ? 'Loading…' : 'Load more memberships'}
+          </button>
+        </div>
+      )}
+
       {totalPages > 1 && (
         <div className="flex justify-center items-center gap-2 mt-6">
           <button 
@@ -262,7 +270,7 @@ export default function MembershipList() {
         <MembershipDetailsModal 
           enrollment={enrollments.find(e => e.id === selectedEnrollment.id) ?? selectedEnrollment} 
           onClose={() => setSelectedEnrollment(null)}
-          onUpdate={loadEnrollments}
+          onUpdate={() => loadEnrollments()}
         />
       )}
     </div>
