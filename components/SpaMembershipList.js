@@ -34,6 +34,9 @@ export default function SpaMembershipList() {
   const [viewMode, setViewMode] = useState('table'); // 'table' or 'card'
   const [currentPage, setCurrentPage] = useState(1);
   const [branchesLoaded, setBranchesLoaded] = useState(false);
+  const [nextCursor, setNextCursor] = useState('');
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const itemsPerPage = 20;
 
   const loadInitialData = useCallback(async () => {
@@ -46,9 +49,10 @@ export default function SpaMembershipList() {
     setBranchesLoaded(true);
   }, [isPlatformAdmin, spaIntakeBranches]);
 
-  const loadEnrollments = useCallback(async () => {
+  const loadEnrollments = useCallback(async (cursor = '', append = false) => {
     if (!branchesLoaded) return;
-    setLoading(true);
+    if (append) setLoadingMore(true);
+    else setLoading(true);
     try {
       if (!user || !canViewSpa) {
         setEnrollments([]);
@@ -64,8 +68,9 @@ export default function SpaMembershipList() {
       }
 
       const idToken = await user.getIdToken();
-      const params = new URLSearchParams();
+      const params = new URLSearchParams({ limit: '40' });
       if (selectedBranch) params.set('branch', selectedBranch);
+      if (cursor) params.set('cursor', cursor);
       const search = params.toString();
       const response = await fetch(`/api/spa-intake${search ? `?${search}` : ''}`, {
         headers: { Authorization: `Bearer ${idToken}` },
@@ -78,12 +83,16 @@ export default function SpaMembershipList() {
         startDate: parseDate(enrollment.startDate),
         expiryDate: parseDate(enrollment.expiryDate),
       }));
-      setEnrollments(data);
+      setEnrollments((current) => append ? [...current, ...data] : data);
+      setNextCursor(result.nextCursor || '');
+      setHasMore(Boolean(result.hasMore));
+      if (!append) setCurrentPage(1);
     } catch (error) {
       console.error('Error loading spa enrollments:', error);
       setEnrollments([]);
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
   }, [branchesLoaded, canViewSpa, isPlatformAdmin, selectedBranch, spaIntakeBranches, user]);
 
@@ -207,7 +216,7 @@ export default function SpaMembershipList() {
               </button>
             </div>
 
-            <button onClick={loadEnrollments} className="text-sm text-indigo-600 hover:underline whitespace-nowrap">Refresh</button>
+            <button onClick={() => loadEnrollments()} className="text-sm text-indigo-600 hover:underline whitespace-nowrap">Refresh</button>
           </div>
         </div>
       </div>
@@ -322,6 +331,14 @@ export default function SpaMembershipList() {
         </div>
       )}
 
+      {hasMore && (
+        <div className="mt-4 flex justify-center">
+          <button type="button" onClick={() => loadEnrollments(nextCursor, true)} disabled={loadingMore} className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:text-slate-200">
+            {loadingMore ? 'Loading…' : 'Load more memberships'}
+          </button>
+        </div>
+      )}
+
       {totalPages > 1 && (
         <div className="flex justify-center items-center gap-2 mt-6">
           <button 
@@ -348,7 +365,7 @@ export default function SpaMembershipList() {
         <MembershipDetailsModal 
           enrollment={enrollments.find(e => e.id === selectedEnrollment.id) ?? selectedEnrollment} 
           onClose={() => setSelectedEnrollment(null)}
-          onUpdate={loadEnrollments}
+          onUpdate={() => loadEnrollments()}
           isSpa={true}
         />
       )}

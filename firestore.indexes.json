@@ -1,0 +1,29 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "guestflowVisits",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "checkedOutAt", "order": "ASCENDING" },
+        { "fieldPath": "checkedInAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "spa_enrollments",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "branch", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "enrollments",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "branch", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}
