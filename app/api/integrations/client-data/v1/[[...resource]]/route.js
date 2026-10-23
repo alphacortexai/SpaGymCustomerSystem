@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { ApiError } from '@/lib/guestflowApi';
+import { ApiError, listBranches } from '@/lib/guestflowApi';
 import { queryClientProfiles, getClientProfile, queryVisitRegister } from '@/lib/clientDataApi';
 import {
   CLIENT_DATA_API_INDEX,
@@ -111,6 +111,7 @@ async function handle(request, context) {
     const url = new URL(request.url);
 
     if (route.kind === 'index') return json(CLIENT_DATA_API_INDEX);
+    if (route.kind === 'branches') return json({ branches: await listBranches() });
     if (route.kind === 'clients') {
       const clients = await queryClientProfiles({
         phone: url.searchParams.get('phone') || '',

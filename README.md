@@ -10,7 +10,7 @@ A modern, full-featured client management system for spa businesses built with N
 - 📱 **Duplicate Detection** - Warns when adding clients with existing phone numbers
 - 📊 **Excel Import** - Bulk import clients from Excel files
 - 🔍 **Advanced Search** - Search by name, phone number, or date of birth
-- 🔗 **Client data API** - Read-only JSON API so another server can query a client's name, phone number, birthday, and check-ins. See [CLIENT_DATA_API.md](./CLIENT_DATA_API.md).
+- 🔗 **Client data API** - Read-only JSON API so another server can query a client's name, phone number, birthday, and check-ins. The other developer follows [docs/DEPENDENT_SYSTEM_SETUP.md](./docs/DEPENDENT_SYSTEM_SETUP.md).
 - 📱 **Responsive Design** - Works on desktop, tablet, and mobile devices
 
 ## Tech Stack

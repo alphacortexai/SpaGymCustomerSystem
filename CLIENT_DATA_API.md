@@ -1,5 +1,7 @@
 # SpaGym client data API
 
+Developers building the system that depends on SpaGym should start with [docs/DEPENDENT_SYSTEM_SETUP.md](./docs/DEPENDENT_SYSTEM_SETUP.md). That guide covers their environment, the copyable client, and the checks to run with the SpaGym operator. This file is the field-level contract.
+
 SpaGym remains the system of record for client profiles and spa visits. This API lets one external server read that data as JSON. It is a separate door from the GuestFlow integration: GuestFlow can register clients and record visits, while this API can only read.
 
 The external system never talks to Firestore, and the shared key never goes in a browser. Its server calls SpaGym's server. SpaGym reads `clients` and `guestflowVisits` with the Firebase Admin SDK and returns an allow-listed JSON document.
@@ -106,6 +108,18 @@ Failed attempts are limited to 30 per minute for a source address and for the sa
 ## Endpoints
 
 All paths are under `/api/integrations/client-data/v1`. Only `GET` is accepted. Any other method returns `405`.
+
+### List branches
+
+```http
+GET /api/integrations/client-data/v1/branches
+```
+
+```json
+{ "branches": [{ "id": "branch123", "name": "Kololo" }] }
+```
+
+Use `id` or `name` as the `branch` filter on check-in queries. The check-in response uses the branch name.
 
 ### Find clients
 

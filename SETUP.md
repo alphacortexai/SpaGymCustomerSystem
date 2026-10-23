@@ -122,4 +122,4 @@ SpaGym exposes a private, server-to-server API for GuestFlow client lookup, regi
 
 ## Client data read API
 
-Another server can read client name, phone number, birthday, and check-in records without permission to create or change them. Generate a separate secret of at least 32 characters and set it as `CLIENT_DATA_API_KEY` on SpaGym. Give that same secret only to the other system's server. See [CLIENT_DATA_API.md](./CLIENT_DATA_API.md) for the JSON contract, authentication, and the request each system makes.
+Another server can read client name, phone number, birthday, and check-in records without permission to create or change them. Generate a separate secret of at least 32 characters and set it as `CLIENT_DATA_API_KEY` on SpaGym. Give that same secret, and the SpaGym origin, only to the developer of the dependent system. They follow [docs/DEPENDENT_SYSTEM_SETUP.md](./docs/DEPENDENT_SYSTEM_SETUP.md) and can copy [integrations/spagym-client-data](./integrations/spagym-client-data). The JSON field contract is [CLIENT_DATA_API.md](./CLIENT_DATA_API.md).
