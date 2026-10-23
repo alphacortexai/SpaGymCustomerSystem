@@ -53,7 +53,7 @@ SPAGYM_API_URL=https://spagym.example
 SPAGYM_CLIENT_DATA_API_KEY=the-same-value-as-SpaGym-CLIENT_DATA_API_KEY
 ```
 
-A template is in `integrations/spagym-client-data/.env.example`.
+A template is in `integrations/spagym-client-data/env.example`.
 
 - `SPAGYM_API_URL` is the origin only. `https://spagym.example/api` is rejected.
 - The key is at least 32 characters and contains no spaces.
