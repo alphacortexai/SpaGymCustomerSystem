@@ -1,4 +1,6 @@
-const API_PREFIX = '/api/integrations/client-data/v1';
+import { createHmac, timingSafeEqual } from 'node:crypto';
+
+const API_PREFIX = '/api/spa-sys/v1';
 const RETRYABLE_STATUSES = new Set([500, 502, 503, 504]);
 
 export class SpaGymApiError extends Error {
@@ -47,7 +49,7 @@ function assertApiKey(apiKey) {
   if (key.length < 32 || /\s/.test(key)) {
     throw new SpaGymApiError({
       code: 'CONFIG',
-      message: 'Set SPAGYM_CLIENT_DATA_API_KEY to the same secret as SpaGym CLIENT_DATA_API_KEY. Use at least 32 characters and no spaces.',
+      message: 'Set SPA_SYS_API_KEY to the same secret as SpaGym. Use at least 32 characters and no spaces.',
     });
   }
   return key;
@@ -78,9 +80,18 @@ function headerValue(response, name) {
   return headers[name] || headers[name.toLowerCase()] || '';
 }
 
+export function verifySpaSysWebhook({ secret, timestamp, rawBody, signature, now = Date.now(), toleranceSeconds = 300 } = {}) {
+  const stamp = Number(timestamp);
+  const presented = String(signature || '').replace(/^sha256=/i, '').toLowerCase();
+  if (!secret || !Number.isFinite(stamp) || Math.abs(now - stamp * 1000) > toleranceSeconds * 1000) return false;
+  if (!/^[a-f0-9]{64}$/.test(presented)) return false;
+  const expected = createHmac('sha256', secret).update(`${timestamp}.${rawBody}`).digest('hex');
+  return timingSafeEqual(Buffer.from(expected, 'hex'), Buffer.from(presented, 'hex'));
+}
+
 export function createSpaGymClient({
   baseUrl = process.env.SPAGYM_API_URL,
-  apiKey = process.env.SPAGYM_CLIENT_DATA_API_KEY,
+  apiKey = process.env.SPA_SYS_API_KEY || process.env.SPAGYM_CLIENT_DATA_API_KEY,
   fetchImpl = globalThis.fetch,
   sleep = defaultSleep,
   maxRetries = 2,
@@ -92,19 +103,25 @@ export function createSpaGymClient({
     throw new SpaGymApiError({ code: 'CONFIG', message: 'This client needs a fetch implementation. Use Node.js 18 or newer.' });
   }
 
-  async function request(path, query = {}) {
+  async function request(path, query = {}, { method = 'GET', jsonBody, retryServerErrors = method === 'GET' } = {}) {
     const url = new URL(`${API_PREFIX}${path}`, origin);
     for (const [name, value] of Object.entries(query)) {
       if (value !== undefined && value !== null && value !== '') url.searchParams.set(name, String(value));
     }
+    const retryable = retryServerErrors ? RETRYABLE_STATUSES : new Set([502, 503, 504]);
     let attempt = 0;
     let honoredRateLimit = false;
     while (true) {
       let response;
       try {
         response = await fetchImpl(url, {
-          method: 'GET',
-          headers: { Authorization: `Bearer ${key}`, Accept: 'application/json' },
+          method,
+          headers: {
+            Authorization: `Bearer ${key}`,
+            Accept: 'application/json',
+            ...(jsonBody === undefined ? {} : { 'Content-Type': 'application/json' }),
+          },
+          body: jsonBody === undefined ? undefined : JSON.stringify(jsonBody),
           cache: 'no-store',
           signal: AbortSignal.timeout(timeoutMs),
         });
@@ -124,7 +141,7 @@ export function createSpaGymClient({
         await sleep(seconds * 1000);
         continue;
       }
-      if (RETRYABLE_STATUSES.has(response.status) && attempt < maxRetries) {
+      if (retryable.has(response.status) && attempt < maxRetries) {
         attempt += 1;
         await readBody(response);
         await sleep(250 * attempt);
@@ -172,6 +189,17 @@ export function createSpaGymClient({
     },
     async listClientCheckIns(clientId, { date, from, to } = {}) {
       return request(`/clients/${encodeURIComponent(assertClientId(clientId))}/check-ins`, { date, from, to });
+    },
+    async updateClient(clientId, changes) {
+      const body = await request(`/clients/${encodeURIComponent(assertClientId(clientId))}`, {}, { method: 'PATCH', jsonBody: changes, retryServerErrors: false });
+      return body.client;
+    },
+    async updateClientByPhone(phone, changes) {
+      const body = await request('/clients', { phone }, { method: 'PATCH', jsonBody: changes, retryServerErrors: false });
+      return body.client;
+    },
+    async checkOut({ visitId, phone, clientId, staffName } = {}) {
+      return request('/check-outs', {}, { method: 'POST', jsonBody: { visitId, phone, clientId, staffName }, retryServerErrors: false });
     },
   };
 }

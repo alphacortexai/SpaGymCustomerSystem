@@ -1,6 +1,8 @@
 # SpaGym client data API
 
-Developers building the system that depends on SpaGym should start with [docs/DEPENDENT_SYSTEM_SETUP.md](./docs/DEPENDENT_SYSTEM_SETUP.md). That guide covers their environment, the copyable client, and the checks to run with the SpaGym operator. This file is the field-level contract.
+This API is **SPA_SYS_API_V1**. Its canonical path is `/api/spa-sys/v1`. Start with [docs/SPA_SYS_API_V1.md](./docs/SPA_SYS_API_V1.md) for read, update, check-out, and check-in alerts. The other developer follows [docs/DEPENDENT_SYSTEM_SETUP.md](./docs/DEPENDENT_SYSTEM_SETUP.md).
+
+The paths below under `/api/integrations/client-data/v1` remain available and run the same handlers. New calls should use `/api/spa-sys/v1`.
 
 SpaGym remains the system of record for client profiles and spa visits. This API lets one external server read that data as JSON. It is a separate door from the GuestFlow integration: GuestFlow can register clients and record visits, while this API can only read.
 
