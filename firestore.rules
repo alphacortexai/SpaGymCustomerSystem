@@ -236,6 +236,11 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    match /spaSysRequestLogs/{logId} {
+      // Individual API and webhook results are written by the Admin SDK.
+      allow read, write: if false;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

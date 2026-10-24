@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { authorizeAdminRequest } from '@/lib/firebase-server';
 import { kampalaDateKey } from '@/lib/clientDataContract';
 import { shiftDateKey } from '@/lib/spaSysActivity';
-import { loadSpaSysAnalytics, webhookHost } from '@/lib/spaSysActivityStore';
+import { loadSpaSysAnalytics, loadSpaSysRequestLogs, webhookHost } from '@/lib/spaSysActivityStore';
 import { listSpaSysIntegrations } from '@/lib/spaSysIntegrations';
 
 export const runtime = 'nodejs';
@@ -24,13 +24,21 @@ export async function GET(request) {
   const from = shiftDateKey(to, -(days - 1));
   try {
     const integrations = await listSpaSysIntegrations();
-    const analytics = await loadSpaSysAnalytics({
-      from,
-      to,
-      integrations,
-      environmentWebhookHost: webhookHost(process.env.SPA_SYS_WEBHOOK_URL || ''),
-    });
-    return NextResponse.json({ ...analytics, days }, { headers: noStore });
+    const [analytics, requestLogs] = await Promise.all([
+      loadSpaSysAnalytics({
+        from,
+        to,
+        integrations,
+        environmentWebhookHost: webhookHost(process.env.SPA_SYS_WEBHOOK_URL || ''),
+      }),
+      loadSpaSysRequestLogs({ from, to }),
+    ]);
+    return NextResponse.json({
+      ...analytics,
+      entries: requestLogs.entries,
+      logsTruncated: requestLogs.truncated,
+      days,
+    }, { headers: noStore });
   } catch (error) {
     console.error('Unable to read SPA SYS analytics:', error?.code || error?.message);
     return NextResponse.json({ error: 'Unable to load API analytics.' }, { status: 500, headers: noStore });

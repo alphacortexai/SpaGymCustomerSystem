@@ -32,6 +32,7 @@ function Metric({ label, value, detail }) {
 export default function SpaSysApiAnalytics({ user, profile, onBack }) {
   const isTopAdmin = user?.email?.toLowerCase() === TOP_ADMIN_EMAIL && profile?.email?.toLowerCase() === TOP_ADMIN_EMAIL;
   const [days, setDays] = useState(7);
+  const [logFilter, setLogFilter] = useState('all');
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -70,7 +71,7 @@ export default function SpaSysApiAnalytics({ user, profile, onBack }) {
           <div>
             <p className="text-[11px] font-black uppercase tracking-[0.2em] text-blue-600 dark:text-blue-300">Top admin · SPA_SYS_API_V1</p>
             <h2 className="mt-1 text-3xl font-black tracking-tight text-slate-900 dark:text-white">API analytics</h2>
-            <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-500 dark:text-slate-400">Calls are counted per API key. Check-in alerts are counted per webhook. Dates use the Africa/Kampala day. Phone numbers and secrets are not stored in this report.</p>
+            <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-500 dark:text-slate-400">Each API key has a total, and the log below shows the individual request, which key made it, and whether it succeeded. A failure includes the error. Dates use the Africa/Kampala day. Phone numbers and secrets are not stored.</p>
           </div>
         </div>
         <div className="flex rounded-2xl border border-slate-200 bg-white p-1 dark:border-slate-800 dark:bg-slate-900">
@@ -164,7 +165,54 @@ export default function SpaSysApiAnalytics({ user, profile, onBack }) {
               </table>
             </div>
           </section>
-          {report.truncated && <p className="text-sm font-semibold text-amber-700">This period has more activity than the report can load. Use 7 days for a complete count.</p>}
+          <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+            <div className="flex flex-col gap-3 border-b border-slate-200 px-5 py-4 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h3 className="font-black text-slate-900 dark:text-white">Request log</h3>
+                <p className="mt-1 text-sm text-slate-500">Newest 200 calls in this period. The path is the endpoint, not the phone number or client record.</p>
+              </div>
+              <div className="flex rounded-xl border border-slate-200 p-1 dark:border-slate-700">
+                {[['all', 'All'], ['api', 'API'], ['webhook', 'Webhooks']].map(([value, label]) => (
+                  <button key={value} type="button" onClick={() => setLogFilter(value)} className={`rounded-lg px-3 py-1.5 text-xs font-black ${logFilter === value ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900' : 'text-slate-500'}`}>{label}</button>
+                ))}
+              </div>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-left text-sm">
+                <thead className="bg-slate-900 text-xs uppercase tracking-wider text-white">
+                  <tr>
+                    {['Time', 'Key', 'Request', 'Result'].map((column) => <th key={column} className="px-3 py-2 font-black">{column}</th>)}
+                  </tr>
+                </thead>
+                <tbody>
+                  {(report.entries || []).filter((item) => logFilter === 'all' || item.channel === logFilter).map((item) => (
+                    <tr key={item.id} className="border-t border-slate-200 align-top dark:border-slate-800">
+                      <td className="px-3 py-3 whitespace-nowrap text-slate-500">{formatWhen(item.at)}</td>
+                      <td className="px-3 py-3">
+                        <div className="font-bold text-slate-900 dark:text-white">{item.name}</div>
+                        <div className="font-mono text-xs text-slate-500">{item.keyPreview || 'No key'}</div>
+                      </td>
+                      <td className="px-3 py-3">
+                        <div className="font-semibold text-slate-800 dark:text-slate-100">{item.request}</div>
+                        <div className="text-xs text-slate-500">{item.path}</div>
+                      </td>
+                      <td className="px-3 py-3">
+                        {item.success
+                          ? <span className="font-bold text-emerald-700 dark:text-emerald-300">Success · {item.status}</span>
+                          : <span className="font-bold text-rose-700 dark:text-rose-300">{item.status || 'Failed'}{item.errorCode ? ` · ${item.errorCode}` : ''}</span>}
+                        {!item.success && item.errorMessage && <p className="mt-1 max-w-sm text-xs leading-5 text-slate-500">{item.errorMessage}</p>}
+                      </td>
+                    </tr>
+                  ))}
+                  {(report.entries || []).filter((item) => logFilter === 'all' || item.channel === logFilter).length === 0 && (
+                    <tr><td colSpan={4} className="px-3 py-6 text-slate-500">No requests have been logged in this period yet.</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </section>
+          {report.truncated && <p className="text-sm font-semibold text-amber-700">The daily totals for this period are too large to load in full. Use 7 days for a complete count.</p>}
+          {report.logsTruncated && <p className="text-sm font-semibold text-amber-700">More than 200 requests were logged in this period. The table shows the newest 200.</p>}
         </>
       )}
     </div>
