@@ -231,6 +231,11 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    match /spaSysUsage/{usageId} {
+      // Per-key API and webhook counts are written by the Admin SDK.
+      allow read, write: if false;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

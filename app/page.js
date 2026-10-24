@@ -53,6 +53,7 @@ const NewClientsAnalyticsAdmin = dynamic(() => import('@/components/NewClientsAn
 const FeedbackAttentionAdmin = dynamic(() => import('@/components/FeedbackAttentionAdmin'), { loading: LazySectionFallback });
 const AiFeedbackSettings = dynamic(() => import('@/components/AiFeedbackSettings'), { loading: LazySectionFallback });
 const SpaSysApiAdmin = dynamic(() => import('@/components/SpaSysApiAdmin'), { loading: LazySectionFallback });
+const SpaSysApiAnalytics = dynamic(() => import('@/components/SpaSysApiAnalytics'), { loading: LazySectionFallback });
 const GuestFlowVisits = dynamic(() => import('@/components/GuestFlowVisits'), { loading: LazySectionFallback });
 const GuestFlowDeviceAccess = dynamic(() => import('@/components/GuestFlowDeviceAccess'), { loading: LazySectionFallback });
 
@@ -750,7 +751,7 @@ export default function Home() {
     return () => clearInterval(interval);
   }, [isPageVisible]);
 
-  const adminSubsectionTabs = ['upload', 'unrecognized', 'history', 'users', 'birthday-callers', 'branches', 'duplicates', 'timeline', 'caller-analytics', 'new-clients-analytics', 'check-in-analytics', 'guestflow-devices', 'feedback-attention', 'ai-settings', 'spa-sys-api', 'invoice-list'];
+  const adminSubsectionTabs = ['upload', 'unrecognized', 'history', 'users', 'birthday-callers', 'branches', 'duplicates', 'timeline', 'caller-analytics', 'new-clients-analytics', 'check-in-analytics', 'guestflow-devices', 'feedback-attention', 'ai-settings', 'spa-sys-api', 'spa-sys-analytics', 'invoice-list'];
 
   const openAdminTool = (tab) => {
     setReturnToAdmin(true);
@@ -1231,6 +1232,9 @@ export default function Home() {
                     {profile?.role === 'Admin' && (
                       <NavCard onClick={() => openAdminTool('spa-sys-api')} icon={<QuickActionIcon name="admin" />} title="SPA SYS API" description="Register an external system and export the API guide." accent="blue" eyebrow="All admins" />
                     )}
+                    {isRootAdmin && (
+                      <NavCard onClick={() => openAdminTool('spa-sys-analytics')} icon={<QuickActionIcon name="analytics" />} title="API Analytics" description="Calls and check-in alerts for every API key." accent="blue" eyebrow="Top admin only" />
+                    )}
                     {profile?.role === 'Admin' && (
                       <NavCard onClick={() => openAdminTool('invoice-list')} icon={<QuickActionIcon name="invoices" />} title="All Invoices" description="View, search and recreate PDFs." accent="emerald" eyebrow="Finance" />
                     )}
@@ -1633,6 +1637,10 @@ export default function Home() {
 
           {activeTab === 'spa-sys-api' && profile?.role === 'Admin' && (
             <SpaSysApiAdmin user={user} profile={profile} onBack={goBackFromSection} />
+          )}
+
+          {activeTab === 'spa-sys-analytics' && isRootAdmin && (
+            <SpaSysApiAnalytics user={user} profile={profile} onBack={goBackFromSection} />
           )}
 
           {activeTab === 'duplicates' && (
