@@ -225,6 +225,12 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    match /spaSysIntegrations/{integrationId} {
+      // SPA_SYS_API_V1 registrations are written by the Admin SDK. The browser
+      // must not read key hashes or webhook secrets.
+      allow read, write: if false;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

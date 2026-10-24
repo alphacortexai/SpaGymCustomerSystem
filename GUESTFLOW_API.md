@@ -60,3 +60,7 @@ New clients created in GuestFlow require a name, phone, and birthday month/day; 
 - Deploy SpaGym and GuestFlow with the same secret before testing the GuestFlow kiosk.
 - Use the signed-in SpaGym dashboard's **Spa check-ins** section to review arrivals and record departures.
 - The GuestFlow admin **Branch management → Fix an unassigned client** tool uses `/clients/reassign`; deploy this SpaGym integration update before enabling the GuestFlow UI.
+
+## Read-only access for another system
+
+GuestFlow's key can create clients and record visits. A system that only needs to read a client's name, phone number, birthday, and check-ins should use the separate read-only API and its own `CLIENT_DATA_API_KEY`. See [CLIENT_DATA_API.md](./CLIENT_DATA_API.md).
