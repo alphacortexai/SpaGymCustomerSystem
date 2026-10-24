@@ -119,3 +119,7 @@ Example:
 ## GuestFlow API integration
 
 SpaGym exposes a private, server-to-server API for GuestFlow client lookup, registration, check-in and check-out. See [GUESTFLOW_API.md](./GUESTFLOW_API.md) for the full endpoint contract and deployment steps. Configure a Firebase Admin service account and a long random `GUESTFLOW_API_KEY`; configure the same secret as `SPAGYM_API_KEY` on the GuestFlow server. Keep both values server-only. Publish the updated Firestore rules to allow approved staff with client-view/edit permissions to use the new **Spa check-ins** section.
+
+## Client data read API
+
+SPA_SYS_API_V1 lets another server read a client by phone, update name, phone, and birthday, check a client out, and receive a signed alert when a client checks in. Generate a secret of at least 32 characters and set it as `SPA_SYS_API_KEY`. Set `SPA_SYS_WEBHOOK_URL` to the other system's HTTPS endpoint and `SPA_SYS_WEBHOOK_SECRET` to a second random secret. Give the API key, the webhook secret, and the SpaGym origin only to that system's server. The operator guide is [docs/SPA_SYS_API_V1.md](./docs/SPA_SYS_API_V1.md). The other developer follows [docs/DEPENDENT_SYSTEM_SETUP.md](./docs/DEPENDENT_SYSTEM_SETUP.md).
