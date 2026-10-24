@@ -23,8 +23,8 @@ Your key can read those fields, change name, phone, and birthday, and check a cl
 | Step | SpaGym operator | You |
 | --- | --- | --- |
 | Deploy the client-data API | Deploys SpaGym with this API and the Firebase Admin credentials | Wait for the origin URL |
-| Create the key | Runs `openssl rand -hex 32` and sets `SPA_SYS_API_KEY` on the SpaGym server | Do not invent a second key |
-| Hand off | Sends you the SpaGym origin and the key through a private channel | Store both in the server environment |
+| Create the key | Opens Admin → SPA SYS API, registers your system, and copies the key and webhook secret shown once. An older deployment can still use `SPA_SYS_API_KEY` from the server environment | Do not invent a second key |
+| Hand off | Sends you the SpaGym origin and the key through a private channel. The same Admin page exports this guide as a PDF | Store both in the server environment |
 | Build | Confirms a known phone in the SpaGym desk | Call SpaGym only from your server, then show the JSON result in your own UI |
 | Check together | Compares your result with the Spa check-ins screen | Runs the joint checklist at the end of this guide |
 
