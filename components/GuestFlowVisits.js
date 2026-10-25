@@ -61,7 +61,7 @@ export default function GuestFlowVisits({ onBack, clients = [], branches = [] })
   const isHistoricalDate = Boolean(selectedDate && selectedDate !== todayKey);
   const canCheckOut = profile?.role === 'Admin' || profile?.permissions?.clients?.edit === true;
   const canCheckIn = profile?.role === 'Admin' || profile?.permissions?.clients?.view === true;
-  const canDelete = profile?.role === 'Admin' && profile?.email?.toLowerCase() === 'alphacortexai@gmail.com';
+  const canDelete = isPlatformAdmin;
 
   const loadVisits = useCallback(async () => {
     setLoading(true);

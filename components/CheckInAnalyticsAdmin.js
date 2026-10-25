@@ -48,8 +48,8 @@ function MetricCard({ label, value, detail, tone }) {
   );
 }
 
-export default function CheckInAnalyticsAdmin({ user, profile, onBack }) {
-  const isTopAdmin = user?.email?.toLowerCase() === TOP_ADMIN_EMAIL && profile?.email?.toLowerCase() === TOP_ADMIN_EMAIL;
+export default function CheckInAnalyticsAdmin({ user, onBack }) {
+  const isTopAdmin = user?.email?.toLowerCase() === TOP_ADMIN_EMAIL;
   const today = getKampalaDateKey();
   const [period, setPeriod] = useState('7d');
   const [customStart, setCustomStart] = useState(startDateForDays(7));

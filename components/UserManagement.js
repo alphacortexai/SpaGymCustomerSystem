@@ -1,26 +1,84 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { getAllUsers, updateUserRole, updateUserStatus, updateUserPermissions, updateUserBranches, updateUserSpaIntakeBranches, ROLES, ROLE_PERMISSIONS } from '@/lib/users';
+import { useEffect, useMemo, useState } from 'react';
+import { format } from 'date-fns';
+import { getAllUsers, updateUserRole, updateUserStatus, updateUserPermissions, updateUserBranches, updateUserSpaIntakeBranches, ROLES } from '@/lib/users';
 import { getAllBranches } from '@/lib/branches';
 import { useNotifications } from '@/contexts/NotificationContext';
 import { useAuth } from '@/contexts/AuthContext';
 import LoadingState from '@/components/LoadingState';
-import { format } from 'date-fns';
+
+const ROOT_EMAIL = 'alphacortexai@gmail.com';
+const STATUS_OPTIONS = ['approved', 'pending', 'disabled'];
+const STATUS_LABELS = { all: 'All', approved: 'Approved', pending: 'Pending', disabled: 'Disabled' };
+const CATEGORY_ORDER = ['clients', 'gym', 'spa', 'birthdays', 'branches', 'users'];
+const ACTION_ORDER = ['view', 'add', 'edit', 'delete'];
+const ACTION_LABELS = { view: 'View', add: 'Add', edit: 'Edit', delete: 'Delete' };
+
+function isRootAccount(email) {
+  return String(email || '').toLowerCase() === ROOT_EMAIL;
+}
+
+function joinedLabel(createdAt) {
+  if (!createdAt) return 'Join date not recorded';
+  const date = typeof createdAt.toDate === 'function' ? createdAt.toDate() : new Date(createdAt);
+  if (Number.isNaN(date.getTime())) return 'Join date not recorded';
+  return `Joined ${format(date, 'MMM d, yyyy')}`;
+}
+
+function categoryLabel(category) {
+  return category.replace(/[_-]/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function orderedCategories(permissions = {}) {
+  const extras = Object.keys(permissions).filter((category) => !CATEGORY_ORDER.includes(category));
+  return [...CATEGORY_ORDER.filter((category) => category in permissions), ...extras];
+}
+
+function toggleValue(list, value) {
+  const current = Array.isArray(list) ? list : [];
+  return current.includes(value) ? current.filter((item) => item !== value) : [...current, value];
+}
+
+function statusClass(status) {
+  if (status === 'approved') return 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300';
+  if (status === 'pending') return 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300';
+  return 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300';
+}
+
+function Chip({ pressed, disabled, onClick, children }) {
+  return (
+    <button
+      type="button"
+      aria-pressed={pressed}
+      disabled={disabled}
+      onClick={onClick}
+      className={`max-w-full break-words rounded-full px-3 py-1.5 text-left text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${
+        pressed
+          ? 'bg-blue-600 text-white'
+          : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
 
 export default function UserManagement() {
   const { toast } = useNotifications();
-  const { profile } = useAuth();
-  const isPlatformAdmin = profile?.email?.toLowerCase() === 'alphacortexai@gmail.com';
+  const { user: authUser, profile } = useAuth();
+  const isPlatformAdmin = authUser?.email?.toLowerCase() === ROOT_EMAIL;
   const canManageUsers = (profile?.role === ROLES.ADMIN || isPlatformAdmin) && profile?.status === 'approved';
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(null);
   const [branches, setBranches] = useState([]);
+  const [query, setQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
 
-  const loadUsers = async () => {
+  const loadUsers = async ({ silent = false } = {}) => {
     if (!canManageUsers) return;
-    setLoading(true);
+    if (!silent) setLoading(true);
     const [data, branchList] = await Promise.all([getAllUsers(), getAllBranches()]);
     setUsers(data);
     setBranches(branchList);
@@ -30,97 +88,88 @@ export default function UserManagement() {
   useEffect(() => {
     if (!canManageUsers) return undefined;
     let cancelled = false;
-    const fetchUsers = async () => {
-      setLoading(true);
-      const [data, branchList] = await Promise.all([getAllUsers(), getAllBranches()]);
-      if (!cancelled) {
-        setUsers(data);
-        setBranches(branchList);
-        setLoading(false);
-      }
-    };
-    fetchUsers();
+    Promise.all([getAllUsers(), getAllBranches()]).then(([data, branchList]) => {
+      if (cancelled) return;
+      setUsers(data);
+      setBranches(branchList);
+      setLoading(false);
+    });
     return () => { cancelled = true; };
   }, [canManageUsers]);
 
+  const applyResult = async (uid, result, failureMessage) => {
+    if (result.success) await loadUsers({ silent: true });
+    else toast(`${failureMessage}: ${result.error}`, 'error');
+    setUpdating(null);
+  };
+
   const handleRoleChange = async (uid, newRole) => {
-    if (!canManageUsers) return;
-    setUpdating(uid);
-    const result = await updateUserRole(uid, newRole);
-    if (result.success) {
-      await loadUsers();
-    } else {
-      toast('Error updating role: ' + result.error, 'error');
-    }
-    setUpdating(null);
-  };
-
-  const handleBranchChange = async (uid, event) => {
-    if (!canManageUsers) return;
-    const assignedBranches = Array.from(event.target.selectedOptions, (option) => option.value);
-    setUpdating(uid);
-    const result = await updateUserBranches(uid, assignedBranches);
-    if (result.success) {
-      await loadUsers();
-    } else {
-      toast('Error updating branches: ' + result.error, 'error');
-    }
-    setUpdating(null);
-  };
-
-  const handleSpaIntakeBranchChange = async (uid, event) => {
     if (!isPlatformAdmin) return;
-    const spaIntakeBranches = Array.from(event.target.selectedOptions, (option) => option.value);
     setUpdating(uid);
-    const result = await updateUserSpaIntakeBranches(uid, spaIntakeBranches);
-    if (result.success) {
-      await loadUsers();
-    } else {
-      toast('Error updating spa intake access: ' + result.error, 'error');
-    }
-    setUpdating(null);
+    await applyResult(uid, await updateUserRole(uid, newRole), 'Error updating role');
   };
 
   const handleStatusChange = async (uid, newStatus) => {
+    if (!isPlatformAdmin) return;
+    setUpdating(uid);
+    await applyResult(uid, await updateUserStatus(uid, newStatus), 'Error updating status');
+  };
+
+  const handleBranchChange = async (uid, assignedBranches) => {
     if (!canManageUsers) return;
     setUpdating(uid);
-    const result = await updateUserStatus(uid, newStatus);
-    if (result.success) {
-      await loadUsers();
-    } else {
-      toast('Error updating status: ' + result.error, 'error');
-    }
-    setUpdating(null);
+    await applyResult(uid, await updateUserBranches(uid, assignedBranches), 'Error updating branches');
+  };
+
+  const handleSpaIntakeBranchChange = async (uid, spaIntakeBranches) => {
+    if (!isPlatformAdmin) return;
+    setUpdating(uid);
+    await applyResult(uid, await updateUserSpaIntakeBranches(uid, spaIntakeBranches), 'Error updating spa intake access');
   };
 
   const togglePermission = async (user, category, action) => {
-    if (!canManageUsers) return;
+    if (!isPlatformAdmin) return;
     const newPermissions = { ...user.permissions };
     if (!newPermissions[category]) {
       newPermissions[category] = { view: false, edit: false, delete: false, add: false };
     }
-    
-    // Ensure all standard actions exist for object-based permissions
-    if (typeof newPermissions[category] === 'object' && !newPermissions[category][action] && newPermissions[category][action] === undefined) {
+
+    if (typeof newPermissions[category] === 'object' && newPermissions[category][action] === undefined) {
       newPermissions[category][action] = false;
     }
-    
+
     if (typeof newPermissions[category] === 'boolean') {
       newPermissions[category] = !newPermissions[category];
     } else {
       newPermissions[category] = {
         ...newPermissions[category],
-        [action]: !newPermissions[category][action]
+        [action]: !newPermissions[category][action],
       };
     }
-    
+
     setUpdating(user.uid);
     const result = await updateUserPermissions(user.uid, newPermissions);
-    if (result.success) {
-      await loadUsers();
-    }
+    if (result.success) await loadUsers({ silent: true });
     setUpdating(null);
   };
+
+  const statusCounts = useMemo(() => {
+    const counts = { all: users.length, approved: 0, pending: 0, disabled: 0 };
+    users.forEach((account) => {
+      if (counts[account.status] !== undefined) counts[account.status] += 1;
+    });
+    return counts;
+  }, [users]);
+
+  const visibleUsers = useMemo(() => {
+    const term = query.trim().toLowerCase();
+    return users.filter((account) => {
+      if (statusFilter !== 'all' && account.status !== statusFilter) return false;
+      if (!term) return true;
+      return [account.displayName, account.email, account.role, account.status]
+        .some((value) => String(value || '').toLowerCase().includes(term));
+    });
+  }, [query, statusFilter, users]);
 
   if (!canManageUsers) {
     return <div className="rounded-2xl border border-rose-200 bg-rose-50 p-6 text-sm font-medium text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-300">You do not have permission to manage user access.</div>;
@@ -129,170 +178,202 @@ export default function UserManagement() {
   if (loading) return <LoadingState title="Loading users" description="Preparing user access settings." />;
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-slate-900 dark:text-white">User Management</h2>
-        <button onClick={loadUsers} className="text-sm text-blue-600 hover:underline">Refresh</button>
+    <div className="min-w-0 max-w-full space-y-4">
+      <div className="sticky top-0 z-10 space-y-3 rounded-2xl border border-slate-200 bg-white/95 p-3 shadow-sm backdrop-blur dark:border-slate-800 dark:bg-slate-900/95 sm:p-4">
+        <label className="block min-w-0">
+          <span className="sr-only">Search people</span>
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search by name or email"
+            className="w-full min-w-0 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+          />
+        </label>
+        <div className="flex flex-wrap items-center gap-2">
+          {['all', ...STATUS_OPTIONS].map((status) => (
+            <button
+              key={status}
+              type="button"
+              onClick={() => setStatusFilter(status)}
+              className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
+                statusFilter === status
+                  ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900'
+                  : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
+              }`}
+            >
+              {STATUS_LABELS[status] || status} {statusCounts[status] ?? 0}
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={() => loadUsers()}
+            className="ml-auto rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+          >
+            Refresh
+          </button>
+        </div>
       </div>
 
-      <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800">
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800">
-              <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">User</th>
-              <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Role</th>
-              <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Access Permissions</th>
-              <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Assigned Branches</th>
-              <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Spa Intake / Check-in Branches</th>
-              <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Status</th>
-              <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Joined</th>
-              <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-200 dark:divide-slate-800 bg-white dark:bg-slate-900">
-            {users.map((user) => (
-              <tr key={user.uid} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                <td className="px-6 py-4">
-                  <div className="flex items-center gap-3">
-                    {user.photoURL ? (
-                      <img src={user.photoURL} alt="" className="w-8 h-8 rounded-full" />
+      <p className="text-sm text-slate-500">
+        {visibleUsers.length} {visibleUsers.length === 1 ? 'person' : 'people'}
+        {isPlatformAdmin ? '. Click a permission or branch to change it.' : '. You can assign branches. Role, status, and permissions stay with the platform administrator.'}
+      </p>
+
+      {visibleUsers.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-500 dark:border-slate-700">
+          No people match this search.
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {visibleUsers.map((account) => {
+            const rootAccount = isRootAccount(account.email);
+            const locked = updating === account.uid;
+            const privilegeLocked = !isPlatformAdmin || locked || rootAccount;
+            const statusOptions = STATUS_OPTIONS.includes(account.status) ? STATUS_OPTIONS : [account.status, ...STATUS_OPTIONS];
+            return (
+              <article key={account.uid} className={`min-w-0 max-w-full overflow-hidden rounded-2xl border bg-white dark:bg-slate-900 ${account.status === 'pending' ? 'border-amber-300 dark:border-amber-800' : 'border-slate-200 dark:border-slate-800'}`}>
+                <div className="flex flex-col gap-4 border-b border-slate-100 p-4 dark:border-slate-800 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="flex min-w-0 items-start gap-3">
+                    {account.photoURL ? (
+                      <img src={account.photoURL} alt="" className="h-11 w-11 shrink-0 rounded-full object-cover" />
                     ) : (
-                      <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-xs font-bold">
-                        {user.displayName?.charAt(0) || user.email?.charAt(0)}
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-slate-200 text-sm font-bold text-slate-600 dark:bg-slate-700 dark:text-slate-200">
+                        {account.displayName?.charAt(0) || account.email?.charAt(0) || '?'}
                       </div>
                     )}
-                    <div>
-                      <div className="font-bold text-slate-900 dark:text-white">{user.displayName || 'No Name'}</div>
-                      <div className="text-xs text-slate-500">{user.email}</div>
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="break-words text-base font-bold text-slate-900 dark:text-white">{account.displayName || 'No name'}</h3>
+                        {rootAccount && <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">Platform admin</span>}
+                      </div>
+                      <p className="break-all text-sm text-slate-500">{account.email}</p>
+                      <p className="mt-1 text-xs text-slate-400">{joinedLabel(account.createdAt)}</p>
                     </div>
                   </div>
-                </td>
-                <td className="px-6 py-4">
-                  <select
-                    value={user.role}
-                    disabled={updating === user.uid || user.email === 'alphacortexai@gmail.com'}
-                    onChange={(e) => handleRoleChange(user.uid, e.target.value)}
-                    className="bg-transparent text-sm font-medium focus:outline-none border-b border-transparent hover:border-slate-300 dark:hover:border-slate-600"
-                  >
-                    {Object.values(ROLES).map(role => (
-                      <option key={role} value={role}>{role}</option>
-                    ))}
-                  </select>
-                </td>
-                <td className="px-6 py-4">
-                  <div className="flex flex-wrap gap-2">
-                    {user.permissions && Object.entries(user.permissions).map(([category, perms]) => (
-                      <div key={category} className="flex flex-col gap-1 p-2 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-100 dark:border-slate-800">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase">{category}</span>
-                        <div className="flex gap-1">
-                          {typeof perms === 'object' ? (
-                            ['view', 'add', 'edit', 'delete'].map((action) => {
-                              const allowed = perms[action];
-                              return (
-                                <button
-                                  key={action}
-                                  onClick={() => togglePermission(user, category, action)}
-                                  disabled={updating === user.uid || user.email === 'alphacortexai@gmail.com'}
-                                  className={`px-1.5 py-0.5 rounded text-[9px] font-bold transition-all ${
-                                    allowed 
-                                      ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' 
-                                      : 'bg-slate-200 dark:bg-slate-700 text-slate-400'
-                                  }`}
-                                  title={`${allowed ? 'Disable' : 'Enable'} ${action}`}
-                                >
-                                  {action.charAt(0).toUpperCase()}
-                                </button>
-                              );
-                            })
-                          ) : (
-                            <button
-                              onClick={() => togglePermission(user, category, 'view')}
-                              disabled={updating === user.uid || user.email === 'alphacortexai@gmail.com'}
-                              className={`px-1.5 py-0.5 rounded text-[9px] font-bold transition-all ${
-                                perms 
-                                  ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' 
-                                  : 'bg-slate-200 dark:bg-slate-700 text-slate-400'
-                              }`}
-                            >
-                              VIEW
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </td>
-                <td className="px-6 py-4">
-                  <select
-                    multiple
-                    value={user.assignedBranches || []}
-                    disabled={updating === user.uid || user.email === 'alphacortexai@gmail.com'}
-                    onChange={(e) => handleBranchChange(user.uid, e)}
-                    className="min-w-36 rounded-lg border border-slate-200 bg-white p-1 text-xs dark:border-slate-700 dark:bg-slate-900"
-                    aria-label={`Assigned branches for ${user.displayName || user.email}`}
-                  >
-                    {branches.map((branch) => <option key={branch.id} value={branch.name}>{branch.name}</option>)}
-                  </select>
-                  <p className="mt-1 text-[10px] text-slate-400">Ctrl/Cmd-click for multiple</p>
-                </td>
-                <td className="px-6 py-4">
-                  {isPlatformAdmin && user.email?.toLowerCase() !== 'alphacortexai@gmail.com' ? (
-                    <>
-                      <select
-                        multiple
-                        value={user.spaIntakeBranches || []}
-                        disabled={updating === user.uid}
-                        onChange={(e) => handleSpaIntakeBranchChange(user.uid, e)}
-                        className="min-w-36 rounded-lg border border-slate-200 bg-white p-1 text-xs dark:border-slate-700 dark:bg-slate-900"
-                        aria-label={`Spa intake branches for ${user.displayName || user.email}`}
+                  <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+                    <span className={`rounded-full px-2.5 py-1 text-xs font-semibold capitalize ${statusClass(account.status)}`}>{account.status || 'unknown'}</span>
+                    {isPlatformAdmin && account.status === 'pending' && (
+                      <button
+                        type="button"
+                        onClick={() => handleStatusChange(account.uid, 'approved')}
+                        disabled={locked}
+                        className="rounded-xl bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
                       >
-                        {branches.map((branch) => <option key={branch.id} value={branch.name}>{branch.name}</option>)}
-                      </select>
-                      <p className="mt-1 max-w-48 text-[10px] text-slate-400">Choose none, one, or both (Ctrl/Cmd-click). SPA View for members; Client View for check-ins.</p>
-                    </>
-                  ) : user.email?.toLowerCase() === 'alphacortexai@gmail.com' ? (
-                    <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">All branches (top admin)</span>
-                  ) : (
-                    <span className="text-xs text-slate-500 dark:text-slate-400">
-                      {(user.spaIntakeBranches || []).join(', ') || 'No branch access'}
-                    </span>
-                  )}
-                </td>
-                <td className="px-6 py-4">
-                  <select
-                    value={user.status}
-                    disabled={updating === user.uid || user.email === 'alphacortexai@gmail.com'}
-                    onChange={(e) => handleStatusChange(user.uid, e.target.value)}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-medium outline-none border-none cursor-pointer transition-all ${
-                      user.status === 'approved' 
-                        ? 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400' 
-                        : 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400'
-                    }`}
-                  >
-                    <option value="approved">Approved</option>
-                    <option value="pending">Pending</option>
-                    <option value="disabled">Disabled</option>
-                  </select>
-                </td>
-                <td className="px-6 py-4 text-sm text-slate-500">
-                  {user.createdAt && format(user.createdAt.toDate(), 'MMM d, yyyy')}
-                </td>
-                <td className="px-6 py-4 text-right">
-                  {user.status === 'pending' && (
-                    <button
-                      onClick={() => handleStatusChange(user.uid, 'approved')}
-                      disabled={updating === user.uid}
-                      className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg transition-all disabled:opacity-50"
+                        Approve
+                      </button>
+                    )}
+                    {locked && <span className="text-xs font-medium text-slate-400">Saving…</span>}
+                  </div>
+                </div>
+                {rootAccount && (
+                  <p className="border-b border-slate-100 px-4 py-3 text-sm text-slate-500 dark:border-slate-800">This account keeps full administrator access. Role, status, and permissions stay fixed.</p>
+                )}
+
+                <div className="grid grid-cols-2 gap-3 p-4">
+                  <label className="min-w-0">
+                    <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-400">Role</span>
+                    <select
+                      value={account.role || ROLES.GENERAL}
+                      disabled={privilegeLocked}
+                      onChange={(event) => handleRoleChange(account.uid, event.target.value)}
+                      className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-800 outline-none focus:border-blue-500 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
                     >
-                      Approve
-                    </button>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+                      {Object.values(ROLES).map((role) => <option key={role} value={role}>{role}</option>)}
+                    </select>
+                  </label>
+                  <label className="min-w-0">
+                    <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-400">Status</span>
+                    <select
+                      value={account.status || 'pending'}
+                      disabled={privilegeLocked}
+                      onChange={(event) => handleStatusChange(account.uid, event.target.value)}
+                      className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium capitalize text-slate-800 outline-none focus:border-blue-500 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+                    >
+                      {statusOptions.map((status) => <option key={status} value={status}>{status}</option>)}
+                    </select>
+                  </label>
+                </div>
+
+                <section className="border-t border-slate-100 px-4 py-4 dark:border-slate-800">
+                  <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-400">Access permissions</h4>
+                  <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                    {orderedCategories(account.permissions).map((category) => {
+                      const perms = account.permissions[category];
+                      const actions = typeof perms === 'object' && perms ? ACTION_ORDER : ['view'];
+                      return (
+                        <div key={category} className="min-w-0 rounded-xl border border-slate-100 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-950/40">
+                          <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{categoryLabel(category)}</p>
+                          <div className="mt-2 flex flex-wrap gap-1.5">
+                            {typeof perms === 'boolean' ? (
+                              <Chip pressed={perms} disabled={privilegeLocked} onClick={() => togglePermission(account, category, 'view')}>View</Chip>
+                            ) : (
+                              actions.map((action) => (
+                                <Chip
+                                  key={action}
+                                  pressed={Boolean(perms?.[action])}
+                                  disabled={privilegeLocked}
+                                  onClick={() => togglePermission(account, category, action)}
+                                >
+                                  {ACTION_LABELS[action] || action}
+                                </Chip>
+                              ))
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </section>
+
+                <section className="grid gap-4 border-t border-slate-100 px-4 py-4 dark:border-slate-800 lg:grid-cols-2">
+                  <div className="min-w-0">
+                    <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-400">Assigned branches</h4>
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {branches.length === 0 && <p className="text-sm text-slate-500">No branches have been added yet.</p>}
+                      {branches.map((branch) => (
+                        <Chip
+                          key={branch.id}
+                          pressed={(account.assignedBranches || []).includes(branch.name)}
+                          disabled={locked || rootAccount}
+                          onClick={() => handleBranchChange(account.uid, toggleValue(account.assignedBranches, branch.name))}
+                        >
+                          {branch.name}
+                        </Chip>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="min-w-0">
+                    <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-400">Spa intake and check-ins</h4>
+                    {rootAccount ? (
+                      <p className="mt-2 text-sm font-medium text-emerald-700 dark:text-emerald-300">All branches</p>
+                    ) : isPlatformAdmin ? (
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        {branches.map((branch) => (
+                          <Chip
+                            key={branch.id}
+                            pressed={(account.spaIntakeBranches || []).includes(branch.name)}
+                            disabled={locked}
+                            onClick={() => handleSpaIntakeBranchChange(account.uid, toggleValue(account.spaIntakeBranches, branch.name))}
+                          >
+                            {branch.name}
+                          </Chip>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="mt-2 break-words text-sm text-slate-500">
+                        {(account.spaIntakeBranches || []).join(', ') || 'No branch access'}
+                      </p>
+                    )}
+                    {isPlatformAdmin && !rootAccount && (
+                      <p className="mt-2 text-xs text-slate-400">Used for the spa membership list and spa check-ins.</p>
+                    )}
+                  </div>
+                </section>
+              </article>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

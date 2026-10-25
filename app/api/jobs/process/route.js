@@ -1,39 +1,40 @@
 import { NextResponse } from 'next/server';
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { authorizeAdminRequest, getServerFirestore } from '@/lib/firebase-server';
 import { processExcelFile, updateJobProgress } from '@/lib/jobProcessor';
 
-// Configure runtime for better performance on Vercel
 export const runtime = 'nodejs';
-export const maxDuration = 300; // 5 minutes for processing
+export const maxDuration = 300;
+
+const JOB_ID = /^job_[A-Za-z0-9_]+$/;
+
+function denied(access) {
+  return NextResponse.json(
+    { error: access.status === 403 ? 'Forbidden' : 'Unauthorized' },
+    { status: access.status }
+  );
+}
 
 export async function POST(request) {
+  const access = await authorizeAdminRequest(request);
+  if (!access.ok) return denied(access);
+
   try {
     const body = await request.json();
     const { jobId } = body;
 
-    if (!jobId) {
-      return NextResponse.json(
-        { error: 'Job ID is required' },
-        { status: 400 }
-      );
+    if (!jobId || !JOB_ID.test(jobId)) {
+      return NextResponse.json({ error: 'Job ID is required' }, { status: 400 });
     }
 
-    // Get job data from Firestore
-    const jobRef = doc(db, 'importJobs', jobId);
-    const jobSnap = await getDoc(jobRef);
+    const jobRef = getServerFirestore().collection('importJobs').doc(jobId);
+    const jobSnap = await jobRef.get();
 
-    if (!jobSnap.exists()) {
-      return NextResponse.json(
-        { error: 'Job not found' },
-        { status: 404 }
-      );
+    if (!jobSnap.exists) {
+      return NextResponse.json({ error: 'Job not found' }, { status: 404 });
     }
 
     const jobData = jobSnap.data();
 
-    // Check if job is already processing or completed
-    // Allow restarting if status is 'failed' or 'pending'
     if (jobData.status === 'processing' || jobData.status === 'importing') {
       return NextResponse.json({
         success: true,
@@ -41,7 +42,7 @@ export async function POST(request) {
         status: jobData.status,
       });
     }
-    
+
     if (jobData.status === 'completed') {
       return NextResponse.json({
         success: true,
@@ -50,93 +51,58 @@ export async function POST(request) {
       });
     }
 
-    // Get JSON data and default branch from stored job data
     const jsonData = jobData.jsonData || [];
     const defaultBranch = jobData.defaultBranch || '';
 
     if (!jsonData || jsonData.length === 0) {
-      // If data isn't stored yet, wait a moment and retry once
       if (!jobData.dataStored) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        const retrySnap = await getDoc(jobRef);
-        if (retrySnap.exists()) {
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        const retrySnap = await jobRef.get();
+        if (retrySnap.exists) {
           const retryData = retrySnap.data();
           if (retryData.jsonData && retryData.jsonData.length > 0) {
-            // Data is now available, proceed with retry data
-            const retryJsonData = retryData.jsonData;
-            const retryDefaultBranch = retryData.defaultBranch || '';
-            
             try {
-              await processExcelFile(jobId, retryJsonData, retryDefaultBranch);
-              return NextResponse.json({
-                success: true,
-                message: 'Job processing completed',
-              });
+              await processExcelFile(jobId, retryData.jsonData, retryData.defaultBranch || '');
+              return NextResponse.json({ success: true, message: 'Job processing completed' });
             } catch (processError) {
               console.error('Error processing job:', processError);
               try {
                 await updateJobProgress(jobId, {
                   status: 'failed',
-                  error: processError.message || 'Unknown error during processing',
+                  error: 'The import could not be completed.',
                 });
               } catch (updateError) {
                 console.error('Failed to update job status:', updateError);
               }
-              return NextResponse.json(
-                { 
-                  error: 'Job processing failed: ' + (processError.message || 'Unknown error'),
-                  success: false 
-                },
-                { status: 500 }
-              );
+              return NextResponse.json({ error: 'Job processing failed.', success: false }, { status: 500 });
             }
           }
         }
       }
-      
+
       return NextResponse.json(
         { error: 'No data found in job. Please re-upload the file.' },
         { status: 400 }
       );
     }
 
-    // Process the job - this will run to completion
-    // The function has maxDuration of 300 seconds (5 minutes) which should be enough
     try {
       await processExcelFile(jobId, jsonData, defaultBranch);
-      
-      return NextResponse.json({
-        success: true,
-        message: 'Job processing completed',
-      });
+      return NextResponse.json({ success: true, message: 'Job processing completed' });
     } catch (processError) {
       console.error('Error processing job:', processError);
-      
-      // Update job status to failed
       try {
         await updateJobProgress(jobId, {
           status: 'failed',
-          error: processError.message || 'Unknown error during processing',
+          error: 'The import could not be completed.',
         });
       } catch (updateError) {
         console.error('Failed to update job status:', updateError);
       }
-      
-      return NextResponse.json(
-        { 
-          error: 'Job processing failed: ' + (processError.message || 'Unknown error'),
-          success: false 
-        },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'Job processing failed.', success: false }, { status: 500 });
     }
-
   } catch (error) {
     console.error('Process job error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error: ' + (error.message || 'Unknown error') },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
-
