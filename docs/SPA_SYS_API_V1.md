@@ -18,7 +18,7 @@ The handoff for the other developer is [DEPENDENT_SYSTEM_SETUP.md](./DEPENDENT_S
 - Failed keys are limited to 30 per minute. Accepted calls are limited to 120 per minute on each SpaGym instance.
 - Check-in alerts are HMAC signed. The webhook URL is set by the SpaGym operator, must be HTTPS, and cannot be a private or link-local address. SpaGym does not follow redirects from that URL.
 
-An approved Admin can register each external system from **Admin → SPA SYS API**. That screen creates the API key and webhook signing secret, shows each one once, and keeps the same guide available as a PDF. The environment variables below still work for a key that was set before that screen existed.
+An approved Admin can register each external system from **Admin → SPA SYS API**. That screen creates the API key and webhook signing secret, shows each one once, and keeps the same guide available as a PDF. The environment variables below still work for a key that was set before that screen existed. The top administrator can open **Admin → API Analytics** to see each key's calls and the request log. The log stores the endpoint, the key, and the error. It does not store phone numbers or secrets.
 
 Generate an environment key with `openssl rand -hex 32`. Set it on SpaGym as `SPA_SYS_API_KEY`. Set the same value on the other server as `SPA_SYS_API_KEY`. A key created in Admin is a different secret: store the value shown on that screen, not a second key you invent.
 
