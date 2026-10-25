@@ -32,6 +32,8 @@ export async function PATCH(request, context) {
     if (Object.prototype.hasOwnProperty.call(body, 'name')) patch.name = body.name;
     if (Object.prototype.hasOwnProperty.call(body, 'webhookUrl')) patch.webhookUrl = body.webhookUrl;
     if (Object.prototype.hasOwnProperty.call(body, 'status')) patch.status = body.status;
+    if (Object.prototype.hasOwnProperty.call(body, 'scopes')) patch.scopes = body.scopes;
+    if (Object.prototype.hasOwnProperty.call(body, 'expiresAt')) patch.expiresAt = body.expiresAt;
     const result = await updateSpaSysIntegration(await integrationIdFrom(context), patch);
     if (result.error) return NextResponse.json({ error: result.error }, { status: result.status, headers: noStore });
     return NextResponse.json(result, { headers: noStore });

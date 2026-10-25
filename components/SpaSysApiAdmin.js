@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { downloadDataUri } from '@/lib/downloadFile';
 import { SPA_SYS_GUIDE } from '@/lib/spaSysGuide';
 import { generateSpaSysGuidePdf } from '@/lib/spaSysGuidePdf';
+import { SPA_SYS_READ_SCOPES, SPA_SYS_SCOPE_OPTIONS } from '@/lib/spaSysScopes';
 
 const fieldClass = 'mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-800 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:ring-blue-950';
 
@@ -23,6 +24,50 @@ function webhookHost(value) {
   } catch {
     return 'Webhook saved';
   }
+}
+
+function scopeLabels(scopes) {
+  const labels = new Map(SPA_SYS_SCOPE_OPTIONS.map((option) => [option.id, option.label]));
+  return (Array.isArray(scopes) ? scopes : []).map((id) => labels.get(id) || id);
+}
+
+function toDatetimeLocal(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  const pad = (part) => String(part).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function expiryPayload(value) {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : date.toISOString();
+}
+
+function ScopePicker({ selected, onChange }) {
+  const toggle = (id) => {
+    const next = new Set(selected);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    onChange(SPA_SYS_SCOPE_OPTIONS.map((option) => option.id).filter((scope) => next.has(scope)));
+  };
+  return (
+    <fieldset className="md:col-span-2">
+      <legend className="text-xs font-bold uppercase tracking-wider text-slate-500">Permissions</legend>
+      <div className="mt-2 grid gap-2 sm:grid-cols-2">
+        {SPA_SYS_SCOPE_OPTIONS.map((option) => (
+          <label key={option.id} className="flex gap-3 rounded-xl border border-slate-200 px-3 py-2 text-sm dark:border-slate-700">
+            <input type="checkbox" className="mt-1" checked={selected.includes(option.id)} onChange={() => toggle(option.id)} />
+            <span>
+              <span className="font-bold text-slate-800 dark:text-slate-100">{option.label}</span>
+              <span className="mt-0.5 block text-xs leading-5 text-slate-500">{option.detail}</span>
+            </span>
+          </label>
+        ))}
+      </div>
+    </fieldset>
+  );
 }
 
 function CopyValue({ label, value }) {
@@ -89,10 +134,14 @@ export default function SpaSysApiAdmin({ user, profile, onBack }) {
   const [notice, setNotice] = useState('');
   const [name, setName] = useState('');
   const [webhookUrl, setWebhookUrl] = useState('');
+  const [scopes, setScopes] = useState(SPA_SYS_READ_SCOPES);
+  const [expiresAt, setExpiresAt] = useState('');
   const [revealed, setRevealed] = useState(null);
   const [editingId, setEditingId] = useState('');
   const [editName, setEditName] = useState('');
   const [editWebhook, setEditWebhook] = useState('');
+  const [editScopes, setEditScopes] = useState(SPA_SYS_READ_SCOPES);
+  const [editExpiresAt, setEditExpiresAt] = useState('');
   const [origin, setOrigin] = useState('');
 
   useEffect(() => {
@@ -141,7 +190,7 @@ export default function SpaSysApiAdmin({ user, profile, onBack }) {
     try {
       const payload = await authorizedFetch('/api/admin/spa-sys', {
         method: 'POST',
-        body: JSON.stringify({ name, webhookUrl }),
+        body: JSON.stringify({ name, webhookUrl, scopes, expiresAt: expiryPayload(expiresAt) }),
       });
       setIntegrations((current) => [payload.integration, ...current.filter((item) => item.id !== payload.integration.id)]);
       setRevealed({
@@ -151,6 +200,8 @@ export default function SpaSysApiAdmin({ user, profile, onBack }) {
       });
       setName('');
       setWebhookUrl('');
+      setScopes(SPA_SYS_READ_SCOPES);
+      setExpiresAt('');
       setNotice('Copy the API key and webhook secret now. This page will not show them again.');
     } catch (registerError) {
       setError(registerError.message || 'Unable to register this system.');
@@ -167,7 +218,12 @@ export default function SpaSysApiAdmin({ user, profile, onBack }) {
     try {
       const payload = await authorizedFetch(`/api/admin/spa-sys/${editingId}`, {
         method: 'PATCH',
-        body: JSON.stringify({ name: editName, webhookUrl: editWebhook }),
+        body: JSON.stringify({
+          name: editName,
+          webhookUrl: editWebhook,
+          scopes: editScopes,
+          expiresAt: expiryPayload(editExpiresAt),
+        }),
       });
       setIntegrations((current) => current.map((item) => (item.id === payload.integration.id ? payload.integration : item)));
       setEditingId('');
@@ -204,7 +260,10 @@ export default function SpaSysApiAdmin({ user, profile, onBack }) {
 
   const rotate = async (item, credential) => {
     const label = credential === 'apiKey' ? 'API key' : 'webhook secret';
-    if (!window.confirm(`Replace the ${label} for ${item.name}? The previous value stops working.`)) return;
+    const prompt = credential === 'apiKey'
+      ? `Replace the API key for ${item.name}? The previous key keeps working for 24 hours.`
+      : `Replace the webhook secret for ${item.name}? The previous secret stops working immediately.`;
+    if (!window.confirm(prompt)) return;
     setBusy(true);
     setError('');
     setNotice('');
@@ -219,7 +278,9 @@ export default function SpaSysApiAdmin({ user, profile, onBack }) {
         apiKey: payload.apiKey || '',
         webhookSecret: payload.webhookSecret || '',
       });
-      setNotice(`Copy the new ${label} now. The previous value no longer works.`);
+      setNotice(credential === 'apiKey'
+        ? 'Copy the new API key now. The previous key keeps working for 24 hours.'
+        : `Copy the new ${label} now. The previous secret no longer works.`);
     } catch (rotateError) {
       setError(rotateError.message || 'Unable to replace this credential.');
     } finally {
@@ -297,8 +358,13 @@ export default function SpaSysApiAdmin({ user, profile, onBack }) {
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-500">Check-in webhook URL
                 <input value={webhookUrl} onChange={(event) => setWebhookUrl(event.target.value)} placeholder="https://partner.example/hooks/spagym" className={fieldClass} />
               </label>
+              <ScopePicker selected={scopes} onChange={setScopes} />
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 md:col-span-2">Expiry
+                <input type="datetime-local" value={expiresAt} onChange={(event) => setExpiresAt(event.target.value)} className={fieldClass} />
+                <span className="mt-1 block text-xs font-medium normal-case tracking-normal text-slate-500">Leave this empty for a key that does not expire. Revoke stops a key immediately.</span>
+              </label>
               <div className="md:col-span-2">
-                <button type="submit" disabled={busy || name.trim().length < 2} className="rounded-xl bg-blue-600 px-5 py-3 text-sm font-black text-white shadow-sm hover:bg-blue-700 disabled:opacity-50">{busy ? 'Saving…' : 'Register system'}</button>
+                <button type="submit" disabled={busy || name.trim().length < 2 || scopes.length === 0} className="rounded-xl bg-blue-600 px-5 py-3 text-sm font-black text-white shadow-sm hover:bg-blue-700 disabled:opacity-50">{busy ? 'Saving…' : 'Register system'}</button>
               </div>
             </form>
           </section>
@@ -331,9 +397,10 @@ export default function SpaSysApiAdmin({ user, profile, onBack }) {
                       <span className={`rounded-full px-2.5 py-1 text-[11px] font-black uppercase tracking-wider ${item.status === 'revoked' ? 'bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-200' : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200'}`}>{item.status}</span>
                     </div>
                     <p className="mt-1 text-xs font-medium text-slate-500">Key preview {item.keyPreview || '--------'} · {webhookHost(item.webhookUrl)} · Created {formatWhen(item.createdAt)}{item.createdByName ? ` by ${item.createdByName}` : ''} · Last used {formatWhen(item.lastUsedAt)}</p>
+                    <p className="mt-1 text-xs leading-5 text-slate-500">{scopeLabels(item.scopes).join(' · ') || 'No permissions'} · {item.expiresAt ? `Expires ${formatWhen(item.expiresAt)}` : 'No expiry'}{item.previousKeyUntil && new Date(item.previousKeyUntil) > new Date() ? ` · Previous key valid until ${formatWhen(item.previousKeyUntil)}` : ''}</p>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <button type="button" disabled={busy} onClick={() => { setEditingId(item.id); setEditName(item.name); setEditWebhook(item.webhookUrl || ''); }} className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-black text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:text-slate-200">Edit</button>
+                    <button type="button" disabled={busy} onClick={() => { setEditingId(item.id); setEditName(item.name); setEditWebhook(item.webhookUrl || ''); setEditScopes(item.scopes?.length ? item.scopes : SPA_SYS_READ_SCOPES); setEditExpiresAt(toDatetimeLocal(item.expiresAt)); }} className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-black text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:text-slate-200">Edit</button>
                     <button type="button" disabled={busy} onClick={() => rotate(item, 'apiKey')} className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-black text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:text-slate-200">Rotate key</button>
                     <button type="button" disabled={busy} onClick={() => rotate(item, 'webhookSecret')} className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-black text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:text-slate-200">Rotate secret</button>
                     <button type="button" disabled={busy} onClick={() => changeStatus(item)} className="rounded-xl border border-amber-200 px-3 py-2 text-xs font-black text-amber-800 hover:bg-amber-50 disabled:opacity-50 dark:border-amber-900/50 dark:text-amber-200">{item.status === 'revoked' ? 'Activate' : 'Revoke'}</button>
@@ -348,8 +415,13 @@ export default function SpaSysApiAdmin({ user, profile, onBack }) {
                     <label className="block text-xs font-bold uppercase tracking-wider text-slate-500">Webhook URL
                       <input value={editWebhook} onChange={(event) => setEditWebhook(event.target.value)} placeholder="Leave blank to stop alerts" className={fieldClass} />
                     </label>
+                    <ScopePicker selected={editScopes} onChange={setEditScopes} />
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 md:col-span-2">Expiry
+                      <input type="datetime-local" value={editExpiresAt} onChange={(event) => setEditExpiresAt(event.target.value)} className={fieldClass} />
+                      <span className="mt-1 block text-xs font-medium normal-case tracking-normal text-slate-500">Clear this field to remove the expiry.</span>
+                    </label>
                     <div className="flex gap-2 md:col-span-2">
-                      <button type="submit" disabled={busy} className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-black text-white disabled:opacity-50">Save changes</button>
+                      <button type="submit" disabled={busy || editScopes.length === 0} className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-black text-white disabled:opacity-50">Save changes</button>
                       <button type="button" onClick={() => setEditingId('')} className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-bold text-slate-600 dark:border-slate-700 dark:text-slate-300">Cancel</button>
                     </div>
                   </form>

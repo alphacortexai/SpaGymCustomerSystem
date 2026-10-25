@@ -17,4 +17,6 @@ await spagym.checkOut({ phone: '0782000000', staffName: 'Front desk' });
 
 `createSpaGymClient()` reads `SPAGYM_API_URL` and `SPA_SYS_API_KEY` from the environment. See `env.example`. A wrong key throws `SpaGymApiError` with `status` 401 and does not retry. A rate limit waits for `Retry-After` once. A 502, 503, or 504 is retried up to twice on reads. Updates and check-outs are not retried after a `500`.
 
-`verifySpaSysWebhook({ secret, timestamp, rawBody, signature })` checks a `client.checked_in` alert. Pass the raw body and `SPA_SYS_WEBHOOK_SECRET`.
+`verifySpaSysWebhook({ secret, timestamp, rawBody, signature })` checks a `client.checked_in` alert. Pass the raw body and `SPA_SYS_WEBHOOK_SECRET`. It rejects a timestamp older than five minutes and compares the signature in constant time. Persist `checkIn.id` and do not create a second visit, message, or reward when the same id arrives again.
+
+A key without the permission for a call throws `SpaGymApiError` with `status` 403 and `code` `FORBIDDEN`. `LOOKUP_LIMITED` means the key looked up too many different clients in an hour.

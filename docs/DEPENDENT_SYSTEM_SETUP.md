@@ -139,7 +139,7 @@ Search needs at least two characters. `limit` defaults to 20 and cannot exceed 5
 
 Check-in dates use `YYYY-MM-DD`. Omit `date`, `from`, and `to` to get today in Africa/Kampala. Send either `date`, or both `from` and `to`. The range is inclusive and at most 31 days. `branch` may be the branch id or the branch name from `listBranches()`. The visits in the response use the branch name.
 
-A register refresh should be one branch and one day. The accepted-call limit is 120 requests per minute for your key on each SpaGym instance. There is no call that downloads every client.
+A register refresh should be one branch and one day. That call needs the branch-register permission. A phone or client-id visit lookup needs the check-in read permission. Your key may make 40 reads and 30 updates or check-outs per minute, and no more than 120 accepted calls per minute, on each SpaGym server. It may look up 100 different clients per hour. There is no call that downloads every client. A missing permission is `403` `FORBIDDEN`.
 
 Update with the id you stored, or by the same phone:
 
@@ -176,7 +176,7 @@ export async function receiveCheckIn(request, response) {
 }
 ```
 
-Read the body once, as text, and pass those exact bytes to `verifySpaSysWebhook`. A check-in that is already open does not send a second alert.
+Read the body once, as text, and pass those exact bytes to `verifySpaSysWebhook`. That check rejects a timestamp older than five minutes and compares the signature in constant time. After it passes, persist `checkIn.id` before you create a visit, message, or reward. A repeated alert for the same id must not create a second one. A check-in that is already open does not send a second alert.
 
 ## Response fields
 
@@ -259,7 +259,8 @@ The client throws `SpaGymApiError`. Use `error.status`, `error.code`, and `error
 | 0 | `NETWORK` | SpaGym was unreachable. The client already retried twice. Show a temporary failure. |
 | 400 | `VALIDATION_ERROR` | Fix the query. This covers a short name, a bad date, an unknown branch, a bad id, or both phone and name. |
 | 400 | `HTTPS_REQUIRED` | You called production SpaGym over HTTP. Use the `https://` origin. |
-| 401 | `UNAUTHORIZED` | Stop calling. The key is missing, wrong, or not configured on SpaGym. Retrying burns the failure limit. |
+| 401 | `UNAUTHORIZED` | Stop calling. The key is missing, wrong, revoked, expired, or not configured on SpaGym. Retrying burns the failure limit. |
+| 403 | `FORBIDDEN` | Your key does not include that permission. Ask the SpaGym operator to add it. Do not retry. |
 | 404 | `CLIENT_NOT_FOUND` | That id is not a client. A phone search with no match is not a 404; it is an empty list. |
 | 404 | `CHECK_IN_NOT_FOUND` | That client has no open visit to check out. |
 | 404 | `NOT_FOUND` | The path is wrong. |
@@ -267,6 +268,7 @@ The client throws `SpaGymApiError`. Use `error.status`, `error.code`, and `error
 | 409 | `PHONE_IN_USE` | Another client already has the phone you tried to save. |
 | 409 | `AMBIGUOUS_CLIENT` | The phone matches more than one client. Use the client id. |
 | 429 | `RATE_LIMITED` | The client waits for `Retry-After` once, up to 60 seconds, then throws. Slow the screen refresh. |
+| 429 | `LOOKUP_LIMITED` | This key looked up too many different clients this hour. Query a client you already opened, or wait for the hour to pass. |
 | 500, 502, 503, 504 | `INTERNAL` or `REQUEST_FAILED` | The client retries 502, 503, and 504 up to twice. Then show a temporary failure. |
 
 A 401 after a key that used to work means the SpaGym operator removed your old key during rotation. Ask for the current key. Do not keep a loop of failed guesses: 30 failures in a minute from your server are rejected until the minute passes.
@@ -280,6 +282,8 @@ SPA_SYS_API_KEY=current-key,next-key
 ```
 
 They deploy SpaGym, you change `SPA_SYS_API_KEY` to `next-key` and restart your server, then they remove `current-key`. Keys cannot contain commas or spaces. After the cutover, `ping()` with the old key returns 401 and `ping()` with the new key returns 200.
+
+A key created in Admin is rotated from **SPA SYS API**. The previous API key keeps working for 24 hours, then only the new key works. Replacing the webhook secret takes effect immediately. Revoke stops the key at once. Leave expiry empty unless the operator set a date. An expired or revoked key returns 401.
 
 ## Joint checklist
 
@@ -295,7 +299,7 @@ Do this with the SpaGym operator after both sides are deployed.
 8. A request with no key, run by the operator against SpaGym, returns 401. `DELETE` returns 405.
 9. Updating a test client’s name by phone shows the new name on the SpaGym desk, and a phone that already belongs to someone else returns `PHONE_IN_USE`.
 10. Checking that test client out by phone shows them as checked out on the Spa check-ins screen.
-11. A real check-in sends one signed `client.checked_in` POST to your webhook. A second check-in while that visit is open does not send a second alert. An altered body fails `verifySpaSysWebhook()`.
+11. A real check-in sends one signed `client.checked_in` POST to your webhook. Verify the HMAC on the exact raw body, reject a timestamp older than five minutes, and compare the signature in constant time. Persist `checkIn.id`. A repeated alert must not create a second visit, message, or reward. A second check-in while that visit is open does not send a second alert. An altered body fails `verifySpaSysWebhook()`.
 
 ## Troubleshooting
 

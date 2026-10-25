@@ -42,6 +42,8 @@ export async function POST(request) {
     const result = await createSpaSysIntegration({
       name: body.name,
       webhookUrl: body.webhookUrl,
+      scopes: body.scopes,
+      expiresAt: body.expiresAt,
       createdBy: access.uid,
       createdByName: actorName(access.profile),
     });
