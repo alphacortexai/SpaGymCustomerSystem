@@ -7,6 +7,7 @@ const nextConfig = {
     minimumCacheTTL: 60 * 60 * 24 * 30,
   },
   // Increase timeout for API routes (Vercel Pro plan allows up to 60s)
+  serverExternalPackages: ['exceljs'],
   experimental: {
     serverActions: {
       bodySizeLimit: '10mb',

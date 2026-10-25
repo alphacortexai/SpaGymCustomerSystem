@@ -1186,7 +1186,7 @@ export default function Home() {
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-                    {profile?.permissions?.clients?.add !== false && (
+                    {profile?.role === 'Admin' && (
                       <NavCard onClick={() => openAdminTool('upload')} icon={<QuickActionIcon name="upload" />} title="Upload" description="Bulk data import." accent="blue" eyebrow="Import" />
                     )}
                     {profile?.permissions?.clients?.edit !== false && (

@@ -18,8 +18,85 @@ service cloud.firestore {
       return approved() && userDoc().role == 'Admin';
     }
 
+    function rootEmail() {
+      return 'alphacortexai@gmail.com';
+    }
+
+    function isRootToken() {
+      return signedIn()
+        && request.auth.token.email is string
+        && request.auth.token.email.lower() == rootEmail();
+    }
+
     function isPlatformAdmin() {
-      return approved() && request.auth.token.email == 'alphacortexai@gmail.com';
+      return approved() && isRootToken();
+    }
+
+    function emailsMatch(value) {
+      return request.auth.token.email is string
+        && value is string
+        && value.lower() == request.auth.token.email.lower();
+    }
+
+    function generalPermissions() {
+      return {
+        clients: { view: true, edit: false, delete: false, add: false },
+        gym: { view: true, edit: false, delete: false, add: false },
+        spa: { view: true, edit: false, delete: false, add: false },
+        birthdays: { view: true, edit: false, delete: false, add: false },
+        branches: { view: false, edit: false, delete: false, add: false },
+        users: { view: false, edit: false }
+      };
+    }
+
+    function isPendingGeneralProfile() {
+      return emailsMatch(request.resource.data.email)
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.role == 'General'
+        && request.resource.data.status == 'pending'
+        && request.resource.data.permissions == generalPermissions()
+        && request.resource.data.assignedBranches is list
+        && request.resource.data.assignedBranches.size() == 0
+        && request.resource.data.spaIntakeBranches is list
+        && request.resource.data.spaIntakeBranches.size() == 0;
+    }
+
+    function isRootAdminProfile() {
+      return isRootToken()
+        && emailsMatch(request.resource.data.email)
+        && request.resource.data.email.lower() == rootEmail()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.role == 'Admin'
+        && request.resource.data.status == 'approved';
+    }
+
+    function isRootDocument() {
+      return resource.data.email is string && resource.data.email.lower() == rootEmail();
+    }
+
+    // Only the signed-in root's own document is pinned. A different account that
+    // already stored the root email can still be repaired by the root token.
+    function protectsThisRootDocument() {
+      return isRootDocument() && request.auth.uid == uid;
+    }
+
+    function rootDocumentStaysRoot() {
+      return !protectsThisRootDocument() || (
+        request.resource.data.role == 'Admin'
+        && request.resource.data.status == 'approved'
+        && request.resource.data.email is string
+        && request.resource.data.email.lower() == rootEmail()
+      );
+    }
+
+    function doesNotClaimRootEmail() {
+      return !(request.resource.data.email is string && request.resource.data.email.lower() == rootEmail())
+        || isRootDocument();
+    }
+
+    function privilegedUnchanged() {
+      return !request.resource.data.diff(resource.data).affectedKeys()
+        .hasAny(['role', 'status', 'permissions', 'email']);
     }
 
     function isManagerOrAdmin() {
@@ -35,20 +112,21 @@ service cloud.firestore {
 
     match /users/{uid} {
       allow create: if signedIn() && request.auth.uid == uid && (
-        request.auth.token.email == 'alphacortexai@gmail.com' ||
-        !('spaIntakeBranches' in request.resource.data) ||
-        (request.resource.data.spaIntakeBranches is list && request.resource.data.spaIntakeBranches.size() == 0)
+        isRootAdminProfile() || isPendingGeneralProfile()
       );
       allow read: if signedIn() && (request.auth.uid == uid || isAdmin() || isPlatformAdmin());
-      allow update: if isPlatformAdmin() || (isAdmin() &&
-        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['spaIntakeBranches'])
-      ) || (
-        signedIn() && request.auth.uid == uid &&
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          'displayName', 'photoURL', 'preferences', 'updatedAt'
-        ])
+      allow update: if rootDocumentStaysRoot() && doesNotClaimRootEmail() && (
+        isRootToken() || (
+          !isRootDocument() && isAdmin() && privilegedUnchanged() &&
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['spaIntakeBranches'])
+        ) || (
+          signedIn() && request.auth.uid == uid &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'displayName', 'photoURL', 'preferences', 'updatedAt'
+          ])
+        )
       );
-      allow delete: if isAdmin();
+      allow delete: if (isRootToken() && request.auth.uid != uid) || (isAdmin() && !isRootDocument());
     }
 
     match /clients/{clientId} {

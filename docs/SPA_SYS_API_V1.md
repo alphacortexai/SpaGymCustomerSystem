@@ -2,13 +2,13 @@
 
 Base path: `/api/spa-sys/v1`
 
-SPA_SYS_API_V1 is the server-to-server JSON API for client details and spa visits. The caller is another system's backend. SpaGym remains the system of record. The same behavior is also available at `/api/integrations/client-data/v1` for a caller that already used that path.
+SPA_SYS_API_V1 is the server-to-server JSON API for client details and spa visits. The caller is another system's backend. SpaGym remains the system of record. `/api/integrations/client-data/v1` is the older read-only path: it accepts `GET` only, and it does not accept updates or check-outs.
 
 The handoff for the other developer is [DEPENDENT_SYSTEM_SETUP.md](./DEPENDENT_SYSTEM_SETUP.md). Copy [integrations/spagym-client-data](../integrations/spagym-client-data) into their server.
 
 ## Security
 
-- Send `Authorization: Bearer <SPA_SYS_API_KEY>` or `X-Api-Key`. The key is at least 32 characters, compared in constant time, and accepted only on the server. `CLIENT_DATA_API_KEY` still works as the same kind of secret.
+- Send `Authorization: Bearer <SPA_SYS_API_KEY>` or `X-Api-Key`. The key is at least 32 characters, compared in constant time, and accepted only on the server. `CLIENT_DATA_API_KEY` is accepted only on the read-only `/api/integrations/client-data/v1` path.
 - Production requests that arrive marked as HTTP are rejected. Call `https://`.
 - Responses are `Cache-Control: private, no-store`. The route does not allow a browser to call it cross-origin.
 - There is no export of every client. A read needs a phone number or at least two characters of a name.

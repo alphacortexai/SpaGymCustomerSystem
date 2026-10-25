@@ -1,32 +1,36 @@
 import { NextResponse } from 'next/server';
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { authorizeAdminRequest, getServerFirestore } from '@/lib/firebase-server';
 
-export async function GET(request, { params }) {
+export const runtime = 'nodejs';
+
+const JOB_ID = /^job_[A-Za-z0-9_]+$/;
+
+export async function GET(request, context) {
+  const access = await authorizeAdminRequest(request);
+  if (!access.ok) {
+    return NextResponse.json(
+      { error: access.status === 403 ? 'Forbidden' : 'Unauthorized' },
+      { status: access.status }
+    );
+  }
+
   try {
-    const { jobId } = params;
+    const { jobId } = await context.params;
 
-    if (!jobId) {
-      return NextResponse.json(
-        { error: 'Job ID is required' },
-        { status: 400 }
-      );
+    if (!jobId || !JOB_ID.test(jobId)) {
+      return NextResponse.json({ error: 'Job ID is required' }, { status: 400 });
     }
 
-    const jobRef = doc(db, 'importJobs', jobId);
-    const jobSnap = await getDoc(jobRef);
+    const jobSnap = await getServerFirestore().collection('importJobs').doc(jobId).get();
 
-    if (!jobSnap.exists()) {
-      return NextResponse.json(
-        { error: 'Job not found' },
-        { status: 404 }
-      );
+    if (!jobSnap.exists) {
+      return NextResponse.json({ error: 'Job not found' }, { status: 404 });
     }
 
     const jobData = jobSnap.data();
+    const asIso = (value) => value?.toDate?.()?.toISOString?.() || null;
 
-    // Convert Firestore timestamps to ISO strings
-    const response = {
+    return NextResponse.json({
       jobId: jobData.jobId,
       fileName: jobData.fileName,
       status: jobData.status,
@@ -40,18 +44,11 @@ export async function GET(request, { params }) {
       errors: jobData.errors || [],
       message: jobData.message || '',
       error: jobData.error || null,
-      createdAt: jobData.createdAt?.toDate?.()?.toISOString() || null,
-      updatedAt: jobData.updatedAt?.toDate?.()?.toISOString() || null,
-    };
-
-    return NextResponse.json(response);
-
+      createdAt: asIso(jobData.createdAt),
+      updatedAt: asIso(jobData.updatedAt),
+    });
   } catch (error) {
     console.error('Get job status error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error: ' + error.message },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
-

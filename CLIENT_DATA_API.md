@@ -2,7 +2,7 @@
 
 This API is **SPA_SYS_API_V1**. Its canonical path is `/api/spa-sys/v1`. Start with [docs/SPA_SYS_API_V1.md](./docs/SPA_SYS_API_V1.md) for read, update, check-out, and check-in alerts. The other developer follows [docs/DEPENDENT_SYSTEM_SETUP.md](./docs/DEPENDENT_SYSTEM_SETUP.md).
 
-The paths below under `/api/integrations/client-data/v1` remain available and run the same handlers. New calls should use `/api/spa-sys/v1`.
+The paths below under `/api/integrations/client-data/v1` remain available for reads. `PATCH` and `POST` return `405`. `CLIENT_DATA_API_KEY` is not accepted on `/api/spa-sys/v1`. New calls that need to update a client or check a client out should use `/api/spa-sys/v1` with `SPA_SYS_API_KEY`.
 
 SpaGym remains the system of record for client profiles and spa visits. This API lets one external server read that data as JSON. It is a separate door from the GuestFlow integration: GuestFlow can register clients and record visits, while this API can only read.
 

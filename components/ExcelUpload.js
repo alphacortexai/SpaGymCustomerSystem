@@ -7,8 +7,8 @@ import { getAllBranches } from '@/lib/branches';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function ExcelUpload({ onClientsAdded }) {
-  const { profile } = useAuth();
-  const canAdd = profile?.permissions?.clients?.add !== false;
+  const { user, profile } = useAuth();
+  const canImport = profile?.role === 'Admin' && profile?.status === 'approved';
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -61,11 +61,21 @@ export default function ExcelUpload({ onClientsAdded }) {
     setCurrentJobId(null);
 
     try {
+      const token = await user?.getIdToken?.();
+      if (!token) {
+        setError('You must be signed in as an admin to import clients.');
+        setUploading(false);
+        return;
+      }
       const formData = new FormData();
       formData.append('file', file);
       if (defaultBranch) formData.append('defaultBranch', defaultBranch);
 
-      const response = await fetch('/api/upload', { method: 'POST', body: formData });
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
       const result = await response.json();
 
       if (!response.ok) {
@@ -82,7 +92,10 @@ export default function ExcelUpload({ onClientsAdded }) {
         try {
           await fetch('/api/jobs/process', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
             body: JSON.stringify({ jobId: result.jobId }),
           });
         } catch (processErr) {
@@ -135,9 +148,9 @@ export default function ExcelUpload({ onClientsAdded }) {
           <div className="relative group">
             <input
               type="file"
-              accept=".xlsx,.xls"
+              accept=".xlsx"
               onChange={handleFileUpload}
-              disabled={uploading || !canAdd}
+              disabled={uploading || !canImport}
               className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10 disabled:cursor-not-allowed"
             />
             <div className="border-2 border-dashed border-slate-200 dark:border-slate-800 group-hover:border-blue-400 dark:group-hover:border-blue-500 rounded-2xl p-8 transition-all text-center">
@@ -145,9 +158,9 @@ export default function ExcelUpload({ onClientsAdded }) {
                 <svg className="w-6 h-6 text-slate-400 group-hover:text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
               </div>
               <p className="text-sm font-medium text-slate-900 dark:text-white">
-                {uploading ? 'Uploading...' : !canAdd ? 'No Permission to Upload' : 'Click to upload or drag and drop'}
+                {uploading ? 'Uploading...' : !canImport ? 'No Permission to Upload' : 'Click to upload or drag and drop'}
               </p>
-              <p className="text-xs text-slate-500 mt-1">Excel files (.xlsx, .xls) up to 10MB</p>
+              <p className="text-xs text-slate-500 mt-1">Excel workbook (.xlsx) up to 10MB and 20,000 rows</p>
             </div>
           </div>
         </div>

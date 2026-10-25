@@ -10,8 +10,8 @@ import { format } from 'date-fns';
 
 export default function UserManagement() {
   const { toast } = useNotifications();
-  const { profile } = useAuth();
-  const isPlatformAdmin = profile?.email?.toLowerCase() === 'alphacortexai@gmail.com';
+  const { user: authUser, profile } = useAuth();
+  const isPlatformAdmin = authUser?.email?.toLowerCase() === 'alphacortexai@gmail.com';
   const canManageUsers = (profile?.role === ROLES.ADMIN || isPlatformAdmin) && profile?.status === 'approved';
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -44,7 +44,7 @@ export default function UserManagement() {
   }, [canManageUsers]);
 
   const handleRoleChange = async (uid, newRole) => {
-    if (!canManageUsers) return;
+    if (!isPlatformAdmin) return;
     setUpdating(uid);
     const result = await updateUserRole(uid, newRole);
     if (result.success) {
@@ -82,7 +82,7 @@ export default function UserManagement() {
   };
 
   const handleStatusChange = async (uid, newStatus) => {
-    if (!canManageUsers) return;
+    if (!isPlatformAdmin) return;
     setUpdating(uid);
     const result = await updateUserStatus(uid, newStatus);
     if (result.success) {
@@ -94,7 +94,7 @@ export default function UserManagement() {
   };
 
   const togglePermission = async (user, category, action) => {
-    if (!canManageUsers) return;
+    if (!isPlatformAdmin) return;
     const newPermissions = { ...user.permissions };
     if (!newPermissions[category]) {
       newPermissions[category] = { view: false, edit: false, delete: false, add: false };
@@ -170,7 +170,7 @@ export default function UserManagement() {
                 <td className="px-6 py-4">
                   <select
                     value={user.role}
-                    disabled={updating === user.uid || user.email === 'alphacortexai@gmail.com'}
+                    disabled={!isPlatformAdmin || updating === user.uid || user.email === 'alphacortexai@gmail.com'}
                     onChange={(e) => handleRoleChange(user.uid, e.target.value)}
                     className="bg-transparent text-sm font-medium focus:outline-none border-b border-transparent hover:border-slate-300 dark:hover:border-slate-600"
                   >
@@ -192,7 +192,7 @@ export default function UserManagement() {
                                 <button
                                   key={action}
                                   onClick={() => togglePermission(user, category, action)}
-                                  disabled={updating === user.uid || user.email === 'alphacortexai@gmail.com'}
+                                  disabled={!isPlatformAdmin || updating === user.uid || user.email === 'alphacortexai@gmail.com'}
                                   className={`px-1.5 py-0.5 rounded text-[9px] font-bold transition-all ${
                                     allowed 
                                       ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' 
@@ -207,7 +207,7 @@ export default function UserManagement() {
                           ) : (
                             <button
                               onClick={() => togglePermission(user, category, 'view')}
-                              disabled={updating === user.uid || user.email === 'alphacortexai@gmail.com'}
+                              disabled={!isPlatformAdmin || updating === user.uid || user.email === 'alphacortexai@gmail.com'}
                               className={`px-1.5 py-0.5 rounded text-[9px] font-bold transition-all ${
                                 perms 
                                   ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' 
@@ -261,7 +261,7 @@ export default function UserManagement() {
                 <td className="px-6 py-4">
                   <select
                     value={user.status}
-                    disabled={updating === user.uid || user.email === 'alphacortexai@gmail.com'}
+                    disabled={!isPlatformAdmin || updating === user.uid || user.email === 'alphacortexai@gmail.com'}
                     onChange={(e) => handleStatusChange(user.uid, e.target.value)}
                     className={`px-2.5 py-1 rounded-lg text-xs font-medium outline-none border-none cursor-pointer transition-all ${
                       user.status === 'approved' 
@@ -278,7 +278,7 @@ export default function UserManagement() {
                   {user.createdAt && format(user.createdAt.toDate(), 'MMM d, yyyy')}
                 </td>
                 <td className="px-6 py-4 text-right">
-                  {user.status === 'pending' && (
+                  {isPlatformAdmin && user.status === 'pending' && (
                     <button
                       onClick={() => handleStatusChange(user.uid, 'approved')}
                       disabled={updating === user.uid}

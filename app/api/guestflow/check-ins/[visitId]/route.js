@@ -6,7 +6,7 @@ export const runtime = 'nodejs';
 export async function DELETE(request, context) {
   const access = await authorizeSpaGymClientRequest(request, 'view');
   if (!access.ok) return NextResponse.json({ error: access.status === 403 ? 'Forbidden' : 'Unauthorized' }, { status: access.status });
-  if (String(access.profile?.email || '').toLowerCase() !== 'alphacortexai@gmail.com') {
+  if (String(access.email || '').toLowerCase() !== 'alphacortexai@gmail.com') {
     return NextResponse.json({ error: 'Only the platform administrator can delete check-ins.' }, { status: 403 });
   }
 

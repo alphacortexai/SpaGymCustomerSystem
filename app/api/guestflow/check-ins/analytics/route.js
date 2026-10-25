@@ -4,8 +4,6 @@ import { ApiError, listCheckIns } from '@/lib/guestflowApi';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-const TOP_ADMIN_EMAIL = 'alphacortexai@gmail.com';
-
 function dateRange(start, end) {
   const dates = [];
   let cursor = new Date(`${start}T12:00:00Z`);
@@ -20,7 +18,7 @@ function dateRange(start, end) {
 export async function GET(request) {
   const access = await authorizeSpaIntakeRequest(request, 'clients');
   if (!access.ok) return NextResponse.json({ error: access.status === 403 ? 'Forbidden' : 'Unauthorized' }, { status: access.status });
-  if (String(access.profile?.email || '').toLowerCase() !== TOP_ADMIN_EMAIL) {
+  if (!access.isPlatformAdmin) {
     return NextResponse.json({ error: 'Only the platform administrator can view check-in analytics.' }, { status: 403 });
   }
   try {
