@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { getClientsCreatedBetween } from '@/lib/clients';
 
 const PERIOD_OPTIONS = [
   { value: '2m', label: 'Last 2 months' },
@@ -57,27 +58,26 @@ function MetricCard({ label, value, detail, tone }) {
   );
 }
 
-export default function NewClientsAnalyticsAdmin({ clients = [], loadClientData, onBack }) {
+export default function NewClientsAnalyticsAdmin({ branches = [], onBack }) {
   const today = useMemo(() => new Date(), []);
   const [period, setPeriod] = useState('2m');
   const [customStart, setCustomStart] = useState(toInputDate(subtractMonths(today, 2)));
   const [customEnd, setCustomEnd] = useState(toInputDate(today));
   const [branch, setBranch] = useState('all');
   const [search, setSearch] = useState('');
-  const [loading, setLoading] = useState(!clients.length);
+  const [clients, setClients] = useState([]);
+  const [cursor, setCursor] = useState(null);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadedKey, setLoadedKey] = useState('');
+  const [loadingMore, setLoadingMore] = useState(false);
 
-  useEffect(() => {
-    let mounted = true;
-    if (clients.length || !loadClientData) {
-      return undefined;
-    }
-    Promise.resolve(loadClientData()).finally(() => {
-      if (mounted) setLoading(false);
+  const branchNames = useMemo(() => {
+    const names = new Set(branches.map((item) => (typeof item === 'string' ? item : item?.name)?.trim()).filter(Boolean));
+    clients.forEach((client) => {
+      if (client.branch?.trim()) names.add(client.branch.trim());
     });
-    return () => { mounted = false; };
-  }, [clients.length, loadClientData]);
-
-  const branches = useMemo(() => [...new Set(clients.map((client) => client.branch?.trim()).filter(Boolean))].sort(), [clients]);
+    return [...names].sort();
+  }, [branches, clients]);
 
   const bounds = useMemo(() => {
     if (period === 'custom') {
@@ -89,15 +89,60 @@ export default function NewClientsAnalyticsAdmin({ clients = [], loadClientData,
     return { start: days ? startOfDay(new Date(today.getTime() - (days - 1) * 86400000)) : startOfDay(subtractMonths(today, 2)), end: endOfDay(today) };
   }, [customEnd, customStart, period, today]);
 
+  const requestKey = `${bounds.start.getTime()}|${bounds.end.getTime()}`;
+  const loading = loadedKey !== requestKey;
+  const loadedClients = useMemo(
+    () => (loadedKey === requestKey ? clients : []),
+    [clients, loadedKey, requestKey],
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    const key = `${bounds.start.getTime()}|${bounds.end.getTime()}`;
+    getClientsCreatedBetween(bounds.start, bounds.end, 200)
+      .then((page) => {
+        if (cancelled) return;
+        setClients(page.clients);
+        setCursor(page.cursor);
+        setHasMore(page.hasMore);
+        setLoadedKey(key);
+      })
+      .catch((error) => {
+        console.error('New clients analytics load error:', error);
+        if (!cancelled) {
+          setClients([]);
+          setCursor(null);
+          setHasMore(false);
+          setLoadedKey(key);
+        }
+      });
+    return () => { cancelled = true; };
+  }, [bounds.end, bounds.start]);
+
+  const loadMore = async () => {
+    if (!hasMore || loadingMore || !cursor) return;
+    setLoadingMore(true);
+    try {
+      const page = await getClientsCreatedBetween(bounds.start, bounds.end, 200, cursor);
+      setClients((current) => [...current, ...page.clients]);
+      setCursor(page.cursor);
+      setHasMore(page.hasMore);
+    } catch (error) {
+      console.error('New clients analytics page error:', error);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
   const addedClients = useMemo(() => {
     const query = search.trim().toLowerCase();
-    return clients
+    return loadedClients
       .map((client) => ({ client, createdDate: asDate(client.createdAt) }))
       .filter(({ client, createdDate }) => createdDate && createdDate >= bounds.start && createdDate <= bounds.end)
       .filter(({ client }) => branch === 'all' || client.branch?.trim() === branch)
       .filter(({ client }) => !query || [client.name, client.phoneNumber, client.branch].some((value) => String(value || '').toLowerCase().includes(query)))
       .sort((a, b) => b.createdDate - a.createdDate);
-  }, [bounds, branch, clients, search]);
+  }, [bounds, branch, loadedClients, search]);
 
   const branchCounts = useMemo(() => {
     const counts = new Map();
@@ -109,7 +154,7 @@ export default function NewClientsAnalyticsAdmin({ clients = [], loadClientData,
   }, [addedClients]);
 
   const rangeLabel = `${formatDate(bounds.start)} – ${formatDate(bounds.end)}`;
-  const isLoading = loading && !clients.length;
+  const isLoading = loading;
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
@@ -124,13 +169,13 @@ export default function NewClientsAnalyticsAdmin({ clients = [], loadClientData,
 
       <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:flex-row sm:items-end">
         <label className="flex-1 text-xs font-black uppercase tracking-wider text-slate-500">Period<select value={period} onChange={(event) => setPeriod(event.target.value)} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-bold normal-case tracking-normal text-slate-700 outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">{PERIOD_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
-        <label className="flex-1 text-xs font-black uppercase tracking-wider text-slate-500">Branch<select value={branch} onChange={(event) => setBranch(event.target.value)} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-bold normal-case tracking-normal text-slate-700 outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"><option value="all">All branches</option>{branches.map((name) => <option key={name} value={name}>{name}</option>)}</select></label>
+        <label className="flex-1 text-xs font-black uppercase tracking-wider text-slate-500">Branch<select value={branch} onChange={(event) => setBranch(event.target.value)} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-bold normal-case tracking-normal text-slate-700 outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"><option value="all">All branches</option>{branchNames.map((name) => <option key={name} value={name}>{name}</option>)}</select></label>
         <label className="flex-[1.4] text-xs font-black uppercase tracking-wider text-slate-500">Search<input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Name, phone or branch" className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-semibold normal-case tracking-normal text-slate-700 outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200" /></label>
       </div>
 
       {period === 'custom' && <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:flex-row"><label className="flex-1 text-xs font-black uppercase tracking-wider text-slate-500">From<input type="date" value={customStart} onChange={(event) => setCustomStart(event.target.value)} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200" /></label><label className="flex-1 text-xs font-black uppercase tracking-wider text-slate-500">To<input type="date" value={customEnd} onChange={(event) => setCustomEnd(event.target.value)} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200" /></label></div>}
 
-      <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-slate-200/80 bg-white/75 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/60"><span className="text-sm font-bold text-slate-700 dark:text-slate-200">{rangeLabel}</span><span className="text-xs font-semibold text-slate-500">{addedClients.length} matching client{addedClients.length === 1 ? '' : 's'}</span></div>
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-slate-200/80 bg-white/75 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/60"><span className="text-sm font-bold text-slate-700 dark:text-slate-200">{rangeLabel}</span><span className="flex items-center gap-3 text-xs font-semibold text-slate-500">{addedClients.length} matching client{addedClients.length === 1 ? '' : 's'}{!loading && hasMore ? ' in loaded pages' : ''}{!loading && hasMore && <button type="button" onClick={loadMore} disabled={loadingMore} className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-black text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">{loadingMore ? 'Loading…' : 'Load more clients'}</button>}</span></div>
       <div className="grid gap-3 sm:grid-cols-3"><MetricCard label="New clients" value={addedClients.length} detail="Added in the selected period" tone="border-blue-100 bg-blue-50/70 text-blue-700 dark:border-blue-900/40 dark:bg-blue-950/20 dark:text-blue-200" /><MetricCard label="Branches represented" value={branchCounts.length} detail="With at least one new client" tone="border-emerald-100 bg-emerald-50/70 text-emerald-700 dark:border-emerald-900/40 dark:bg-emerald-950/20 dark:text-emerald-200" /><MetricCard label="Average per day" value={Math.round((addedClients.length / Math.max(1, Math.ceil((bounds.end - bounds.start + 1) / 86400000))) * 10) / 10} detail="Across the selected range" tone="border-violet-100 bg-violet-50/70 text-violet-700 dark:border-violet-900/40 dark:bg-violet-950/20 dark:text-violet-200" /></div>
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1.5fr)_minmax(260px,1fr)]">

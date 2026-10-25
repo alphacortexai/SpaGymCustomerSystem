@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { getAllClients, deleteClient } from '@/lib/clients';
+import { deleteClient, getClientsPage } from '@/lib/clients';
 import { extractAllPhoneNumbers } from '@/lib/phoneUtils';
 import EditClientModal from './EditClientModal';
 import { useAuth } from '@/contexts/AuthContext';
@@ -11,6 +11,10 @@ export default function DuplicateSearch() {
   const { user, profile } = useAuth();
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [scanning, setScanning] = useState(false);
+  const [pageCursor, setPageCursor] = useState(null);
+  const [hasMore, setHasMore] = useState(false);
+  const [scannedCount, setScannedCount] = useState(0);
   const [editingClient, setEditingClient] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [deletingClientId, setDeletingClientId] = useState(null);
@@ -20,15 +24,20 @@ export default function DuplicateSearch() {
   const canEdit = profile?.permissions?.clients?.edit !== false;
   const canDelete = profile?.permissions?.clients?.delete !== false;
 
-  const loadClients = async () => {
-    setLoading(true);
+  const loadClients = async (cursor = null, append = false) => {
+    if (append) setScanning(true);
+    else setLoading(true);
     try {
-      const allClients = await getAllClients();
-      setClients(allClients);
+      const page = await getClientsPage(null, 150, cursor);
+      setClients((current) => append ? [...current, ...page.clients] : page.clients);
+      setPageCursor(page.cursor);
+      setHasMore(page.hasMore);
+      setScannedCount((current) => append ? current + page.clients.length : page.clients.length);
     } catch (error) {
       console.error('Error loading clients:', error);
     } finally {
       setLoading(false);
+      setScanning(false);
     }
   };
 
@@ -90,15 +99,18 @@ export default function DuplicateSearch() {
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Duplicate Phone Numbers</h2>
-          <p className="text-slate-500 mt-1">Found {duplicates.length} groups of duplicates</p>
+          <p className="text-slate-500 mt-1">Found {duplicates.length} groups in {scannedCount} scanned clients{hasMore ? '. Continue the scan to check the rest.' : '.'}</p>
         </div>
+        <div className="flex gap-2">
+        {hasMore && <button type="button" onClick={() => loadClients(pageCursor, true)} disabled={scanning} className="px-4 py-2 bg-blue-600 rounded-xl text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50">{scanning ? 'Scanning…' : 'Scan next 150'}</button>}
         <button 
-          onClick={loadClients}
+          onClick={() => loadClients()}
           className="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all"
         >
           Refresh
         </button>
-      </div>
+        </div>
+        </div>
 
       {duplicates.length === 0 ? (
         <div className="bg-white dark:bg-slate-900 p-12 rounded-2xl border border-slate-200 dark:border-slate-800 text-center">
@@ -107,8 +119,8 @@ export default function DuplicateSearch() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 13l4 4L19 7" />
             </svg>
           </div>
-          <h3 className="text-lg font-medium text-slate-900 dark:text-white">No duplicates found</h3>
-          <p className="text-slate-500 mt-1">All phone numbers in your database are unique.</p>
+          <h3 className="text-lg font-medium text-slate-900 dark:text-white">{hasMore ? 'No duplicates in this page yet' : 'No duplicates found'}</h3>
+          <p className="text-slate-500 mt-1">{hasMore ? 'Scan the next page to keep checking. Matches that span pages are kept as the scan continues.' : 'The scanned phone numbers are unique.'}</p>
         </div>
       ) : (
         <div className="space-y-4">

@@ -6,7 +6,7 @@ import dynamic from 'next/dynamic';
 import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
 import { signOut } from '@/lib/auth';
-import { searchClients, getClientsPage, getBirthdayClientsByMonth } from '@/lib/clients';
+import { searchClients, getClientsPage, getBirthdayClients, getBirthdayClientsByMonth } from '@/lib/clients';
 import { affirmations } from '@/lib/affirmations';
 import { getActiveNotesCount } from '@/lib/notes';
 import ProtectedRoute from '@/components/ProtectedRoute';
@@ -460,7 +460,6 @@ export default function Home() {
   const { user, profile } = useAuth();
   const isPageVisible = usePageVisibility();
   const {
-    allClients: cachedAllClients,
     globalClients: cachedGlobalClients,
     branches: cachedBranches,
     todaysBirthdays: cachedTodaysBirthdays,
@@ -475,10 +474,6 @@ export default function Home() {
     coreDataReady,
     clientDataLoaded,
     loadClientData,
-    loadEnrollmentData,
-    gymEnrollmentsLoaded,
-    spaEnrollmentsLoaded,
-    fullDataLoading: isFullDataLoading,
     activeGymEnrollmentCount,
     activeSpaEnrollmentCount,
     refreshData
@@ -486,8 +481,8 @@ export default function Home() {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [todaysBirthdays, setTodaysBirthdays] = useState([]);
-  const [allClients, setAllClients] = useState([]);
   const [globalClients, setGlobalClients] = useState([]);
+  const [birthdayFilterClients, setBirthdayFilterClients] = useState([]);
   const [activeTab, setActiveTab] = useState('home');
   const [gymSubTab, setGymSubTab] = useState('overview');
   const [spaSubTab, setSpaSubTab] = useState('overview');
@@ -528,8 +523,8 @@ export default function Home() {
     setBranches([]);
     setAllBirthdays([]);
     setTodaysBirthdays([]);
-    setAllClients([]);
     setGlobalClients([]);
+    setBirthdayFilterClients([]);
     if (!user?.uid) return undefined;
 
     const storageKey = `spa-ems-workspace:${user.uid}`;
@@ -623,24 +618,38 @@ export default function Home() {
       setTodaysBirthdays(selectedBranch ? cachedTodaysBirthdays.filter(c => c.branch === selectedBranch) : cachedTodaysBirthdays);
       if (clientDataLoaded) {
         setGlobalClients(cachedGlobalClients);
-        setAllClients(selectedBranch ? cachedAllClients.filter(c => c.branch === selectedBranch) : cachedAllClients);
       }
       setIsInitialLoading(false);
       setDataLoaded(true);
     }
-  }, [coreDataReady, clientDataLoaded, cachedBranches, cachedAllBirthdays, cachedGlobalClients, cachedAllClients, cachedTodaysBirthdays, selectedBranch]);
+  }, [coreDataReady, clientDataLoaded, cachedBranches, cachedAllBirthdays, cachedGlobalClients, cachedTodaysBirthdays, selectedBranch]);
+
+  const birthdayRequestKey = activeTab === 'birthdays' && (selectedMonth || selectedDay)
+    ? `${selectedMonth}|${selectedDay}`
+    : '';
+  const [birthdayResultKey, setBirthdayResultKey] = useState('');
+  const birthdayFilterLoading = Boolean(birthdayRequestKey) && birthdayResultKey !== birthdayRequestKey;
 
   useEffect(() => {
-    const needsFullClients = ['birthdays', 'birthday-analytics', 'reports', 'check-ins', 'new-clients-analytics'].includes(activeTab)
-      || (activeTab === 'gym' && gymSubTab === 'client-contacts')
-      || (activeTab === 'spa' && spaSubTab === 'client-contacts');
-    if (needsFullClients) void loadClientData();
-  }, [activeTab, gymSubTab, spaSubTab, loadClientData]);
-
-  useEffect(() => {
-    if (activeTab === 'gym' && gymSubTab === 'client-contacts') void loadEnrollmentData(false, 'gym');
-    if (activeTab === 'spa' && spaSubTab === 'client-contacts') void loadEnrollmentData(false, 'spa');
-  }, [activeTab, gymSubTab, spaSubTab, loadEnrollmentData]);
+    if (!birthdayRequestKey) return undefined;
+    let cancelled = false;
+    const [monthValue, dayValue] = birthdayRequestKey.split('|');
+    getBirthdayClients({
+      month: monthValue ? Number(monthValue) : null,
+      day: dayValue ? Number(dayValue) : null,
+    }).then((results) => {
+      if (cancelled) return;
+      setBirthdayFilterClients(results || []);
+      setBirthdayResultKey(birthdayRequestKey);
+    }).catch((error) => {
+      console.error('Birthday filter error:', error);
+      if (!cancelled) {
+        setBirthdayFilterClients([]);
+        setBirthdayResultKey(birthdayRequestKey);
+      }
+    });
+    return () => { cancelled = true; };
+  }, [birthdayRequestKey]);
 
   const birthdayReminderMessages = useMemo(() => {
     const assignedBranches = Array.isArray(profile?.assignedBranches) ? profile.assignedBranches.filter(Boolean) : [];
@@ -852,18 +861,12 @@ export default function Home() {
   }, [activeTab, currentPage, loadDashboardPage, refreshData, searchTerm, selectedBranch]);
 
   const filteredBirthdays = useMemo(() => {
-    // Use all clients for month/day searches, today’s branch-filtered birthdays for a specific branch, and the unfiltered birthday dataset for all branches.
-    const useAllClients = selectedMonth || selectedDay;
-    const baseClients = useAllClients ? allClients : (selectedBranch ? todaysBirthdays : allBirthdays);
-    return baseClients.filter((client) => {
-      const monthMatch = !selectedMonth || (client.birthMonth && parseInt(client.birthMonth) === parseInt(selectedMonth));
-      const dayMatch = !selectedDay || (client.birthDay && parseInt(client.birthDay) === parseInt(selectedDay));
-      const branchMatch = !selectedBranch || (client.branch === selectedBranch);
-      return monthMatch && dayMatch && branchMatch;
-    });
-  }, [todaysBirthdays, allBirthdays, allClients, selectedMonth, selectedDay, selectedBranch]);
-
-  const isFullDatasetLoading = !clientDataLoaded || (isFullDataLoading && cachedAllClients.length === 0);
+    const useBirthdayQuery = Boolean(selectedMonth || selectedDay);
+    const baseClients = useBirthdayQuery
+      ? (birthdayFilterLoading ? [] : birthdayFilterClients)
+      : (selectedBranch ? todaysBirthdays : allBirthdays);
+    return baseClients.filter((client) => !selectedBranch || client.branch === selectedBranch);
+  }, [allBirthdays, birthdayFilterClients, birthdayFilterLoading, selectedBranch, selectedDay, selectedMonth, todaysBirthdays]);
 
   const activeGymMembers = useMemo(() => {
     if (typeof activeGymEnrollmentCount === 'number') return activeGymEnrollmentCount;
@@ -1252,8 +1255,7 @@ export default function Home() {
             <ReportsSection
               user={user}
               profile={profile}
-              clients={globalClients.length ? globalClients : cachedGlobalClients}
-              clientsLoading={!clientDataLoaded}
+              branches={branches.length ? branches : cachedBranches}
               birthdayCallers={cachedBirthdayCallers}
               onBack={goBackFromSection}
             />
@@ -1262,7 +1264,6 @@ export default function Home() {
           {activeTab === 'check-ins' && (profile?.role === 'Admin' || profile?.permissions?.clients?.view === true) && (
             <GuestFlowVisits
               onBack={() => setActiveTab('home')}
-              clients={globalClients.length ? globalClients : cachedGlobalClients}
               branches={branches.length ? branches : cachedBranches}
             />
           )}
@@ -1389,10 +1390,8 @@ export default function Home() {
 
           {activeTab === 'birthday-analytics' && (
             <BirthdayCommunicationsAnalytics
-              clients={globalClients.length ? globalClients : cachedGlobalClients}
               branches={branches.length ? branches : cachedBranches}
               birthdayCallers={cachedBirthdayCallers}
-              isLoading={!clientDataLoaded}
               onBack={() => setActiveTab('home')}
             />
           )}
@@ -1484,7 +1483,7 @@ export default function Home() {
                 onClientPatched={patchClient}
                 birthdayCallers={cachedBirthdayCallers}
                 isBirthdayView
-                isLoading={isInitialLoading || ((selectedMonth || selectedDay) && isFullDatasetLoading)}
+                isLoading={isInitialLoading || ((selectedMonth || selectedDay) && birthdayFilterLoading)}
               />
 
               {filteredBirthdays.length > clientsPerPage && (
@@ -1617,8 +1616,7 @@ export default function Home() {
           )}
           {activeTab === 'new-clients-analytics' && profile?.role === 'Admin' && (
             <NewClientsAnalyticsAdmin
-              clients={globalClients.length ? globalClients : cachedGlobalClients}
-              loadClientData={loadClientData}
+              branches={branches.length ? branches : cachedBranches}
               onBack={goBackFromSection}
             />
           )}
@@ -1762,9 +1760,7 @@ export default function Home() {
                   {gymSubTab === 'client-contacts' && (
                     <MembershipContactsDirectory
                       serviceName="Gym"
-                      enrollments={cachedGymEnrollments}
-                      clients={globalClients.length ? globalClients : cachedGlobalClients}
-                      isLoading={!gymEnrollmentsLoaded || !clientDataLoaded}
+                      isSpa={false}
                     />
                   )}
                 </div>
@@ -1856,9 +1852,7 @@ export default function Home() {
                   {spaSubTab === 'client-contacts' && (
                     <MembershipContactsDirectory
                       serviceName="Spa"
-                      enrollments={cachedSpaEnrollments}
-                      clients={globalClients.length ? globalClients : cachedGlobalClients}
-                      isLoading={!spaEnrollmentsLoaded || !clientDataLoaded}
+                      isSpa
                     />
                   )}
                 </div>

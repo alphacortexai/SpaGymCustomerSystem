@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { deleteReport, getAllReports, getReportForDate, createEmptyReport, saveReport, toDateKey } from '@/lib/reports';
+import { deleteReport, getReportsPage, getReportForDate, createEmptyReport, saveReport, toDateKey } from '@/lib/reports';
 import { generateReportPdf } from '@/lib/reportPdf';
-import { getClientSearchHints } from '@/lib/clients';
+import { getBirthdayClients, getClientsByIds, searchClients } from '@/lib/clients';
 import { getSpaIntakeGuestFlowVisitsForDate } from '@/lib/guestflowVisits';
 
 const REPORT_TYPE = 'feedback-birthdays-whatsapp-calls';
@@ -175,18 +175,70 @@ function ReportHistoryTable({ reports, user, profile, onOpen, onDelete }) {
   return <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900"><table className="w-full min-w-[760px] border-collapse text-left"><thead><tr className="border-b border-slate-100 bg-slate-50 dark:border-slate-800 dark:bg-slate-950/60"><th className="px-4 py-3 text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Report date</th><th className="px-4 py-3 text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Caller</th><th className="px-4 py-3 text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Branch</th><th className="px-4 py-3 text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Entries</th><th className="px-4 py-3 text-right text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Actions</th></tr></thead><tbody>{reports.map((item) => <tr key={item.id} className="border-b border-slate-100 last:border-b-0 dark:border-slate-800"><td className="px-4 py-3 text-sm font-bold text-slate-800 dark:text-slate-100">{formatDate(item.reportDateKey)}</td><td className="px-4 py-3 text-sm font-semibold text-slate-600 dark:text-slate-300">{item.callerName || item.ownerName || 'Caller'}</td><td className="px-4 py-3 text-sm font-semibold text-slate-500">{item.branch || 'All branches'}</td><td className="px-4 py-3 text-sm font-semibold text-slate-500">{reportEntryCount(item)}</td><td className="px-4 py-3"><div className="flex justify-end gap-2"><button type="button" onClick={() => onOpen(item)} className="rounded-lg bg-blue-600 px-3 py-2 text-xs font-black text-white hover:bg-blue-700">Open</button>{(item.ownerId === user?.uid || profile?.role === 'Admin') && <button type="button" onClick={() => onDelete(item)} className="rounded-lg border border-rose-200 px-3 py-2 text-xs font-black text-rose-600 hover:bg-rose-50 dark:border-rose-900/40 dark:hover:bg-rose-950/20">Delete</button>}</div></td></tr>)}</tbody></table></div>;
 }
 
-function CellDialog({ cell, readOnly, clients, onClose, onSave }) {
+const birthdayClientsForDate = async (dateKey) => {
+  const reportDateKey = String(dateKey || '').slice(0, 10);
+  const month = Number(reportDateKey.slice(5, 7));
+  const day = Number(reportDateKey.slice(8, 10));
+  if (!month || !day) return [];
+  return getBirthdayClients({ month, day });
+};
+
+const clientsForReportRows = async (report, dateKey) => {
+  const birthdayClients = await birthdayClientsForDate(dateKey);
+  const known = new Map(birthdayClients.map((client) => [client.id, client]));
+  const missingIds = [];
+  ['birthdayClients', 'previousDayVisits', 'followUps', 'whatsappMessages'].forEach((key) => {
+    (report?.[key] || []).forEach((row) => {
+      if (row.clientId && !known.has(row.clientId) && (!row.phoneNumber || !row.clientName)) missingIds.push(row.clientId);
+    });
+  });
+  if (missingIds.length) {
+    const extra = await getClientsByIds(missingIds.slice(0, 40));
+    extra.forEach((client) => known.set(client.id, client));
+  }
+  return [...known.values()];
+};
+
+function CellDialog({ cell, readOnly, onClose, onSave }) {
   const [value, setValue] = useState(cell?.value || '');
   const [feedbackOption, setFeedbackOption] = useState('');
   const [clientMatch, setClientMatch] = useState(null);
+  const [searchResults, setSearchResults] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const isClient = cell?.field === 'clientName';
+  const term = value.trim();
+  const canSearch = Boolean(isClient && !readOnly && term.length >= 2);
+
+  useEffect(() => {
+    if (!canSearch) return undefined;
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      searchClients(term).then((results) => {
+        if (cancelled) return;
+        setSearchResults(Array.isArray(results) ? results.slice(0, 20) : []);
+        setSearchTerm(term);
+      }).catch(() => {
+        if (cancelled) return;
+        setSearchResults([]);
+        setSearchTerm(term);
+      });
+    }, 300);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [canSearch, term]);
+  const visibleResults = canSearch && searchTerm === term ? searchResults : [];
+
   if (!cell) return null;
-  const isClient = cell.field === 'clientName';
-  const searchResults = isClient && value.trim() ? getClientSearchHints(clients, value, null, 50) : [];
   const save = () => {
-    const matchedClient = isClient ? clients.find((client) => client.name && client.name.trim().toLowerCase() === value.trim().toLowerCase()) : null;
+    const normalized = value.trim().toLowerCase();
+    const matchedClient = isClient
+      ? [clientMatch, ...visibleResults].find((client) => client?.name && client.name.trim().toLowerCase() === normalized) || null
+      : null;
     onSave(value, matchedClient);
   };
-  return <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="report-cell-title"><div className="w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-5 shadow-2xl dark:border-slate-800 dark:bg-slate-900"><div className="flex items-start justify-between gap-4"><div><p className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-600">Table cell entry</p><h3 id="report-cell-title" className="mt-1 text-xl font-black text-slate-900 dark:text-white">{cell.columnLabel}</h3><p className="mt-1 text-xs font-medium text-slate-500">{cell.sectionLabel} · Row {cell.rowIndex + 1}</p></div><button type="button" onClick={onClose} aria-label="Close dialog" className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800">×</button></div><div className="mt-5">{isClient ? <><input autoFocus value={value} onChange={(event) => { setValue(event.target.value); setClientMatch(clients.find((client) => client.name && client.name.trim().toLowerCase() === event.target.value.trim().toLowerCase()) || null); }} disabled={readOnly} placeholder="Search any client by name or phone" className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-semibold outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 disabled:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:disabled:bg-slate-800" />{!readOnly && searchResults.length > 0 && <div className="mt-2 max-h-56 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-950">{searchResults.map((client) => <button type="button" key={client.id} onClick={() => { setValue(client.name || ''); setClientMatch(client); }} className="flex w-full items-center justify-between gap-3 border-b border-slate-100 px-3 py-2.5 text-left last:border-b-0 hover:bg-blue-50 dark:border-slate-800 dark:hover:bg-blue-950/30"><span className="min-w-0"><span className="block truncate text-sm font-bold text-slate-800 dark:text-slate-100">{client.name}</span><span className="block truncate text-[11px] font-medium text-slate-500">{client.phoneNumber || 'No phone saved'}{client.branch ? ` · ${client.branch}` : ''}</span></span><span className="text-[10px] font-black uppercase tracking-wider text-blue-600">Select</span></button>)}</div>}{clientMatch && <p className="mt-2 rounded-xl bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 dark:bg-blue-950/30 dark:text-blue-300">Phone will auto-fill: {clientMatch.phoneNumber || 'No phone saved'}</p>}</> : cell.field === 'contactMethod' ? <select autoFocus value={value} onChange={(event) => setValue(event.target.value)} disabled={readOnly} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-semibold outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 disabled:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:disabled:bg-slate-800"><option value="">Select contact mode</option><option value="Phone call">Phone call</option><option value="WhatsApp">WhatsApp</option><option value="SMS">SMS</option><option value="In person">In person</option><option value="Called">Called</option><option value="Not reached">Not reached</option></select> : cell.field === 'comment' ? <><select autoFocus value={feedbackOption} onChange={(event) => { const option = event.target.value; setFeedbackOption(''); setValue((current) => { const comment = current.replace(feedbackLabelPattern, '').trim(); return option === 'none' ? comment : comment ? `${comment}\n${option}` : option; }); }} disabled={readOnly} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-semibold outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 disabled:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:disabled:bg-slate-800"><option value="">Add feedback type to comments</option><option value="none">None</option>{FEEDBACK_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}</select><textarea value={value} onChange={(event) => setValue(event.target.value)} disabled={readOnly} rows={6} placeholder="Enter feedback or comments" className="mt-3 w-full resize-y rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm leading-6 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 disabled:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:disabled:bg-slate-800" /></> : <textarea autoFocus value={value} onChange={(event) => setValue(event.target.value)} disabled={readOnly} rows={3} placeholder={`Enter ${cell.columnLabel.toLowerCase()}`} className="w-full resize-y rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm leading-6 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 disabled:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:disabled:bg-slate-800" />}</div><div className="mt-5 flex justify-end gap-2"><button type="button" onClick={onClose} className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-black text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800">{readOnly ? 'Close' : 'Cancel'}</button>{!readOnly && <button type="button" onClick={save} className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-black text-white hover:bg-blue-700">Save cell</button>}</div></div></div>;
+  return <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="report-cell-title"><div className="w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-5 shadow-2xl dark:border-slate-800 dark:bg-slate-900"><div className="flex items-start justify-between gap-4"><div><p className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-600">Table cell entry</p><h3 id="report-cell-title" className="mt-1 text-xl font-black text-slate-900 dark:text-white">{cell.columnLabel}</h3><p className="mt-1 text-xs font-medium text-slate-500">{cell.sectionLabel} · Row {cell.rowIndex + 1}</p></div><button type="button" onClick={onClose} aria-label="Close dialog" className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800">×</button></div><div className="mt-5">{isClient ? <><input autoFocus value={value} onChange={(event) => { setValue(event.target.value); setClientMatch(null); }} disabled={readOnly} placeholder="Search any client by name or phone" className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-semibold outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 disabled:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:disabled:bg-slate-800" />{!readOnly && visibleResults.length > 0 && <div className="mt-2 max-h-56 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-950">{visibleResults.map((client) => <button type="button" key={client.id} onClick={() => { setValue(client.name || ''); setClientMatch(client); }} className="flex w-full items-center justify-between gap-3 border-b border-slate-100 px-3 py-2.5 text-left last:border-b-0 hover:bg-blue-50 dark:border-slate-800 dark:hover:bg-blue-950/30"><span className="min-w-0"><span className="block truncate text-sm font-bold text-slate-800 dark:text-slate-100">{client.name}</span><span className="block truncate text-[11px] font-medium text-slate-500">{client.phoneNumber || 'No phone saved'}{client.branch ? ` · ${client.branch}` : ''}</span></span><span className="text-[10px] font-black uppercase tracking-wider text-blue-600">Select</span></button>)}</div>}{clientMatch && <p className="mt-2 rounded-xl bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 dark:bg-blue-950/30 dark:text-blue-300">Phone will auto-fill: {clientMatch.phoneNumber || 'No phone saved'}</p>}</> : cell.field === 'contactMethod' ? <select autoFocus value={value} onChange={(event) => setValue(event.target.value)} disabled={readOnly} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-semibold outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 disabled:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:disabled:bg-slate-800"><option value="">Select contact mode</option><option value="Phone call">Phone call</option><option value="WhatsApp">WhatsApp</option><option value="SMS">SMS</option><option value="In person">In person</option><option value="Called">Called</option><option value="Not reached">Not reached</option></select> : cell.field === 'comment' ? <><select autoFocus value={feedbackOption} onChange={(event) => { const option = event.target.value; setFeedbackOption(''); setValue((current) => { const comment = current.replace(feedbackLabelPattern, '').trim(); return option === 'none' ? comment : comment ? `${comment}\n${option}` : option; }); }} disabled={readOnly} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-semibold outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 disabled:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:disabled:bg-slate-800"><option value="">Add feedback type to comments</option><option value="none">None</option>{FEEDBACK_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}</select><textarea value={value} onChange={(event) => setValue(event.target.value)} disabled={readOnly} rows={6} placeholder="Enter feedback or comments" className="mt-3 w-full resize-y rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm leading-6 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 disabled:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:disabled:bg-slate-800" /></> : <textarea autoFocus value={value} onChange={(event) => setValue(event.target.value)} disabled={readOnly} rows={3} placeholder={`Enter ${cell.columnLabel.toLowerCase()}`} className="w-full resize-y rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm leading-6 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 disabled:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:disabled:bg-slate-800" />}</div><div className="mt-5 flex justify-end gap-2"><button type="button" onClick={onClose} className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-black text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800">{readOnly ? 'Close' : 'Cancel'}</button>{!readOnly && <button type="button" onClick={save} className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-black text-white hover:bg-blue-700">Save cell</button>}</div></div></div>;
 }
 
 function ColumnDialog({ onClose, onSave }) {
@@ -194,7 +246,7 @@ function ColumnDialog({ onClose, onSave }) {
   return <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="new-column-title"><div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-5 shadow-2xl dark:border-slate-800 dark:bg-slate-900"><p className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-600">Customize table</p><h3 id="new-column-title" className="mt-1 text-xl font-black text-slate-900 dark:text-white">Add a new column</h3><p className="mt-1 text-sm text-slate-500">Create a field for any extra detail your team needs to record.</p><input autoFocus value={label} onChange={(event) => setLabel(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') onSave(label); }} placeholder="For example: Action owner" className="mt-5 w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-semibold outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" /><div className="mt-5 flex justify-end gap-2"><button type="button" onClick={onClose} className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-black text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800">Cancel</button><button type="button" onClick={() => onSave(label)} disabled={!label.trim()} className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-black text-white hover:bg-blue-700 disabled:opacity-50">Add column</button></div></div></div>;
 }
 
-export default function ReportsSection({ user, profile, clients = [], clientsLoading = false, birthdayCallers = [], onBack }) {
+export default function ReportsSection({ user, profile, branches = [], birthdayCallers = [], onBack }) {
   const [workspaceStep, setWorkspaceStep] = useState('users');
   const [selectedUserId, setSelectedUserId] = useState('');
   const [reportType, setReportType] = useState(REPORT_TYPE);
@@ -204,6 +256,9 @@ export default function ReportsSection({ user, profile, clients = [], clientsLoa
   const [spaCheckInDate, setSpaCheckInDate] = useState(previousDateKey(todayKey()));
   const [report, setReport] = useState(null);
   const [reports, setReports] = useState([]);
+  const [reportCursor, setReportCursor] = useState(null);
+  const [hasMoreReports, setHasMoreReports] = useState(false);
+  const [loadingMoreReports, setLoadingMoreReports] = useState(false);
   const [cellDialog, setCellDialog] = useState(null);
   const [columnDialogOpen, setColumnDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -221,14 +276,16 @@ export default function ReportsSection({ user, profile, clients = [], clientsLoa
   const canDelete = Boolean(report && (report.ownerId === user?.uid || profile?.role === 'Admin'));
   const adminBirthdayApproval = isApprovedAdmin && Boolean(report?.includeUncalledBirthdays);
   const assignedBranches = Array.isArray(profile?.assignedBranches) ? profile.assignedBranches.filter(Boolean) : [];
-  const clientDirectory = clients;
-  const visibleBranches = assignedBranches.length ? assignedBranches : [...new Set(clientDirectory.map((client) => client.branch).filter(Boolean))];
+  const branchNames = branches.map((branch) => (typeof branch === 'string' ? branch : branch?.name)).filter(Boolean);
+  const visibleBranches = assignedBranches.length ? assignedBranches : branchNames;
 
   useEffect(() => {
     let active = true;
-    getAllReports().then((allReports) => {
+    getReportsPage(40).then((page) => {
       if (!active) return;
-      setReports(allReports);
+      setReports(page.reports);
+      setReportCursor(page.cursor);
+      setHasMoreReports(page.hasMore);
       setIsLoading(false);
     }).catch((loadError) => {
       console.error('Unable to load feedback reports:', loadError);
@@ -261,25 +318,62 @@ export default function ReportsSection({ user, profile, clients = [], clientsLoa
   const chooseReportType = () => setWorkspaceStep('history');
   const beginNewReport = (dateKey = selectedDate) => { setError(''); setSelectedDate(dateKey); setNewReportDate(dateKey); setSelectedBranch(''); setWorkspaceStep('branch'); };
 
-  const startNewReport = async (dateKey = selectedDate, branch = selectedBranch) => {
-    if (clientsLoading) {
-      setError('Client records are still loading. Please try again in a moment.');
-      return;
+  const loadMoreReports = async () => {
+    if (!hasMoreReports || loadingMoreReports) return;
+    setLoadingMoreReports(true);
+    try {
+      const page = await getReportsPage(40, reportCursor);
+      setReports((current) => {
+        const seen = new Set(current.map((item) => item.id));
+        return [...current, ...page.reports.filter((item) => !seen.has(item.id))];
+      });
+      setReportCursor(page.cursor);
+      setHasMoreReports(page.hasMore);
+    } catch (loadError) {
+      console.error('Unable to load more reports:', loadError);
+      setError('Unable to load more reports.');
+    } finally {
+      setLoadingMoreReports(false);
     }
+  };
+
+  const startNewReport = async (dateKey = selectedDate, branch = selectedBranch) => {
     setError('');
     setSelectedDate(dateKey);
     setSpaCheckInDate(previousDateKey(dateKey));
     const existing = await getReportForDate(dateKey, user?.uid);
     const nextReport = existing || createEmptyReport({ dateKey, ownerId: user?.uid, ownerName: user?.displayName || user?.email, callerId: selectedUser.id, callerName: selectedUser.name, branch });
     const approvalEnabled = isApprovedAdmin && Boolean(nextReport.includeUncalledBirthdays);
-    const autoRows = normalizeAutoBirthdayRows(clientDirectory, dateKey, selectedUser, branch, approvalEnabled);
-    const hydrated = enrichReportRows({ ...nextReport, reportType: nextReport.reportType || REPORT_TYPE }, clientDirectory);
-    const birthdayRows = getBirthdayRowsForReport(hydrated.birthdayClients, clientDirectory, dateKey, selectedUser, branch, { allowUncalled: approvalEnabled });
+    let directory = [];
+    try {
+      directory = await clientsForReportRows(nextReport, dateKey);
+    } catch (loadError) {
+      console.error('Unable to load birthday clients for a new report:', loadError);
+    }
+    const autoRows = normalizeAutoBirthdayRows(directory, dateKey, selectedUser, branch, approvalEnabled);
+    const hydrated = enrichReportRows({ ...nextReport, reportType: nextReport.reportType || REPORT_TYPE }, directory);
+    const birthdayRows = getBirthdayRowsForReport(hydrated.birthdayClients, directory, dateKey, selectedUser, branch, { allowUncalled: approvalEnabled });
     setReport({ ...hydrated, callerId: hydrated.callerId || selectedUser.id, callerName: hydrated.callerName || selectedUser.name, branch: hydrated.branch || selectedBranch, birthdayClients: birthdayRows.length ? birthdayRows : autoRows, previousDayVisits: hydrated.previousDayVisits?.length ? hydrated.previousDayVisits : emptySections.previousDayVisits });
     setWorkspaceStep('editor');
   };
 
-  const openReport = (item) => { setSelectedDate(item.reportDateKey); setSelectedBranch(item.branch || ''); setSpaCheckInDate(previousDateKey(item.reportDateKey)); const hydrated = enrichReportRows(item, clientDirectory); const caller = callerOptions.find((candidate) => candidate.id === item.callerId) || normalizeUser({ id: item.callerId, name: item.callerName }); const approvedForScope = isApprovedAdmin && Boolean(item.includeUncalledBirthdays); setReport({ ...hydrated, birthdayClients: getBirthdayRowsForReport(hydrated.birthdayClients, clientDirectory, item.reportDateKey, caller, item.branch, { allowUncalled: approvedForScope }) }); setWorkspaceStep('editor'); setNotice(item.ownerId === user?.uid ? 'Your report is ready to continue editing.' : isApprovedAdmin ? 'Admin approval is available for this caller, date, and branch.' : 'Viewing another user’s report in read-only mode.'); };
+  const openReport = async (item) => {
+    setSelectedDate(item.reportDateKey);
+    setSelectedBranch(item.branch || '');
+    setSpaCheckInDate(previousDateKey(item.reportDateKey));
+    let directory = [];
+    try {
+      directory = await clientsForReportRows(item, item.reportDateKey);
+    } catch (loadError) {
+      console.error('Unable to load clients for this report:', loadError);
+    }
+    const hydrated = enrichReportRows(item, directory);
+    const caller = callerOptions.find((candidate) => candidate.id === item.callerId) || normalizeUser({ id: item.callerId, name: item.callerName });
+    const approvedForScope = isApprovedAdmin && Boolean(item.includeUncalledBirthdays);
+    setReport({ ...hydrated, birthdayClients: getBirthdayRowsForReport(hydrated.birthdayClients, directory, item.reportDateKey, caller, item.branch, { allowUncalled: approvedForScope }) });
+    setWorkspaceStep('editor');
+    setNotice(item.ownerId === user?.uid ? 'Your report is ready to continue editing.' : isApprovedAdmin ? 'Admin approval is available for this caller, date, and branch.' : 'Viewing another user’s report in read-only mode.');
+  };
   const handleBranchContinue = () => { if (!selectedBranch) { setError('Select the branch for this report before continuing.'); return; } startNewReport(newReportDate, selectedBranch); };
 
   const handleCellSave = (value, matchedClient) => {
@@ -328,7 +422,35 @@ export default function ReportsSection({ user, profile, clients = [], clientsLoa
   };
 
   const downloadCurrentReport = () => { if (!report) return; const link = document.createElement('a'); link.href = generateReportPdf(report); link.download = `spa-ems-report-${report.reportDateKey || todayKey()}.pdf`; link.click(); };
-  const loadBirthdayCalls = () => { if (!report || !canEdit) return; const birthdayRows = getBirthdayRowsForReport(report.birthdayClients, clientDirectory, report.reportDateKey, reportCaller, report.branch, { reload: true, allowUncalled: adminBirthdayApproval }); setReport((current) => ({ ...current, callerId: reportCaller.id, callerName: reportCaller.name, birthdayClients: birthdayRows })); setNotice(birthdayRows.length ? `${birthdayRows.length} birthday entr${birthdayRows.length === 1 ? 'y' : 'ies'} loaded for ${adminBirthdayApproval ? 'the approved branch' : reportCaller.name}.` : `No matching birthday entries found for this date, ${adminBirthdayApproval ? 'approved branch' : 'caller'}, and branch.`); };
+  const applyBirthdayScope = async (patch) => {
+    const nextDate = patch.reportDateKey || report?.reportDateKey;
+    let directory = [];
+    try {
+      directory = await birthdayClientsForDate(nextDate);
+    } catch (loadError) {
+      console.error('Unable to load birthday clients for report:', loadError);
+    }
+    setReport((current) => {
+      if (!current) return current;
+      const merged = { ...current, ...patch };
+      return {
+        ...merged,
+        birthdayClients: getBirthdayRowsForReport(merged.birthdayClients, directory, merged.reportDateKey, reportCaller, merged.branch, { allowUncalled: adminBirthdayApproval }),
+      };
+    });
+  };
+  const loadBirthdayCalls = async () => {
+    if (!report || !canEdit) return;
+    let directory = [];
+    try {
+      directory = await birthdayClientsForDate(report.reportDateKey);
+    } catch (loadError) {
+      console.error('Unable to load birthday clients:', loadError);
+    }
+    const birthdayRows = getBirthdayRowsForReport(report.birthdayClients, directory, report.reportDateKey, reportCaller, report.branch, { reload: true, allowUncalled: adminBirthdayApproval });
+    setReport((current) => ({ ...current, callerId: reportCaller.id, callerName: reportCaller.name, birthdayClients: birthdayRows }));
+    setNotice(birthdayRows.length ? `${birthdayRows.length} birthday entr${birthdayRows.length === 1 ? 'y' : 'ies'} loaded for ${adminBirthdayApproval ? 'the approved branch' : reportCaller.name}.` : `No matching birthday entries found for this date, ${adminBirthdayApproval ? 'approved branch' : 'caller'}, and branch.`);
+  };
   const loadSpaCheckIns = async () => {
     if (!report || !canEdit || isLoadingSpaCheckIns) return;
     if (!report.branch) { setError('Select a report branch before loading spa check-ins.'); return; }
@@ -383,15 +505,13 @@ export default function ReportsSection({ user, profile, clients = [], clientsLoa
   return <div className="space-y-6 animate-in fade-in duration-300">
     <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"><div><div className="flex items-center gap-3"><button type="button" onClick={handleWorkspaceBack} aria-label="Back" className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-500 transition hover:bg-slate-100 hover:text-blue-600 dark:border-slate-800 dark:text-slate-400 dark:hover:bg-slate-800">←</button><div><h2 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white">Reports &amp; Feedback</h2></div></div></div><div className="flex flex-wrap gap-2">{workspaceStep !== 'users' && <button type="button" onClick={goToUsers} className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-black text-slate-600 hover:bg-slate-100 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800">Change user</button>}{workspaceStep === 'editor' && report && <button type="button" onClick={downloadCurrentReport} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-700 shadow-sm hover:border-blue-200 hover:text-blue-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200">↓ Download PDF</button>}{workspaceStep === 'editor' && canEdit && <button type="button" onClick={saveCurrentReport} disabled={isSaving} className="rounded-xl bg-blue-600 px-3 py-2 text-xs font-black text-white shadow-lg shadow-blue-600/20 hover:bg-blue-700 disabled:opacity-60">{isSaving ? 'Saving...' : 'Save report'}</button>}</div></div>
     {notice && <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/20 dark:text-emerald-300">{notice}</div>}{error && <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/20 dark:text-rose-300">{error}</div>}
-    {clientsLoading && <div className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-700 dark:border-blue-900/40 dark:bg-blue-950/20 dark:text-blue-300">Loading client records for search and birthday auto-fill. Saved reports remain available.</div>}
-
     {workspaceStep === 'users' && <div className="space-y-5"><div className="rounded-3xl border border-blue-100 bg-gradient-to-br from-blue-50 via-white to-violet-50 p-6 dark:border-blue-900/40 dark:from-blue-950/20 dark:via-slate-900 dark:to-violet-950/20"><p className="text-xs font-black uppercase tracking-[0.18em] text-blue-600">Step 1</p><h3 className="mt-2 text-2xl font-black text-slate-900 dark:text-white">Select name to make report</h3><p className="mt-1 max-w-xl text-sm font-medium text-slate-500">Select a caller name to open that report workspace. You can view saved reports here and continue with the report operations for that caller.</p></div>{isLoading ? <div className="dashboard-surface rounded-2xl p-12 text-center text-sm font-semibold text-slate-500">Loading caller names...</div> : callerOptions.length === 0 ? <div className="dashboard-surface rounded-2xl p-10 text-center"><h3 className="text-lg font-black text-slate-900 dark:text-white">No caller names available</h3><p className="mx-auto mt-1 max-w-md text-sm text-slate-500">An Admin must create an active caller name before reports can be prepared.</p></div> : <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{callerOptions.map((candidate) => <button type="button" key={candidate.id} onClick={() => chooseUser(candidate)} className="group flex items-center gap-4 rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-lg dark:border-slate-800 dark:bg-slate-900"><span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-violet-600 text-sm font-black text-white">{initials(candidate.name)}</span><span className="min-w-0"><span className="block truncate text-base font-black text-slate-900 dark:text-white">{candidate.name}</span><span className="mt-1 block truncate text-xs font-semibold text-slate-500">{candidate.roleLabel}</span></span><span className="ml-auto text-lg text-slate-300 transition group-hover:translate-x-1 group-hover:text-blue-600">→</span></button>)}</div>}</div>}
 
     {workspaceStep === 'types' && <div className="space-y-5"><div className="dashboard-surface rounded-2xl p-5"><div className="flex items-center gap-3"><span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-600 text-sm font-black text-white">{initials(selectedUser.name)}</span><div><p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Selected user</p><h3 className="text-xl font-black text-slate-900 dark:text-white">{selectedUser.name}</h3></div></div></div><div className="rounded-3xl border border-violet-100 bg-gradient-to-br from-violet-50 via-white to-blue-50 p-6 dark:border-violet-900/40 dark:from-violet-950/20 dark:via-slate-900 dark:to-blue-950/20"><p className="text-xs font-black uppercase tracking-[0.18em] text-violet-600">Step 2</p><h3 className="mt-2 text-2xl font-black text-slate-900 dark:text-white">Choose a report type</h3><p className="mt-1 text-sm font-medium text-slate-500">The first workspace combines the current feedback, birthday, WhatsApp, and calls format.</p></div><button type="button" onClick={chooseReportType} className="group w-full rounded-3xl border border-slate-200 bg-white p-6 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-xl dark:border-slate-800 dark:bg-slate-900"><div className="flex flex-col gap-5 sm:flex-row sm:items-center"><span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-violet-600 text-2xl text-white">▤</span><span className="flex-1"><span className="block text-xl font-black text-slate-900 dark:text-white">{REPORT_TYPE_LABEL}</span><span className="mt-1 block text-sm font-medium text-slate-500">Daily caller records with separate phone, contact mode, feedback, and expandable custom columns.</span></span><span className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-black text-white group-hover:bg-blue-700">Open workspace →</span></div></button></div>}
 
     {workspaceStep === 'branch' && <div className="space-y-5"><div className="rounded-3xl border border-blue-100 bg-gradient-to-br from-blue-50 via-white to-violet-50 p-6 dark:border-blue-900/40 dark:from-blue-950/20 dark:via-slate-900 dark:to-violet-950/20"><p className="text-xs font-black uppercase tracking-[0.18em] text-blue-600">New report</p><h3 className="mt-2 text-2xl font-black text-slate-900 dark:text-white">Choose report branch</h3><p className="mt-1 max-w-xl text-sm font-medium text-slate-500">Select the branch for this daily report before entering any details.</p></div><div className="dashboard-surface rounded-2xl p-5"><div className="grid gap-4 sm:grid-cols-2"><label className="text-xs font-bold text-slate-500">Report date<input type="date" value={newReportDate} onChange={(event) => setNewReportDate(event.target.value)} className="mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-700 outline-none dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200" /></label><label className="text-xs font-bold text-slate-500">Branch<select autoFocus required value={selectedBranch} onChange={(event) => { setSelectedBranch(event.target.value); setError(''); }} className="mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-700 outline-none dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200"><option value="" disabled>Select branch</option>{visibleBranches.map((branch) => <option key={branch} value={branch}>{branch}</option>)}</select></label></div><div className="mt-5 flex justify-end gap-2"><button type="button" onClick={handleWorkspaceBack} className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-black text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800">← Report history</button><button type="button" onClick={handleBranchContinue} disabled={!selectedBranch} className="rounded-xl bg-blue-600 px-3 py-2 text-xs font-black text-white shadow-md shadow-blue-600/20 hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50">Continue</button></div></div></div>}
 
-    {workspaceStep === 'history' && <div className="space-y-5"><div className="dashboard-surface rounded-2xl p-4 sm:p-5"><div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between"><div><h3 className="text-2xl font-black text-slate-900 dark:text-white">{selectedUser.name} Reports</h3><p className="mt-1 text-sm font-medium text-slate-500">Feedback, birthdays, WhatsApp &amp; calls.</p></div><div className="grid gap-2 sm:grid-cols-3"><label className="text-xs font-bold text-slate-500">Branch<select value={selectedBranch} onChange={(event) => setSelectedBranch(event.target.value)} className="mt-1 block w-full min-w-40 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-700 outline-none dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200"><option value="">All branches</option>{visibleBranches.map((branch) => <option key={branch} value={branch}>{branch}</option>)}</select></label><label className="text-xs font-bold text-slate-500">Jump to date<input type="date" value={selectedDate} onChange={(event) => { setSelectedDate(event.target.value); const match = historyReports.find((item) => item.reportDateKey === event.target.value); if (match) openReport(match); }} className="mt-1 block w-full min-w-40 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-700 outline-none dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200" /></label><button type="button" onClick={() => beginNewReport()} disabled={clientsLoading} className="rounded-lg bg-blue-600 px-2.5 py-1.5 text-[11px] font-black text-white shadow-md shadow-blue-600/20 hover:bg-blue-700 disabled:cursor-wait disabled:opacity-50">+ New report</button></div></div></div>{historyReports.length === 0 ? <div className="dashboard-surface rounded-2xl p-12 text-center"><h3 className="text-lg font-black text-slate-900 dark:text-white">No reports for this user yet</h3><p className="mx-auto mt-1 max-w-md text-sm text-slate-500">Start a new daily report to create the first organized record for this workspace.</p><button type="button" onClick={() => beginNewReport()} disabled={clientsLoading} className="mt-5 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-black text-white hover:bg-blue-700 disabled:cursor-wait disabled:opacity-50">Create today’s report</button></div> : <ReportHistoryTable reports={historyReports} user={user} profile={profile} onOpen={openReport} onDelete={removeReport} />}</div>}
+    {workspaceStep === 'history' && <div className="space-y-5"><div className="dashboard-surface rounded-2xl p-4 sm:p-5"><div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between"><div><h3 className="text-2xl font-black text-slate-900 dark:text-white">{selectedUser.name} Reports</h3><p className="mt-1 text-sm font-medium text-slate-500">Feedback, birthdays, WhatsApp &amp; calls.</p></div><div className="grid gap-2 sm:grid-cols-3"><label className="text-xs font-bold text-slate-500">Branch<select value={selectedBranch} onChange={(event) => setSelectedBranch(event.target.value)} className="mt-1 block w-full min-w-40 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-700 outline-none dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200"><option value="">All branches</option>{visibleBranches.map((branch) => <option key={branch} value={branch}>{branch}</option>)}</select></label><label className="text-xs font-bold text-slate-500">Jump to date<input type="date" value={selectedDate} onChange={(event) => { setSelectedDate(event.target.value); const match = historyReports.find((item) => item.reportDateKey === event.target.value); if (match) openReport(match); }} className="mt-1 block w-full min-w-40 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-700 outline-none dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200" /></label><button type="button" onClick={() => beginNewReport()} className="rounded-lg bg-blue-600 px-2.5 py-1.5 text-[11px] font-black text-white shadow-md shadow-blue-600/20 hover:bg-blue-700 disabled:cursor-wait disabled:opacity-50">+ New report</button></div></div></div>{historyReports.length === 0 ? <div className="dashboard-surface rounded-2xl p-12 text-center"><h3 className="text-lg font-black text-slate-900 dark:text-white">No reports for this user yet</h3><p className="mx-auto mt-1 max-w-md text-sm text-slate-500">{hasMoreReports ? 'No matching reports in the loaded pages. Load more history to keep looking.' : 'Start a new daily report to create the first organized record for this workspace.'}</p><button type="button" onClick={() => beginNewReport()} className="mt-5 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-black text-white hover:bg-blue-700 disabled:cursor-wait disabled:opacity-50">Create today’s report</button></div> : <ReportHistoryTable reports={historyReports} user={user} profile={profile} onOpen={openReport} onDelete={removeReport} />}{hasMoreReports && <div className="flex justify-center"><button type="button" onClick={loadMoreReports} disabled={loadingMoreReports} className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-black text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">{loadingMoreReports ? 'Loading reports…' : 'Load more reports'}</button></div>}</div>}
 
     {workspaceStep === 'editor' && report && (
       <div className="space-y-5">
@@ -416,8 +536,8 @@ export default function ReportsSection({ user, profile, clients = [], clientsLoa
         </div>
         <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
           <div className="grid gap-3 sm:grid-cols-2">
-            <label className="text-xs font-bold text-slate-500">Report date<input type="date" value={report.reportDateKey} disabled={!canEdit} onChange={(event) => { const reportDateKey = event.target.value; setSpaCheckInDate(previousDateKey(reportDateKey)); setReport((current) => ({ ...current, reportDateKey, birthdayClients: getBirthdayRowsForReport(current.birthdayClients, clientDirectory, reportDateKey, reportCaller, current.branch, { allowUncalled: adminBirthdayApproval }) })); }} className="mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold outline-none disabled:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:disabled:bg-slate-900" /></label>
-            <label className="text-xs font-bold text-slate-500">Branch<select value={report.branch || ''} disabled={!canEdit} onChange={(event) => { const branch = event.target.value; setReport((current) => ({ ...current, branch, birthdayClients: getBirthdayRowsForReport(current.birthdayClients, clientDirectory, current.reportDateKey, reportCaller, branch, { allowUncalled: adminBirthdayApproval }) })); }} className="mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold outline-none disabled:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:disabled:bg-slate-900"><option value="" disabled>Select branch</option>{visibleBranches.map((branch) => <option key={branch} value={branch}>{branch}</option>)}</select></label>
+            <label className="text-xs font-bold text-slate-500">Report date<input type="date" value={report.reportDateKey} disabled={!canEdit} onChange={(event) => { const reportDateKey = event.target.value; setSpaCheckInDate(previousDateKey(reportDateKey)); void applyBirthdayScope({ reportDateKey }); }} className="mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold outline-none disabled:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:disabled:bg-slate-900" /></label>
+            <label className="text-xs font-bold text-slate-500">Branch<select value={report.branch || ''} disabled={!canEdit} onChange={(event) => { void applyBirthdayScope({ branch: event.target.value }); }} className="mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold outline-none disabled:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:disabled:bg-slate-900"><option value="" disabled>Select branch</option>{visibleBranches.map((branch) => <option key={branch} value={branch}>{branch}</option>)}</select></label>
           </div>
           <div className="rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50 via-white to-violet-50 p-4 sm:p-5 dark:border-blue-900/30 dark:from-blue-950/20 dark:via-slate-900 dark:to-violet-950/20">
             <p className="text-[10px] font-black uppercase tracking-[0.16em] text-blue-600">Report overview</p>
@@ -449,6 +569,6 @@ export default function ReportsSection({ user, profile, clients = [], clientsLoa
       </div>
     )}
 
-    {cellDialog && <CellDialog key={`${cellDialog.sectionKey}-${cellDialog.rowIndex}-${cellDialog.field}`} cell={cellDialog} readOnly={!canEdit} clients={clientDirectory} onClose={() => setCellDialog(null)} onSave={handleCellSave} />}{columnDialogOpen && <ColumnDialog onClose={() => setColumnDialogOpen(false)} onSave={addColumn} />}
+    {cellDialog && <CellDialog key={`${cellDialog.sectionKey}-${cellDialog.rowIndex}-${cellDialog.field}`} cell={cellDialog} readOnly={!canEdit} onClose={() => setCellDialog(null)} onSave={handleCellSave} />}{columnDialogOpen && <ColumnDialog onClose={() => setColumnDialogOpen(false)} onSave={addColumn} />}
   </div>;
 }

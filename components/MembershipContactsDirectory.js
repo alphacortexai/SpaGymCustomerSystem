@@ -1,6 +1,8 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { getClientsByIds } from '@/lib/clients';
+import { getEnrollmentsPage } from '@/lib/memberships';
 import LoadingState from './LoadingState';
 
 function toDate(value) {
@@ -24,10 +26,53 @@ function StatusBadge({ active }) {
   );
 }
 
-export default function MembershipContactsDirectory({ serviceName, enrollments = [], clients = [], isLoading = false }) {
+export default function MembershipContactsDirectory({ serviceName, isSpa = false }) {
+  const [enrollments, setEnrollments] = useState([]);
+  const [clients, setClients] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [pageCursor, setPageCursor] = useState(null);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [branchFilter, setBranchFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  useEffect(() => {
+    let cancelled = false;
+    getEnrollmentsPage(isSpa, 40)
+      .then(async (page) => {
+        const matchedClients = await getClientsByIds(page.enrollments.map((item) => item.clientId));
+        if (cancelled) return;
+        setEnrollments(page.enrollments);
+        setClients(matchedClients);
+        setPageCursor(page.cursor);
+        setHasMore(page.hasMore);
+      })
+      .catch((error) => console.error(`Error loading ${serviceName} contacts:`, error))
+      .finally(() => { if (!cancelled) setIsLoading(false); });
+    return () => { cancelled = true; };
+  }, [isSpa, serviceName]);
+
+  const loadMore = async () => {
+    if (!hasMore || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const page = await getEnrollmentsPage(isSpa, 40, pageCursor);
+      const matchedClients = await getClientsByIds(page.enrollments.map((item) => item.clientId));
+      setEnrollments((current) => [...current, ...page.enrollments]);
+      setClients((current) => {
+        const merged = new Map(current.map((client) => [client.id, client]));
+        matchedClients.forEach((client) => merged.set(client.id, client));
+        return [...merged.values()];
+      });
+      setPageCursor(page.cursor);
+      setHasMore(page.hasMore);
+    } catch (error) {
+      console.error(`Error loading more ${serviceName} contacts:`, error);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
   const [today] = useState(() => {
     const value = new Date();
     value.setHours(0, 0, 0, 0);
@@ -159,6 +204,13 @@ export default function MembershipContactsDirectory({ serviceName, enrollments =
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+      {hasMore && (
+        <div className="flex justify-center">
+          <button type="button" onClick={loadMore} disabled={loadingMore} className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:text-slate-200">
+            {loadingMore ? 'Loading…' : 'Load more contacts'}
+          </button>
         </div>
       )}
       </>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { searchClients } from '@/lib/clients';
 import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePageVisibility } from '@/lib/usePageVisibility';
@@ -37,7 +38,7 @@ function timeLabel(value) {
   return date ? new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' }).format(date) : '—';
 }
 
-export default function GuestFlowVisits({ onBack, clients = [], branches = [] }) {
+export default function GuestFlowVisits({ onBack, branches = [] }) {
   const { user, profile } = useAuth();
   const isPlatformAdmin = user?.email?.toLowerCase() === 'alphacortexai@gmail.com';
   const spaIntakeBranches = useMemo(
@@ -53,7 +54,8 @@ export default function GuestFlowVisits({ onBack, clients = [], branches = [] })
   const [refreshedAt, setRefreshedAt] = useState(null);
   const [showCheckInModal, setShowCheckInModal] = useState(false);
   const [clientSearch, setClientSearch] = useState('');
-  const [selectedClientId, setSelectedClientId] = useState('');
+  const [matchingClients, setMatchingClients] = useState([]);
+  const [selectedClient, setSelectedClient] = useState(null);
   const [checkInLoading, setCheckInLoading] = useState(false);
   const [selectedDate, setSelectedDate] = useState(null); // null = today
   const [branchFilter, setBranchFilter] = useState('all');
@@ -91,13 +93,20 @@ export default function GuestFlowVisits({ onBack, clients = [], branches = [] })
   }, [loadVisits, isVisible]);
   useEffect(() => { if (isVisible) loadVisits(); }, [isVisible, loadVisits]);
 
-  const matchingClients = useMemo(() => {
-    const term = clientSearch.trim().toLowerCase();
-    const sorted = [...clients].sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
-    if (!term) return sorted.slice(0, 12);
-    return sorted.filter((client) => `${client.name || ''} ${client.phoneNumber || ''}`.toLowerCase().includes(term)).slice(0, 12);
-  }, [clientSearch, clients]);
-  const selectedClient = clients.find((client) => client.id === selectedClientId);
+  useEffect(() => {
+    const term = clientSearch.trim();
+    if (term.length < 2) {
+      setMatchingClients([]);
+      return undefined;
+    }
+    let cancelled = false;
+    const handle = setTimeout(() => {
+      searchClients(term)
+        .then((results) => { if (!cancelled) setMatchingClients((results || []).slice(0, 12)); })
+        .catch(() => { if (!cancelled) setMatchingClients([]); });
+    }, 300);
+    return () => { cancelled = true; clearTimeout(handle); };
+  }, [clientSearch]);
   const branchOptions = useMemo(() => {
     const availableBranches = isPlatformAdmin
       ? [...branches.map((branch) => String(branch.name || branch || '').trim()), ...visits.map((visit) => String(visit.checkedInBranch || visit.branch || '').trim())]
@@ -120,7 +129,7 @@ export default function GuestFlowVisits({ onBack, clients = [], branches = [] })
     }
   }, [branchFilter, branchOptions]);
   function getRegisteredBranch(visit) {
-    return visit.registeredBranch || clients.find((client) => client.id === visit.clientId)?.branch || '';
+    return visit.registeredBranch || '';
   }
   function getContactPhone(phoneNumber) {
     return extractAllPhoneNumbers(phoneNumber)[0] || '';
@@ -139,18 +148,19 @@ export default function GuestFlowVisits({ onBack, clients = [], branches = [] })
     setError('');
     setSuccess('');
     setClientSearch('');
-    setSelectedClientId('');
+    setSelectedClient(null);
+    setMatchingClients([]);
     setShowCheckInModal(true);
   }
 
   async function checkInSelectedClient(event) {
     event.preventDefault();
-    if (!selectedClientId || checkInLoading) return;
+    if (!selectedClient?.id || checkInLoading) return;
     setCheckInLoading(true);
     setError('');
     setSuccess('');
     try {
-      const result = await checkInGuestFlowClient(selectedClientId);
+      const result = await checkInGuestFlowClient(selectedClient.id);
       setSuccess(result.alreadyCheckedIn ? `${selectedClient?.name || 'Client'} is already checked in today.` : `${selectedClient?.name || 'Client'} checked in successfully.`);
       setShowCheckInModal(false);
       await loadVisits();
@@ -251,8 +261,8 @@ export default function GuestFlowVisits({ onBack, clients = [], branches = [] })
             <div className="flex items-start justify-between gap-4"><div><h3 id="check-in-dialog-title" className="text-xl font-black text-slate-900 dark:text-white">Check in a client</h3><p className="mt-1 text-sm text-slate-500">Select a client for today’s spa visit.</p></div><button type="button" onClick={() => setShowCheckInModal(false)} className="text-2xl leading-none text-slate-400" aria-label="Close">×</button></div>
             <form onSubmit={checkInSelectedClient} className="mt-5 space-y-4">
               <input autoFocus value={clientSearch} onChange={(event) => setClientSearch(event.target.value)} placeholder="Search by client name or phone" className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-950 dark:text-white" />
-              <div className="max-h-64 space-y-2 overflow-y-auto rounded-xl border border-slate-200 p-2 dark:border-slate-700">{matchingClients.length === 0 ? <p className="p-4 text-center text-sm text-slate-500">No matching clients found.</p> : matchingClients.map((client) => <button key={client.id} type="button" onClick={() => setSelectedClientId(client.id)} className={`w-full rounded-lg border px-3 py-3 text-left ${selectedClientId === client.id ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/30' : 'border-transparent hover:bg-slate-50 dark:hover:bg-slate-800'}`}><span className="block text-sm font-bold text-slate-900 dark:text-white">{client.name || 'Unnamed client'}</span><span className="mt-1 block text-xs text-slate-500">{client.phoneNumber || 'No phone'}{client.branch ? ` · ${client.branch}` : ''}</span></button>)}</div>
-              <div className="flex justify-end gap-2"><button type="button" onClick={() => setShowCheckInModal(false)} className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-bold text-slate-600 dark:border-slate-700 dark:text-slate-300">Cancel</button><button type="submit" disabled={!selectedClientId || checkInLoading} className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-50">{checkInLoading ? 'Checking in…' : 'Confirm check-in'}</button></div>
+              <div className="max-h-64 space-y-2 overflow-y-auto rounded-xl border border-slate-200 p-2 dark:border-slate-700">{clientSearch.trim().length < 2 ? <p className="p-4 text-center text-sm text-slate-500">Type at least 2 characters to search.</p> : matchingClients.length === 0 ? <p className="p-4 text-center text-sm text-slate-500">No matching clients found.</p> : matchingClients.map((client) => <button key={client.id} type="button" onClick={() => setSelectedClient(client)} className={`w-full rounded-lg border px-3 py-3 text-left ${selectedClient?.id === client.id ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/30' : 'border-transparent hover:bg-slate-50 dark:hover:bg-slate-800'}`}><span className="block text-sm font-bold text-slate-900 dark:text-white">{client.name || 'Unnamed client'}</span><span className="mt-1 block text-xs text-slate-500">{client.phoneNumber || 'No phone'}{client.branch ? ` · ${client.branch}` : ''}</span></button>)}</div>
+              <div className="flex justify-end gap-2"><button type="button" onClick={() => setShowCheckInModal(false)} className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-bold text-slate-600 dark:border-slate-700 dark:text-slate-300">Cancel</button><button type="submit" disabled={!selectedClient?.id || checkInLoading} className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-50">{checkInLoading ? 'Checking in…' : 'Confirm check-in'}</button></div>
             </form>
           </div>
         </div>

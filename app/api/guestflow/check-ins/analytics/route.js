@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { authorizeSpaIntakeRequest } from '@/lib/firebase-server';
-import { ApiError, listCheckIns } from '@/lib/guestflowApi';
+import { ApiError, listCheckInsInRange } from '@/lib/guestflowApi';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -30,8 +30,8 @@ export async function GET(request) {
     }
     const dates = dateRange(start, end);
     if (!dates.length || dates.length > 366) return NextResponse.json({ error: 'The selected period must be between 1 and 366 days.' }, { status: 400 });
-    const visitsByDate = await Promise.all(dates.map((date) => listCheckIns(date, '', null)));
-    return NextResponse.json({ visits: visitsByDate.flat() }, { headers: { 'Cache-Control': 'private, no-store, max-age=0' } });
+    const visits = await listCheckInsInRange(dates[0], dates[dates.length - 1]);
+    return NextResponse.json({ visits }, { headers: { 'Cache-Control': 'private, no-store, max-age=0' } });
   } catch (error) {
     if (error instanceof ApiError) return NextResponse.json({ error: error.message, ...error.extra }, { status: error.status });
     console.error('Check-in analytics error:', error);
