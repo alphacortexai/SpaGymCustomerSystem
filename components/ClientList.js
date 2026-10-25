@@ -108,8 +108,9 @@ export default function ClientList({ clients = [], totalCount, title = 'Clients'
   };
 
   const filteredClients = useMemo(() => disableLocalSearch ? clients : filterClientsBySearch(clients, searchQuery), [clients, searchQuery, disableLocalSearch]);
+  const isRefreshing = isLoading && clients.length > 0;
 
-  if (isLoading) {
+  if (isLoading && clients.length === 0) {
     return <LoadingState title="Loading client records..." description="Preparing your client database." />;
   }
 
@@ -126,7 +127,7 @@ export default function ClientList({ clients = [], totalCount, title = 'Clients'
   }
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden" aria-busy={isRefreshing}>
       <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
         <div>
           <h2 className="text-xl font-semibold text-slate-900 dark:text-white">
@@ -136,6 +137,7 @@ export default function ClientList({ clients = [], totalCount, title = 'Clients'
             {searchQuery.trim() 
               ? `${filteredClients.length} matches found` 
               : `${totalCount ?? clients.length} records found`}
+            {isRefreshing ? ' · Updating this page…' : ''}
           </p>
         </div>
         
@@ -202,7 +204,7 @@ export default function ClientList({ clients = [], totalCount, title = 'Clients'
                 <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+            <tbody className={`divide-y divide-slate-100 transition-opacity dark:divide-slate-800 ${isRefreshing ? 'opacity-45' : ''}`}>
               {filteredClients.map((client) => {
                 let dobDisplay = 'N/A';
                 if (client.birthMonth && client.birthDay) {
@@ -309,7 +311,7 @@ export default function ClientList({ clients = [], totalCount, title = 'Clients'
             </tbody>
           </table>
         ) : (
-          <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className={`p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 transition-opacity ${isRefreshing ? 'opacity-45' : ''}`}>
             {filteredClients.map((client) => {
               let dobDisplay = 'N/A';
               if (client.birthMonth && client.birthDay) {
