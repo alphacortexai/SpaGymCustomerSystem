@@ -1366,7 +1366,7 @@ export default function Home() {
               {!searchTerm && dashboardTotalCount > clientsPerPage && (
                 <div className="flex justify-center items-center gap-2 mt-8">
                   <button
-                    disabled={currentPage === 1}
+                    disabled={currentPage === 1 || dashboardPageLoading}
                     onClick={() => setCurrentPage(p => p - 1)}
                     className="p-2 rounded-lg border border-slate-200 dark:border-slate-800 disabled:opacity-30 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                   >
@@ -1376,7 +1376,7 @@ export default function Home() {
                     Page {currentPage} of {Math.max(1, Math.ceil(dashboardTotalCount / clientsPerPage))}
                   </span>
                   <button
-                    disabled={!dashboardHasMore}
+                    disabled={!dashboardHasMore || dashboardPageLoading}
                     onClick={() => setCurrentPage(p => p + 1)}
                     className="p-2 rounded-lg border border-slate-200 dark:border-slate-800 disabled:opacity-30 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                   >
