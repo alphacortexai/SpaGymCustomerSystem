@@ -223,7 +223,7 @@ const AdminBackButton = ({ onBack }) => (
   <button
     type="button"
     onClick={onBack}
-    className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 dark:border-slate-800 dark:text-slate-400 dark:hover:bg-slate-800"
+    className="inline-flex items-center gap-2 whitespace-nowrap rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 dark:border-slate-800 dark:text-slate-400 dark:hover:bg-slate-800 sm:px-4 sm:py-2.5"
   >
     <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
     Back to Admin
@@ -1581,13 +1581,15 @@ export default function Home() {
           )}
 
           {activeTab === 'users' && (
-            <div className="space-y-8 animate-in fade-in duration-300">
-              <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                <div>
-                  <h2 className="text-3xl font-bold text-slate-900 dark:text-white">User Management</h2>
-                  <p className="mt-1 text-slate-500">Manage access, roles, and branch assignments.</p>
+            <div className="min-w-0 space-y-6 animate-in fade-in duration-300">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <h2 className="text-2xl font-bold text-slate-900 dark:text-white sm:text-3xl">User Management</h2>
+                  <p className="mt-1 text-sm text-slate-500 sm:text-base">Manage access, roles, and branch assignments.</p>
                 </div>
-                <AdminBackButton onBack={goBackFromSection} />
+                <div className="shrink-0">
+                  <AdminBackButton onBack={goBackFromSection} />
+                </div>
               </div>
               <UserManagement />
             </div>
