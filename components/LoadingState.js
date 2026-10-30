@@ -3,7 +3,7 @@
 export default function LoadingState({ title = 'Loading data...', description = 'Please wait while we fetch the records.' }) {
   return (
     <div
-      className="rounded-2xl border border-slate-200 bg-white p-10 text-center dark:border-slate-800 dark:bg-slate-900"
+      className="apple-access-card"
       role="status"
       aria-live="polite"
       aria-label={title}

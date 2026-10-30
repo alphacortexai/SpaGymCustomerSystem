@@ -6,6 +6,7 @@ import { useData } from '@/contexts/DataContext';
 import { addNote, deleteNote, getAllNotes, updateNote } from '@/lib/notes';
 import { validateNoteInput } from '@/lib/validation';
 import LoadingState from './LoadingState';
+import PageBackButton from './PageBackButton';
 
 const formatDate = (date) => {
   if (!date) return 'Unknown date';
@@ -139,11 +140,7 @@ export default function NotesSection({ onActiveCountChange, onBack }) {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex items-center gap-3">
-            {onBack && (
-              <button type="button" onClick={onBack} aria-label="Back to Home" title="Back to Home" className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 text-slate-500 transition hover:bg-slate-100 hover:text-blue-600 dark:border-slate-800 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-blue-400">
-                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
-              </button>
-            )}
+            {onBack && <PageBackButton onClick={onBack} label="Back to Home" />}
             <h2 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white">Notes</h2>
           </div>
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Keep reminders and references in one place.</p>

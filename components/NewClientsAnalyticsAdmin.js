@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import PageBackButton from '@/components/PageBackButton';
 
 const PERIOD_OPTIONS = [
   { value: '2m', label: 'Last 2 months' },
@@ -118,11 +119,10 @@ export default function NewClientsAnalyticsAdmin({ clients = [], loadClientData,
     <div className="min-w-0 max-w-full space-y-5 animate-in fade-in duration-300">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <div className="text-[11px] font-black uppercase tracking-[0.2em] text-blue-600 dark:text-blue-400">Admin reporting</div>
-          <h2 className="mt-1 text-2xl font-black tracking-tight text-slate-900 dark:text-white sm:text-3xl">New Clients Analytics</h2>
-          <p className="mt-1 text-sm font-medium leading-6 text-slate-500">See clients added during the last two months or any custom period. Dates use the client record creation date.</p>
+          <div className="flex items-center gap-2"><PageBackButton onClick={onBack} label="Back to Admin" /><div className="page-eyebrow">Reporting</div></div>
+          <h2 className="mt-1 text-2xl font-black tracking-tight text-slate-900 dark:text-white sm:text-3xl">New clients</h2>
+          <p className="mt-1 text-sm font-medium leading-6 text-slate-500">Clients added in the last two months, or in a period you choose. Dates follow when the record was created.</p>
         </div>
-        <button type="button" onClick={onBack} className="inline-flex shrink-0 items-center whitespace-nowrap rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-700 shadow-sm hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800 sm:px-4 sm:py-2.5">Back to Admin</button>
       </div>
 
       <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">

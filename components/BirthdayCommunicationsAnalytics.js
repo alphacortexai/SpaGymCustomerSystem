@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import PageBackButton from '@/components/PageBackButton';
 import {
   endOfDay,
   endOfMonth,
@@ -194,7 +195,7 @@ export default function BirthdayCommunicationsAnalytics({ clients = [], branches
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <div className="flex items-center gap-3">
-            {onBack && <button type="button" onClick={onBack} className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-500 transition hover:bg-slate-100 hover:text-blue-600 dark:border-slate-800 dark:text-slate-400 dark:hover:bg-slate-800" aria-label="Back"><span aria-hidden="true">←</span></button>}
+            {onBack && <PageBackButton onClick={onBack} label="Back" />}
             <div>
               <p className="text-[11px] font-black uppercase tracking-[0.22em] text-pink-600 dark:text-pink-300">Birthday communications</p>
               <h2 className="mt-1 text-3xl font-black tracking-tight text-slate-900 dark:text-white">Call & message analytics</h2>

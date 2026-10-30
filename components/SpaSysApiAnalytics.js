@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import PageBackButton from '@/components/PageBackButton';
 
 const TOP_ADMIN_EMAIL = 'alphacortexai@gmail.com';
 
@@ -67,7 +68,7 @@ export default function SpaSysApiAnalytics({ user, onBack }) {
     <div className="mx-auto min-w-0 max-w-6xl space-y-6 animate-in fade-in duration-300">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-start gap-3">
-          <button type="button" onClick={onBack} aria-label="Back to Admin" className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-100 dark:border-slate-800 dark:text-slate-400 dark:hover:bg-slate-800">←</button>
+          <PageBackButton onClick={onBack} label="Back to Admin" />
           <div>
             <p className="text-[11px] font-black uppercase tracking-[0.2em] text-blue-600 dark:text-blue-300">Top admin · SPA_SYS_API_V1</p>
             <h2 className="mt-1 text-3xl font-black tracking-tight text-slate-900 dark:text-white">API analytics</h2>
