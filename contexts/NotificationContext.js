@@ -16,13 +16,14 @@ export function NotificationProvider({ children }) {
     }, 4000);
   }, []);
 
-  const showConfirm = useCallback(({ title = 'Confirm', message, confirmLabel = 'Confirm', cancelLabel = 'Cancel' }) => {
+  const showConfirm = useCallback(({ title = 'Confirm', message, confirmLabel = 'Confirm', cancelLabel = 'Cancel', tone = 'default' }) => {
     return new Promise((resolve) => {
       setConfirmState({
         title,
         message,
         confirmLabel,
         cancelLabel,
+        tone,
         resolve,
       });
     });
@@ -46,52 +47,41 @@ export function NotificationProvider({ children }) {
     <NotificationContext.Provider value={{ toast, showConfirm }}>
       {children}
 
-      {/* Toasts - fixed top-right */}
-      <div className="fixed top-4 right-4 z-[200] flex flex-col gap-2 pointer-events-none">
-        <div className="flex flex-col gap-2 pointer-events-auto">
+      <div className="apple-toast-stack pointer-events-none">
+        <div className="pointer-events-auto flex flex-col gap-2">
           {toasts.map((t) => (
             <div
               key={t.id}
-              onClick={() => dismissToast(t.id)}
-              className={`min-w-[280px] max-w-[360px] px-4 py-3 rounded-xl shadow-lg border text-sm font-medium flex items-center gap-3 ${
-                t.type === 'error'
-                  ? 'bg-rose-50 dark:bg-rose-900/30 border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-200'
-                  : t.type === 'success'
-                  ? 'bg-emerald-50 dark:bg-emerald-900/30 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200'
-                  : 'bg-slate-50 dark:bg-slate-800/90 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200'
-              }`}
+              role={t.type === 'error' ? 'alert' : 'status'}
+              className={`apple-toast apple-toast-${t.type === 'error' ? 'error' : t.type === 'success' ? 'success' : 'info'}`}
             >
-              {t.type === 'error' && (
-                <svg className="w-5 h-5 flex-shrink-0 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-              )}
-              {t.type === 'success' && (
-                <svg className="w-5 h-5 flex-shrink-0 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-              )}
               <span className="flex-1">{t.message}</span>
+              <button type="button" onClick={() => dismissToast(t.id)} className="text-sm font-semibold text-[#0071e3]" aria-label="Dismiss notification">OK</button>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Confirm modal */}
       {confirmState && (
-        <div className="fixed inset-0 z-[190] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm" onClick={handleCancel}>
+        <div className="apple-sheet-backdrop fixed inset-0 z-[190] flex items-center justify-center p-4" onClick={handleCancel}>
           <div
-            className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-sm p-6"
+            className="apple-sheet w-full max-w-sm rounded-[22px] p-6"
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="confirm-title"
+            aria-describedby="confirm-message"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">{confirmState.title}</h3>
-            <p className="text-slate-600 dark:text-slate-300 text-sm mb-6">{confirmState.message}</p>
+            <h3 id="confirm-title" className="mb-2 text-lg font-bold text-[#1d1d1f]">{confirmState.title}</h3>
+            <p id="confirm-message" className="mb-6 text-sm leading-6 text-[#6e6e73]">{confirmState.message}</p>
             <div className="flex gap-3">
-              <button
-                onClick={handleCancel}
-                className="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 font-medium"
-              >
+              <button type="button" onClick={handleCancel} className="apple-button-secondary flex-1" autoFocus>
                 {confirmState.cancelLabel}
               </button>
               <button
+                type="button"
                 onClick={handleConfirm}
-                className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-medium"
+                className={`flex-1 text-white ${confirmState.tone === 'destructive' || /delete|remove|revoke/i.test(confirmState.confirmLabel) ? 'apple-button-destructive' : 'apple-button-primary'}`}
               >
                 {confirmState.confirmLabel}
               </button>

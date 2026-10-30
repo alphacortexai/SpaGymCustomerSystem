@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import PageBackButton from '@/components/PageBackButton';
 import { usePageVisibility } from '@/lib/usePageVisibility';
 
 function formatDate(value) {
@@ -102,7 +103,7 @@ export default function GuestFlowDeviceAccess({ user, onBack }) {
         <div>
           <p className="text-[11px] font-black uppercase tracking-[0.2em] text-blue-600 dark:text-blue-400">Top administrator</p>
           <div className="mt-1 flex items-center gap-3">
-            {onBack && <button type="button" onClick={onBack} className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-100 dark:border-slate-800 dark:hover:bg-slate-800" aria-label="Back to admin tools">←</button>}
+            {onBack && <PageBackButton onClick={onBack} label="Back to Admin" />}
             <h2 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white">GuestFlow device access</h2>
           </div>
           <p className="mt-2 max-w-2xl text-sm font-medium leading-6 text-slate-500 dark:text-slate-400">Approve the phones and tablets allowed to use branch check-in links, and give each device a name so it is easy to recognize. New requests appear automatically while this page is open.</p>

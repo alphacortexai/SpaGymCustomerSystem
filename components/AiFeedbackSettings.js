@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import PageBackButton from '@/components/PageBackButton';
 
 const providerName = (provider) => provider === 'gemini' ? 'Google Gemini' : 'OpenAI';
 
@@ -97,7 +98,7 @@ export default function AiFeedbackSettings({ user, profile, onBack }) {
     : 'https://platform.openai.com/api-keys';
 
   return <div className="mx-auto max-w-3xl space-y-6 animate-in fade-in duration-300">
-    <div className="flex items-center gap-3"><button type="button" onClick={onBack} aria-label="Back to Admin" className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-100 dark:border-slate-800 dark:text-slate-400 dark:hover:bg-slate-800">←</button><div><p className="text-[11px] font-black uppercase tracking-[0.2em] text-violet-600 dark:text-violet-300">Top Admin · AI setup</p><h2 className="mt-1 text-3xl font-black tracking-tight text-slate-900 dark:text-white">AI provider settings</h2></div></div>
+    <div className="flex items-center gap-3"><PageBackButton onClick={onBack} label="Back to Admin" /><div><p className="text-[11px] font-black uppercase tracking-[0.2em] text-violet-600 dark:text-violet-300">Top Admin · AI setup</p><h2 className="mt-1 text-3xl font-black tracking-tight text-slate-900 dark:text-white">AI provider settings</h2></div></div>
     <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
       <div className="flex items-start gap-4"><div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-violet-100 text-xl text-violet-700 dark:bg-violet-950/50 dark:text-violet-200">AI</div><div><h3 className="font-black text-slate-900 dark:text-white">Choose your AI provider</h3><p className="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-400">Use either OpenAI or Google Gemini. Only one provider/key is active at a time; saving a new key replaces the previous one. The key is stored server-side and is never sent back to the browser. Only approved Admin accounts can update it.</p></div></div>
       <div className={`mt-5 rounded-xl border px-4 py-3 text-sm font-semibold ${configured ? 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900/50 dark:bg-emerald-950/20 dark:text-emerald-200' : 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-200'}`}>

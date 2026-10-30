@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import PageBackButton from '@/components/PageBackButton';
 import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePageVisibility } from '@/lib/usePageVisibility';
@@ -200,7 +201,7 @@ export default function GuestFlowVisits({ onBack, clients = [], branches = [] })
         <div>
           <p className="text-[11px] font-black uppercase tracking-[0.2em] text-blue-600 dark:text-blue-400">GuestFlow integration</p>
           <div className="mt-1 flex items-center gap-3">
-            {onBack && <button type="button" onClick={onBack} className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-100 dark:border-slate-800 dark:hover:bg-slate-800" aria-label="Back to home">←</button>}
+            {onBack && <PageBackButton onClick={onBack} label="Back to Home" />}
             <h2 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white">Spa check-ins</h2>
           </div>
           <p className="mt-2 max-w-xl text-sm font-medium text-slate-500 dark:text-slate-400">{selectedDate ? `Check-ins for ${selectedDate}. Use the date picker at the top to view historical arrivals and departures.` : "Today's client arrivals and departures. The register opens on the current Kampala day by default."}</p>

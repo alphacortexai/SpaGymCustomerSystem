@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import PageBackButton from '@/components/PageBackButton';
 import { getAllReports } from '@/lib/reports';
 
 const toDateKey = (value) => {
@@ -109,7 +110,7 @@ export default function CallerAnalyticsAdmin({ profile, onBack }) {
 
   return <div className="space-y-6 animate-in fade-in duration-300">
     <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-      <div><div className="flex items-center gap-3"><button type="button" onClick={onBack} aria-label="Back to Admin" className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-100 dark:border-slate-800 dark:text-slate-400 dark:hover:bg-slate-800">←</button><div><p className="text-[11px] font-black uppercase tracking-[0.2em] text-violet-600 dark:text-violet-300">Admin reporting</p><h2 className="mt-1 text-3xl font-black tracking-tight text-slate-900 dark:text-white">Caller analytics</h2></div></div><p className="mt-2 max-w-2xl text-sm font-medium leading-6 text-slate-500 dark:text-slate-400">Review birthday outreach, feedback contacts, and WhatsApp activity by caller for the selected reporting period.</p></div>
+      <div><div className="flex items-center gap-3"><PageBackButton onClick={onBack} label="Back to Admin" /><div><p className="text-[11px] font-black uppercase tracking-[0.2em] text-violet-600 dark:text-violet-300">Admin reporting</p><h2 className="mt-1 text-3xl font-black tracking-tight text-slate-900 dark:text-white">Caller analytics</h2></div></div><p className="mt-2 max-w-2xl text-sm font-medium leading-6 text-slate-500 dark:text-slate-400">Review birthday outreach, feedback contacts, and WhatsApp activity by caller for the selected reporting period.</p></div>
       <select value={period} onChange={(event) => setPeriod(event.target.value)} aria-label="Caller analytics period" className="rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-bold text-slate-700 outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"><option value="7d">Last 7 days</option><option value="14d">Last 14 days</option><option value="30d">Last 30 days</option><option value="custom">Custom period</option></select>
     </div>
     {period === 'custom' && <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 sm:flex-row dark:border-slate-800 dark:bg-slate-900"><label className="flex-1 text-xs font-bold uppercase tracking-wider text-slate-500">From<input type="date" value={customStart} onChange={(event) => setCustomStart(event.target.value)} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200" /></label><label className="flex-1 text-xs font-bold uppercase tracking-wider text-slate-500">To<input type="date" value={customEnd} onChange={(event) => setCustomEnd(event.target.value)} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200" /></label></div>}

@@ -4,12 +4,11 @@ import { useState } from 'react';
 import { collection, getDocs, doc, updateDoc, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { normalizePhoneNumber } from '@/lib/phoneUtils';
-import { useAuth } from '@/contexts/AuthContext';
 import { useNotifications } from '@/contexts/NotificationContext';
 import ProtectedRoute from '@/components/ProtectedRoute';
 
 export default function MigratePhones() {
-  const { user } = useAuth();
+  const { showConfirm } = useNotifications();
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState('');
   const [results, setResults] = useState(null);
@@ -53,9 +52,10 @@ export default function MigratePhones() {
 
   const handleMigration = async () => {
     const ok = await showConfirm({
-      title: 'Confirm migration',
-      message: 'This will update all phone numbers in the database. This action cannot be undone. Continue?',
-      confirmLabel: 'Continue',
+      title: 'Update every phone number?',
+      message: 'This rewrites stored phone numbers. It cannot be undone. Preview the list first, and keep a backup.',
+      confirmLabel: 'Update numbers',
+      tone: 'destructive',
     });
     if (!ok) return;
 
@@ -127,41 +127,41 @@ export default function MigratePhones() {
 
   return (
     <ProtectedRoute>
-      <div className="min-h-screen bg-gray-50 p-8">
-        <div className="max-w-4xl mx-auto">
-          <div className="bg-white p-6 rounded-lg shadow-md mb-6">
-            <h1 className="text-2xl font-bold mb-2">Phone Number Migration</h1>
-            <p className="text-gray-600 mb-4">
-              This tool will normalize all phone numbers in the database. For example:
-            </p>
-            <ul className="list-disc list-inside text-gray-600 mb-4 space-y-1">
-              <li>"782830524" → "0782830524"</li>
-              <li>"0776961331/ 758583813" → "0776961331" (uses first number)</li>
-              <li>"254782830524" → "0782830524" (removes country code)</li>
-            </ul>
-            <div className="bg-yellow-50 border border-yellow-200 rounded p-4 mb-4">
-              <p className="text-sm text-yellow-800">
-                <strong>⚠️ Important:</strong> Make sure to backup your database before running the migration. 
-                This action will update all phone numbers and cannot be undone.
-              </p>
+      <div className="dashboard-shell min-h-screen p-6 sm:p-8">
+        <div className="mx-auto max-w-4xl">
+          <header className="page-intro mb-6">
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight">Phone numbers</h1>
+              <p className="page-intro-copy">Rewrite stored numbers into one local format. Preview the list before anything changes. Keep a backup, because this cannot be undone.</p>
             </div>
+          </header>
+          <div className="mb-6 rounded-2xl border border-black/5 bg-white p-6">
+            <p className="mb-3 text-sm text-[#6e6e73]">Examples of what will change:</p>
+            <ul className="mb-4 list-disc space-y-1 pl-5 text-sm text-[#424245]">
+              <li>782830524 becomes 0782830524</li>
+              <li>0776961331/ 758583813 keeps the first number, 0776961331</li>
+              <li>254782830524 drops the country code and becomes 0782830524</li>
+            </ul>
+            <p className="rounded-xl bg-[#fff4e5] px-4 py-3 text-sm leading-6 text-[#7a4b00]">Take a backup first. Updating numbers rewrites the database.</p>
           </div>
 
-          <div className="bg-white p-6 rounded-lg shadow-md mb-6">
-            <div className="flex gap-4 mb-4">
+          <div className="mb-6 rounded-2xl border border-black/5 bg-white p-6">
+            <div className="mb-4 flex flex-wrap gap-3">
               <button
+                type="button"
                 onClick={handlePreview}
                 disabled={loading}
-                className="px-6 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="apple-button-secondary disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {loading ? 'Loading...' : 'Preview Changes'}
+                {loading ? 'Working…' : 'Preview changes'}
               </button>
               <button
+                type="button"
                 onClick={handleMigration}
                 disabled={loading || !preview}
-                className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="apple-button-destructive text-white disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {loading ? 'Migrating...' : 'Start Migration'}
+                {loading ? 'Updating…' : 'Update numbers'}
               </button>
             </div>
             
@@ -196,8 +196,8 @@ export default function MigratePhones() {
           </div>
 
           {preview && preview.length > 0 && (
-            <div className="bg-white p-6 rounded-lg shadow-md">
-              <h2 className="text-xl font-bold mb-4">Preview Changes ({preview.length} records)</h2>
+            <div className="rounded-2xl border border-black/5 bg-white p-6">
+              <h2 className="mb-4 text-xl font-bold">Preview ({preview.length})</h2>
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200 text-sm">
                   <thead className="bg-gray-50">
@@ -229,8 +229,8 @@ export default function MigratePhones() {
           )}
 
           {preview && preview.length === 0 && (
-            <div className="bg-white p-6 rounded-lg shadow-md">
-              <p className="text-gray-600">All phone numbers are already normalized. No changes needed!</p>
+            <div className="rounded-2xl border border-black/5 bg-white p-6">
+              <p className="text-sm text-[#6e6e73]">Every phone number is already in the local format.</p>
             </div>
           )}
         </div>

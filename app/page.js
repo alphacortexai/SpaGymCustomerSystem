@@ -10,6 +10,7 @@ import { searchClients, getClientsPage, getBirthdayClientsByMonth } from '@/lib/
 import { affirmations } from '@/lib/affirmations';
 import { getActiveNotesCount } from '@/lib/notes';
 import ProtectedRoute from '@/components/ProtectedRoute';
+import PageBackButton from '@/components/PageBackButton';
 import LoadingState from '@/components/LoadingState';
 import { usePageVisibility } from '@/lib/usePageVisibility';
 
@@ -150,6 +151,11 @@ const TypedGreeting = ({ firstName }) => {
   const isComplete = typedLength >= fullGreeting.length;
 
   useEffect(() => {
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduceMotion) {
+      const frame = requestAnimationFrame(() => setTypedLength(fullGreeting.length));
+      return () => cancelAnimationFrame(frame);
+    }
     let currentLength = 0;
     const typingTimer = setInterval(() => {
       currentLength += 1;
@@ -174,6 +180,11 @@ const TypedBirthdayReminder = ({ contactedCount, remainingCount, branchName }) =
   const isComplete = typedLength >= message.length;
 
   useEffect(() => {
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduceMotion) {
+      const frame = requestAnimationFrame(() => setTypedLength(message.length));
+      return () => cancelAnimationFrame(frame);
+    }
     let currentLength = 0;
     const typingTimer = setInterval(() => {
       currentLength += 1;
@@ -209,26 +220,23 @@ const TypedBirthdayReminder = ({ contactedCount, remainingCount, branchName }) =
 };
 
 const SectionBackArrow = ({ onClick, label }) => (
-  <button
-    type="button"
-    onClick={onClick}
-    aria-label={label}
-    title={label}
-    className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 text-slate-500 transition hover:bg-slate-100 hover:text-blue-600 dark:border-slate-800 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-blue-400"
-  >
-    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
-  </button>
+  <PageBackButton onClick={onClick} label={label} />
 );
 
-const AdminBackButton = ({ onBack }) => (
-  <button
-    type="button"
-    onClick={onBack}
-    className="inline-flex items-center gap-2 whitespace-nowrap rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 dark:border-slate-800 dark:text-slate-400 dark:hover:bg-slate-800 sm:px-4 sm:py-2.5"
-  >
-    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
-    Back to Admin
-  </button>
+const PageIntro = ({ eyebrow, title, description, onBack, backLabel, children }) => (
+  <header className="page-intro">
+    <div className="min-w-0">
+      <div className="page-intro-title-row">
+        {onBack && <SectionBackArrow onClick={onBack} label={backLabel || 'Back'} />}
+        <div className="min-w-0">
+          {eyebrow && <p className="page-eyebrow">{eyebrow}</p>}
+          <h2>{title}</h2>
+        </div>
+      </div>
+      {description && <p className="page-intro-copy">{description}</p>}
+    </div>
+    {children && <div className="page-intro-actions">{children}</div>}
+  </header>
 );
 
 const QuickActionIcon = ({ name }) => {
@@ -411,7 +419,7 @@ const SummaryPanel = ({ branches }) => {
     <section className="dashboard-summary dashboard-surface rounded-2xl p-4 sm:p-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-600 dark:text-blue-400">Summary</p>
+          <p className="page-eyebrow">Birthday offers</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <select value={summaryBranch} onChange={(event) => setSummaryBranch(event.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200" aria-label="Summary branch">
@@ -429,8 +437,8 @@ const SummaryPanel = ({ branches }) => {
         <div className="mt-5 rounded-2xl border border-violet-100 bg-gradient-to-r from-violet-50/70 via-white to-pink-50/60 p-5 shadow-sm dark:border-violet-900/40 dark:from-violet-950/20 dark:via-slate-900 dark:to-pink-950/20">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <h3 className="font-black text-slate-900 dark:text-white">Birthday offer performance</h3>
-              <p className="mt-1 text-xs font-medium text-slate-500">50% birthday offer redemptions compared with the birthday population and completed outreach.</p>
+              <h3 className="font-black text-slate-900 dark:text-white">Birthday offers</h3>
+              <p className="mt-1 text-xs font-medium text-slate-500">How many {birthdayMonthLabel} birthdays were contacted, and how many redeemed the 50% offer.</p>
             </div>
             <div className="rounded-xl bg-white/80 px-3 py-2 text-right shadow-sm dark:bg-slate-900/70">
               <div className="text-lg font-black text-violet-700 dark:text-violet-200"><AnimatedCount value={redeemedCount} /></div>
@@ -441,7 +449,7 @@ const SummaryPanel = ({ branches }) => {
             {[
               { label: `Birthday Babies in ${birthdayMonthLabel}`, value: birthdayClients.length, denominator: birthdayClients.length, percent: 100, color: 'bg-blue-400' },
               { label: 'Contacted', value: contactedCount, denominator: birthdayClients.length, percent: birthdayClients.length ? (contactedCount / birthdayClients.length) * 100 : 0, color: 'bg-pink-400' },
-              { label: 'Redeemed offer (contacted or uncontacted)', value: redeemedCount, denominator: birthdayClients.length, percent: birthdayClients.length ? (redeemedCount / birthdayClients.length) * 100 : 0, color: 'bg-violet-500' },
+              { label: 'Redeemed offer', value: redeemedCount, denominator: birthdayClients.length, percent: birthdayClients.length ? (redeemedCount / birthdayClients.length) * 100 : 0, color: 'bg-violet-500' },
             ].map((item) => (
               <div key={item.label}>
                 <div className="mb-1.5 flex items-center justify-between gap-3 text-xs font-bold text-slate-600 dark:text-slate-300"><span>{item.label}</span><span className="shrink-0">{item.value} <span className="font-medium text-slate-400">({formatSummaryPercent(item.value, item.denominator)})</span></span></div>
@@ -752,6 +760,7 @@ export default function Home() {
   }, [isPageVisible]);
 
   const adminSubsectionTabs = ['upload', 'unrecognized', 'history', 'users', 'birthday-callers', 'branches', 'duplicates', 'timeline', 'caller-analytics', 'new-clients-analytics', 'check-in-analytics', 'guestflow-devices', 'feedback-attention', 'ai-settings', 'spa-sys-api', 'spa-sys-analytics', 'invoice-list'];
+  const sectionBackLabel = (returnToAdmin || adminSubsectionTabs.includes(activeTab)) ? 'Back to Admin' : 'Back to Home';
 
   const openAdminTool = (tab) => {
     setReturnToAdmin(true);
@@ -979,33 +988,16 @@ export default function Home() {
 
   return (
     <ProtectedRoute>
-      <div className="dashboard-shell min-h-screen text-slate-900 dark:text-slate-100 font-sans selection:bg-blue-100 selection:text-blue-900">
-        {/* Exit Confirmation Modal */}
+      <div className="dashboard-shell min-h-screen text-slate-900 dark:text-slate-100 font-sans">
+        <a href="#workspace" className="skip-link">Skip to content</a>
         {showExitConfirm && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 max-w-sm w-full shadow-2xl border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-200">
-              <div className="flex items-center gap-4 mb-4">
-                <div className="w-12 h-12 rounded-full bg-rose-100 dark:bg-rose-900/30 flex items-center justify-center text-rose-600 dark:text-rose-400 text-2xl">
-                  🚪
-                </div>
-                <div>
-                  <h3 className="text-lg font-bold text-slate-900 dark:text-white">Exit App?</h3>
-                  <p className="text-sm text-slate-500 dark:text-slate-400">Are you sure you want to exit the application?</p>
-                </div>
-              </div>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setShowExitConfirm(false)}
-                  className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-sm font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleExitApp}
-                  className="flex-1 px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-sm font-semibold shadow-lg shadow-rose-500/20 transition-all"
-                >
-                  Yes, Exit
-                </button>
+          <div className="apple-sheet-backdrop fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <div className="apple-sheet w-full max-w-sm rounded-[22px] p-6" role="dialog" aria-modal="true" aria-labelledby="exit-app-title">
+              <h3 id="exit-app-title" className="text-lg font-bold text-slate-900">Leave this page?</h3>
+              <p className="mt-1 text-sm leading-6 text-slate-500">Your work is already saved. You can come back and continue where you left off.</p>
+              <div className="mt-5 flex gap-3">
+                <button type="button" onClick={() => setShowExitConfirm(false)} className="apple-button-secondary flex-1">Stay</button>
+                <button type="button" onClick={handleExitApp} className="apple-button-destructive flex-1 text-white">Leave</button>
               </div>
             </div>
           </div>
@@ -1023,7 +1015,7 @@ export default function Home() {
                     <Image src="/logo2.png" alt="Logo 2" fill className="object-contain p-1" />
                   </div>
                 </div>
-                <span className="text-lg font-black tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-slate-950 via-blue-700 to-slate-500 dark:from-white dark:via-blue-300 dark:to-slate-400">Spa EMS</span>
+                <span className="app-wordmark">Spa EMS</span>
               </button>
 
                 <nav aria-label="Primary navigation" className="mobile-primary-nav order-3 flex basis-full items-center gap-1 overflow-x-auto pb-0.5 sm:order-none sm:w-auto sm:basis-auto sm:max-w-[58vw]">
@@ -1040,7 +1032,7 @@ export default function Home() {
                     <button
                       key={tab}
                       onClick={() => setActiveTab(tab)}
-                      className={`mobile-primary-nav-link px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === tab ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400' : 'text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+                      className={`mobile-primary-nav-link primary-nav-link px-4 py-2 text-sm transition-colors ${activeTab === tab ? 'is-active' : ''}`}
                     >
                       <span className="mobile-primary-nav-label">{navLabel}</span>
                     </button>
@@ -1067,7 +1059,7 @@ export default function Home() {
                 {userMenuOpen && (
                   <>
                     <div className="fixed inset-0 z-40" onClick={() => setUserMenuOpen(false)}></div>
-                    <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl z-50 py-2 animate-in fade-in zoom-in-95 duration-200">
+                    <div className="apple-menu absolute right-0 z-50 mt-2 w-60 rounded-2xl py-2">
                       <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800">
                         <p className="text-sm font-bold text-slate-900 dark:text-white truncate">{user.displayName || 'User'}</p>
                         <p className="text-xs text-slate-500 truncate">{user.email}</p>
@@ -1099,7 +1091,7 @@ export default function Home() {
           </div>
         </header>
 
-        <main className="mx-auto max-w-[1280px] px-4 py-5 sm:px-6 lg:px-8 lg:py-7">
+        <main id="workspace" className="mx-auto max-w-[1280px] px-4 py-5 sm:px-6 lg:px-8 lg:py-7">
           {isInitialLoading && !workspaceReady ? (
             <div className="mx-auto max-w-2xl py-16">
               <LoadingState title="Preparing your dashboard..." description="Loading your workspaces and latest information." />
@@ -1139,10 +1131,10 @@ export default function Home() {
                 <section>
                   <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
                   {profile?.permissions?.clients?.view !== false && (
-                    <NavCard onClick={() => setActiveTab('dashboard')} icon="/clients_bg.webp" title="Clients Database" description="Manage" badge={cachedClientCounts ? clientBadgeTotal : (dataLoaded ? '...' : undefined)} isImage={true} fullBg={true} />
+                    <NavCard onClick={() => setActiveTab('dashboard')} icon="/clients_bg.webp" title="Clients" description="Search and update records" badge={cachedClientCounts ? clientBadgeTotal : (dataLoaded ? '...' : undefined)} isImage={true} fullBg={true} />
                   )}
                   {profile?.permissions?.birthdays?.view !== false && (
-                    <NavCard onClick={() => setActiveTab('birthdays')} icon="/birthday.png" title="Today's Birthdays" description="Celebrations" badge={cachedBirthdayCounts ? birthdayBadgeTotal : (dataLoaded ? '...' : undefined)} isImage={true} fullBg={true} />
+                    <NavCard onClick={() => setActiveTab('birthdays')} icon="/birthday.png" title="Birthdays" description="Who to reach today" badge={cachedBirthdayCounts ? birthdayBadgeTotal : (dataLoaded ? '...' : undefined)} isImage={true} fullBg={true} />
                   )}
 
                   {profile?.permissions?.gym?.view !== false && (
@@ -1150,7 +1142,7 @@ export default function Home() {
                       onClick={() => setActiveTab('gym')}
                       icon="/gym_bg.webp"
                       title="GYM"
-                      description="Memberships."
+                      description="Memberships and enrollments"
                       isImage={true}
                       fullBg={true}
                       badge={dataLoaded ? activeGymMembers : undefined}
@@ -1161,7 +1153,7 @@ export default function Home() {
                       onClick={() => setActiveTab('spa')}
                       icon="/spa_bg.webp"
                       title="SPA"
-                      description="Memberships."
+                      description="Memberships and enrollments"
                       isImage={true}
                       fullBg={true}
                       badge={dataLoaded ? activeSpaMembers : undefined}
@@ -1175,17 +1167,13 @@ export default function Home() {
                 </>
               ) : (
                 <div className="space-y-6">
-                  <div className="relative overflow-hidden rounded-3xl border border-blue-100/80 bg-gradient-to-br from-white via-blue-50/70 to-slate-100 p-5 shadow-lg shadow-blue-900/5 dark:border-slate-800 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
-                    <div className="absolute right-0 top-0 h-28 w-28 rounded-full bg-blue-400/20 blur-3xl" />
-                    <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                      <div>
-                        <div className="text-xs font-black uppercase tracking-[0.24em] text-blue-600 dark:text-blue-400">Control Center</div>
-                        <div className="mt-1 flex items-center gap-3"><SectionBackArrow onClick={() => setShowAdminSection(false)} label="Back to Home" /><h2 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">Admin Tools</h2></div>
-                        <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">Operate imports, audits, locations, users, and billing from one polished workspace.</p>
-                      </div>
-                      <button onClick={() => setShowAdminSection(false)} className="inline-flex items-center justify-center rounded-2xl border border-blue-200/70 bg-white/80 px-4 py-2 text-sm font-bold text-blue-700 shadow-sm backdrop-blur hover:bg-blue-50 hover:shadow-md dark:border-blue-900/50 dark:bg-slate-900/80 dark:text-blue-300 dark:hover:bg-blue-950/40">Back to main</button>
-                    </div>
-                  </div>
+                  <PageIntro
+                    eyebrow="Control center"
+                    title="Admin tools"
+                    description="Imports, people, locations, and billing. Open a tool, then come back here."
+                    onBack={() => setShowAdminSection(false)}
+                    backLabel="Back to Home"
+                  />
                   <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                     {profile?.role === 'Admin' && (
                       <NavCard onClick={() => openAdminTool('upload')} icon={<QuickActionIcon name="upload" />} title="Upload" description="Bulk data import." accent="blue" eyebrow="Import" />
@@ -1244,7 +1232,7 @@ export default function Home() {
                   </div>
                 </div>
               )}
-                {!showAdminSection && <div className="dashboard-quote mt-1 rounded-2xl border border-slate-200/80 bg-white/70 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/50"><div className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-600 dark:text-blue-300">Power quote</div><p className="mt-1 text-sm font-semibold italic leading-6 text-slate-600 dark:text-slate-200">“{currentAffirmation}”</p></div>}
+                {!showAdminSection && <div className="dashboard-quote px-4 py-3"><p className="text-sm font-medium leading-6 text-slate-600">“{currentAffirmation}”</p></div>}
               </div>
           )}
 
@@ -1273,46 +1261,21 @@ export default function Home() {
 
           {activeTab === 'invoice-list' && (
             <div className="space-y-8 animate-in fade-in duration-300">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                  <h2 className="text-3xl font-bold text-slate-900 dark:text-white">All Invoices</h2>
-                  <p className="text-slate-500 mt-1">View invoice records, search by number, client or phone, and recreate PDFs. Admin only.</p>
-                </div>
-                <button
-                  onClick={goBackFromSection}
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-sm font-medium"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
-                  Back to Admin
-                </button>
-              </div>
+              <PageIntro title="All invoices" description="Search by number, client, or phone, then recreate a PDF." onBack={goBackFromSection} backLabel={sectionBackLabel} />
               <InvoiceList />
             </div>
           )}
 
           {activeTab === 'invoice-tracking' && (
             <div className="space-y-8 animate-in fade-in duration-300">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                  <div className="flex items-center gap-3"><SectionBackArrow onClick={goBackFromSection} label="Back to Admin" /><h2 className="text-3xl font-bold text-slate-900 dark:text-white">Invoice Tracking</h2></div>
-                  <p className="text-slate-500 mt-1">Import invoices, track status (Issued, Sent to client, Completed) and upload proof of payment. Managers and Admins.</p>
-                </div>
-                <button
-                  onClick={goBackFromSection}
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-sm font-medium"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
-                  Back to Admin
-                </button>
-              </div>
+              <PageIntro title="Invoice tracking" description="Import invoices, mark them issued, sent, or completed, and attach proof of payment." onBack={goBackFromSection} backLabel={sectionBackLabel} />
               <InvoiceTracking />
             </div>
           )}
 
           {activeTab === 'dashboard' && (
             <div className="space-y-8 animate-in fade-in duration-300">
-              <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-                <div><p className="text-[11px] font-black uppercase tracking-[0.2em] text-blue-600 dark:text-blue-400">Client workspace</p><div className="mt-1 flex items-center gap-3"><SectionBackArrow onClick={goBackFromSection} label="Back to Home" /><h2 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white">Client Database</h2></div><p className="mt-2 max-w-xl text-sm font-medium text-slate-500 dark:text-slate-400">Search, filter, and manage every client record from one place.</p></div>
+              <PageIntro eyebrow="Clients" title="Client database" description="Search by name or phone, filter by branch, and update a record." onBack={goBackFromSection} backLabel={sectionBackLabel}>
                 <div className="flex flex-wrap items-center gap-3">
                   <select
                     value={selectedBranch}
@@ -1329,7 +1292,7 @@ export default function Home() {
                     </button>
                   )}
                 </div>
-              </div>
+              </PageIntro>
 
               <div className="dashboard-surface rounded-[24px] p-3 sm:p-4">
               <div className="relative">
@@ -1343,9 +1306,10 @@ export default function Home() {
                     <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                   )}
                 </div>
-                <input
-                  type="text"
-                  placeholder="Search by name or phone number..."
+                  <input
+                  type="search"
+                  aria-label="Search clients by name or phone"
+                  placeholder="Search by name or phone"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full pl-11 pr-4 py-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all text-lg"
@@ -1400,11 +1364,11 @@ export default function Home() {
           {activeTab === 'birthdays' && (
             <div className="space-y-8 animate-in fade-in duration-300">
               {showBranchPrompt && (
-                <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
-                  <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
-                    <div className="p-6 border-b border-slate-100 dark:border-slate-800">
-                      <h3 className="text-xl font-bold text-slate-900 dark:text-white">Set Default Branch</h3>
-                      <p className="text-sm text-slate-500 mt-1">Select a branch to show birthdays for by default.</p>
+                <div className="apple-sheet-backdrop fixed inset-0 z-[60] flex items-center justify-center p-4">
+                  <div className="apple-sheet w-full max-w-md overflow-hidden rounded-[22px]" role="dialog" aria-modal="true" aria-labelledby="default-branch-title">
+                    <div className="border-b border-black/5 p-6">
+                      <h3 id="default-branch-title" className="text-xl font-bold text-slate-900">Choose a home branch</h3>
+                      <p className="mt-1 text-sm leading-6 text-slate-500">Birthdays open on this branch. You can change it whenever you need to.</p>
                     </div>
                     <div className="p-4 max-h-[300px] overflow-y-auto space-y-2">
                       <button
@@ -1434,11 +1398,7 @@ export default function Home() {
                   </div>
                 </div>
               )}
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                <div>
-                  <div className="flex items-center gap-3"><SectionBackArrow onClick={goBackFromSection} label="Back to Home" /><h2 className="text-3xl font-bold text-slate-900 dark:text-white">Birthdays</h2></div>
-                  <p className="text-slate-500 mt-1">Celebrate with your customers.</p>
-                </div>
+              <PageIntro title="Birthdays" description="See who is celebrating, then record how you reached them." onBack={goBackFromSection} backLabel={sectionBackLabel}>
                 <div className="flex flex-col md:flex-row md:items-center gap-3 w-full md:w-auto">
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full md:w-auto">
                     <select
@@ -1467,12 +1427,12 @@ export default function Home() {
                     </select>
                   </div>
                 </div>
-              </div>
+              </PageIntro>
 
-              <div className="flex flex-col gap-3 rounded-2xl border border-pink-100 bg-gradient-to-r from-pink-50/80 via-white to-lime-50/80 p-4 dark:border-slate-800 dark:from-pink-950/20 dark:via-slate-900 dark:to-lime-950/10 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-col gap-3 rounded-2xl border border-pink-100 bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <p className="text-xs font-black uppercase tracking-[0.18em] text-pink-600 dark:text-pink-300">Contact verification</p>
-                  <p className="mt-1 text-sm font-semibold text-slate-600 dark:text-slate-300"><span className="mr-1 inline-block h-2.5 w-2.5 rounded-full bg-pink-200 align-middle" />Pink means a call or message has been recorded. <span className="ml-2 mr-1 inline-block h-2.5 w-2.5 rounded-full bg-amber-200 align-middle" />Amber means the number was unavailable and not on WhatsApp. <span className="ml-2 mr-1 inline-block h-2.5 w-2.5 rounded-full bg-lime-200 align-middle" />Lemon green means the client has not been contacted yet. Choose <strong>Called</strong>, <strong>Message sent</strong>, <strong>Called + message sent</strong>, or <strong>Unavailable / Not on WhatsApp</strong>.</p>
+                  <p className="text-sm font-semibold text-slate-900">How the colors work</p>
+                  <p className="mt-1 text-sm leading-6 text-slate-600"><span className="mr-1 inline-block h-2.5 w-2.5 rounded-full bg-pink-300 align-middle" />Reached. <span className="ml-2 mr-1 inline-block h-2.5 w-2.5 rounded-full bg-amber-300 align-middle" />Number unavailable. <span className="ml-2 mr-1 inline-block h-2.5 w-2.5 rounded-full bg-lime-300 align-middle" />Not contacted yet. Record Called, Message sent, Called and message sent, or Unavailable.</p>
                 </div>
                 {profile?.role === 'Admin' && <button type="button" onClick={() => openAdminTool('birthday-callers')} className="shrink-0 rounded-xl border border-pink-200 bg-white px-3.5 py-2 text-xs font-black text-pink-700 shadow-sm transition hover:bg-pink-50 dark:border-pink-900/50 dark:bg-slate-900 dark:text-pink-200 dark:hover:bg-pink-950/30">Manage caller names</button>}
               </div>
@@ -1511,103 +1471,56 @@ export default function Home() {
 
           {activeTab === 'upload' && (
             <div className="max-w-3xl mx-auto animate-in fade-in duration-300">
-              <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                <div>
-                  <h2 className="text-3xl font-bold text-slate-900 dark:text-white">Bulk Upload</h2>
-                  <p className="text-slate-500 mt-1">Import clients from Excel files.</p>
-                </div>
-                <AdminBackButton onBack={goBackFromSection} />
-              </div>
-              <ExcelUpload onClientsAdded={refreshData} />
+              <PageIntro title="Bulk upload" description="Import clients from an Excel file. You can review the rows before they are saved." onBack={goBackFromSection} backLabel={sectionBackLabel} />
+              <div className="mt-6"><ExcelUpload onClientsAdded={refreshData} /></div>
             </div>
           )}
 
           {activeTab === 'unrecognized' && (
             <div className="space-y-8 animate-in fade-in duration-300">
-              <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                <div>
-                  <h2 className="text-3xl font-bold text-slate-900 dark:text-white">Data Issues</h2>
-                  <p className="text-slate-500 mt-1">Fix clients with unrecognized phone numbers.</p>
-                </div>
-                <AdminBackButton onBack={goBackFromSection} />
-              </div>
+              <PageIntro title="Data issues" description="Correct clients whose phone numbers could not be recognized." onBack={goBackFromSection} backLabel={sectionBackLabel} />
               <UnrecognizedClientsList onApproved={refreshData} />
             </div>
           )}
 
           {activeTab === 'history' && (
             <div className="space-y-8 animate-in fade-in duration-300">
-              <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                <div>
-                  <h2 className="text-3xl font-bold text-slate-900 dark:text-white">Upload History</h2>
-                  <p className="text-slate-500 mt-1">Track and manage your data imports.</p>
-                </div>
-                <AdminBackButton onBack={goBackFromSection} />
-              </div>
+              <PageIntro title="Upload history" description="See what was imported, and when." onBack={goBackFromSection} backLabel={sectionBackLabel} />
               <UploadHistory />
             </div>
           )}
 
           {activeTab === 'add-client' && (
             <div className="max-w-2xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-300">
-              <div className="mb-8">
-                <h2 className="text-3xl font-bold text-slate-900 dark:text-white">Add New Client</h2>
-                <p className="text-slate-500 mt-1">Register a new customer to the system.</p>
-              </div>
-              <ClientForm onClientAdded={() => { refreshData(); setActiveTab('dashboard'); }} />
+              <PageIntro title="Add a client" description="Name, phone, and birthday are enough to get started. You can edit the record later." onBack={() => setActiveTab('dashboard')} backLabel="Back to Clients" />
+              <div className="mt-6"><ClientForm onClientAdded={() => { refreshData(); setActiveTab('dashboard'); }} /></div>
             </div>
           )}
 
           {activeTab === 'branches' && (
             <div className="max-w-4xl mx-auto animate-in fade-in duration-300">
-              <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                <div>
-                  <h2 className="text-3xl font-bold text-slate-900 dark:text-white">Branch Management</h2>
-                  <p className="text-slate-500 mt-1">Manage your business locations.</p>
-                </div>
-                <AdminBackButton onBack={goBackFromSection} />
-              </div>
-              <BranchForm onBranchAdded={refreshData} />
+              <PageIntro title="Branches" description="The locations staff can assign to clients and memberships." onBack={goBackFromSection} backLabel={sectionBackLabel} />
+              <div className="mt-6"><BranchForm onBranchAdded={refreshData} /></div>
             </div>
           )}
 
           {activeTab === 'birthday-callers' && (
             <div className="space-y-8 animate-in fade-in duration-300">
-              <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                <div>
-                  <h2 className="text-3xl font-bold text-slate-900 dark:text-white">Birthday Callers</h2>
-                  <p className="mt-1 text-slate-500">Set the marketing and management names that staff can use to verify birthday calls.</p>
-                </div>
-                <AdminBackButton onBack={goBackFromSection} />
-              </div>
+              <PageIntro title="Birthday callers" description="Names staff can choose when they record a birthday call." onBack={goBackFromSection} backLabel={sectionBackLabel} />
               <BirthdayCallersManager onChanged={refreshData} />
             </div>
           )}
 
           {activeTab === 'users' && (
             <div className="min-w-0 space-y-6 animate-in fade-in duration-300">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0 flex-1">
-                  <h2 className="text-2xl font-bold text-slate-900 dark:text-white sm:text-3xl">User Management</h2>
-                  <p className="mt-1 text-sm text-slate-500 sm:text-base">Manage access, roles, and branch assignments.</p>
-                </div>
-                <div className="shrink-0">
-                  <AdminBackButton onBack={goBackFromSection} />
-                </div>
-              </div>
+              <PageIntro title="People" description="Who can sign in, what they can see, and which branch they belong to." onBack={goBackFromSection} backLabel={sectionBackLabel} />
               <UserManagement />
             </div>
           )}
 
           {activeTab === 'timeline' && (
             <div className="space-y-8 animate-in fade-in duration-300">
-              <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                <div>
-                  <h2 className="text-3xl font-bold text-slate-900 dark:text-white">Activity Timeline</h2>
-                  <p className="text-slate-500 mt-1">Track all system actions and changes.</p>
-                </div>
-                <AdminBackButton onBack={goBackFromSection} />
-              </div>
+              <PageIntro title="Activity" description="A record of changes made in the system." onBack={goBackFromSection} backLabel={sectionBackLabel} />
               <ActionsTimeline />
             </div>
           )}
@@ -1647,13 +1560,7 @@ export default function Home() {
 
           {activeTab === 'duplicates' && (
             <div className="space-y-8 animate-in fade-in duration-300">
-              <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                <div>
-                  <h2 className="text-3xl font-bold text-slate-900 dark:text-white">Duplicate Search</h2>
-                  <p className="text-slate-500 mt-1">Find and resolve duplicate client records.</p>
-                </div>
-                <AdminBackButton onBack={goBackFromSection} />
-              </div>
+              <PageIntro title="Duplicates" description="Find clients who share a phone number, then merge the records you want to keep." onBack={goBackFromSection} backLabel={sectionBackLabel} />
               <DuplicateSearch onMerged={refreshData} />
             </div>
           )}
@@ -1666,21 +1573,16 @@ export default function Home() {
 
           {activeTab === 'gym' && (
             <div className="space-y-8 animate-in fade-in duration-300">
-              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div>
-                  <div className="flex items-center gap-3">
-                    <SectionBackArrow onClick={() => gymSubTab === 'overview' ? setActiveTab('home') : setGymSubTab('overview')} label={gymSubTab === 'overview' ? 'Back to Home' : 'Back to Overview'} />
-                    <h2 className="text-3xl font-bold text-slate-900 dark:text-white">{gymSubTab === 'client-contacts' ? 'Gym directory' : 'GYM Memberships'}</h2>
-                  </div>
-                  <p className="text-slate-500">
-                    {gymSubTab === 'overview' ? 'Manage membership types and client enrollments.' :
-                     gymSubTab === 'create-type' ? 'Define new membership packages.' :
-                     gymSubTab === 'partner-companies' ? 'Manage companies available on invoices.' :
-                     gymSubTab === 'enroll' ? 'Register a client for a membership.' :
-                     gymSubTab === 'client-contacts' ? 'Client contact details.' : 'View active gym members.'}
-                  </p>
-                </div>
-              </div>
+              <PageIntro
+                title={gymSubTab === 'client-contacts' ? 'Gym directory' : 'GYM memberships'}
+                description={gymSubTab === 'overview' ? 'Membership types, enrollments, and who is active.' :
+                  gymSubTab === 'create-type' ? 'Define a membership package.' :
+                  gymSubTab === 'partner-companies' ? 'Companies that can appear on invoices.' :
+                  gymSubTab === 'enroll' ? 'Enroll a client in a membership.' :
+                  gymSubTab === 'client-contacts' ? 'Names, phone numbers, and membership status.' : 'People with an active gym membership.'}
+                onBack={() => gymSubTab === 'overview' ? setActiveTab('home') : setGymSubTab('overview')}
+                backLabel={gymSubTab === 'overview' ? 'Back to Home' : 'Back to Overview'}
+              />
 
               {gymSubTab === 'overview' ? (
                 <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
@@ -1774,20 +1676,15 @@ export default function Home() {
 
           {activeTab === 'spa' && (
             <div className="space-y-8 animate-in fade-in duration-300">
-              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div>
-                  <div className="flex items-center gap-3">
-                    <SectionBackArrow onClick={() => spaSubTab === 'overview' ? setActiveTab('home') : setSpaSubTab('overview')} label={spaSubTab === 'overview' ? 'Back to Home' : 'Back to Overview'} />
-                    <h2 className="text-3xl font-bold text-slate-900 dark:text-white">{spaSubTab === 'client-contacts' ? 'Spa directory' : 'SPA Memberships'}</h2>
-                  </div>
-                  <p className="text-slate-500">
-                    {spaSubTab === 'overview' ? 'Manage spa membership types and client enrollments.' :
-                     spaSubTab === 'create-type' ? 'Define new spa membership packages.' :
-                     spaSubTab === 'enroll' ? 'Register a client for a spa membership.' :
-                     spaSubTab === 'client-contacts' ? 'Client contact details.' : 'View active spa members.'}
-                  </p>
-                </div>
-              </div>
+              <PageIntro
+                title={spaSubTab === 'client-contacts' ? 'Spa directory' : 'SPA memberships'}
+                description={spaSubTab === 'overview' ? 'Membership types, enrollments, and who is active.' :
+                  spaSubTab === 'create-type' ? 'Define a spa membership package.' :
+                  spaSubTab === 'enroll' ? 'Enroll a client in a spa membership.' :
+                  spaSubTab === 'client-contacts' ? 'Names, phone numbers, and membership status.' : 'People with an active spa membership.'}
+                onBack={() => spaSubTab === 'overview' ? setActiveTab('home') : setSpaSubTab('overview')}
+                backLabel={spaSubTab === 'overview' ? 'Back to Home' : 'Back to Overview'}
+              />
 
               {spaSubTab === 'overview' ? (
                 <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
@@ -1868,19 +1765,7 @@ export default function Home() {
 
           {activeTab === 'invoice' && (
             <div className="space-y-8 animate-in fade-in duration-300">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                  <div className="flex items-center gap-3"><SectionBackArrow onClick={goBackFromSection} label="Back to Admin" /><h2 className="text-3xl font-bold text-slate-900 dark:text-white">Proforma Invoice Generator</h2></div>
-                  <p className="text-slate-500 mt-1">Create invoices for GYM and SPA (PE &amp; SSS).</p>
-                </div>
-                <button
-                  onClick={goBackFromSection}
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-sm font-medium"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
-                  Back to Admin
-                </button>
-              </div>
+              <PageIntro title="Proforma invoice" description="Create an invoice for GYM or SPA." onBack={goBackFromSection} backLabel={sectionBackLabel} />
               <InvoiceGenerator />
             </div>
           )}

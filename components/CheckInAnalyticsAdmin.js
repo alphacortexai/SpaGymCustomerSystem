@@ -2,6 +2,7 @@
 
 import dynamic from 'next/dynamic';
 import { useEffect, useMemo, useState } from 'react';
+import PageBackButton from '@/components/PageBackButton';
 import { getKampalaDateKey, getGuestFlowCheckInAnalytics } from '@/lib/guestflowVisits';
 
 const Chart = dynamic(() => import('react-apexcharts'), { ssr: false });
@@ -137,7 +138,7 @@ export default function CheckInAnalyticsAdmin({ user, onBack }) {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <div className="flex items-center gap-3">
-            <button type="button" onClick={onBack} aria-label="Back to Admin" className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-100 dark:border-slate-800 dark:text-slate-400 dark:hover:bg-slate-800">←</button>
+            <PageBackButton onClick={onBack} label="Back to Admin" />
             <div><p className="text-[11px] font-black uppercase tracking-[0.2em] text-blue-600 dark:text-blue-300">Top admin reporting</p><h2 className="mt-1 text-3xl font-black tracking-tight text-slate-900 dark:text-white">Client check-in analytics</h2></div>
           </div>
           <p className="mt-2 max-w-2xl text-sm font-medium leading-6 text-slate-500 dark:text-slate-400">Compare daily client arrivals by branch. Bars show each branch and the dark line shows the combined daily total.</p>

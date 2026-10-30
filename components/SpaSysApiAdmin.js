@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import PageBackButton from '@/components/PageBackButton';
 import { downloadDataUri } from '@/lib/downloadFile';
 import { SPA_SYS_GUIDE } from '@/lib/spaSysGuide';
 import { generateSpaSysGuidePdf } from '@/lib/spaSysGuidePdf';
@@ -263,7 +264,7 @@ export default function SpaSysApiAdmin({ user, profile, onBack }) {
     <div className="mx-auto max-w-5xl space-y-6 animate-in fade-in duration-300">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-start gap-3">
-          <button type="button" onClick={onBack} aria-label="Back to Admin" className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-100 dark:border-slate-800 dark:text-slate-400 dark:hover:bg-slate-800">←</button>
+          <PageBackButton onClick={onBack} label="Back to Admin" />
           <div>
             <p className="text-[11px] font-black uppercase tracking-[0.2em] text-blue-600 dark:text-blue-300">Admin · SPA_SYS_API_V1</p>
             <h2 className="mt-1 text-3xl font-black tracking-tight text-slate-900 dark:text-white">SPA SYS API</h2>
