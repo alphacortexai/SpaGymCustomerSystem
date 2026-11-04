@@ -11,8 +11,6 @@ const SAMPLE = {
   additionalPhoneNumbers: ['0758000000'],
   dateOfBirth: { month: 3, day: 15, monthName: 'March', monthDay: '03-15', year: null },
   branch: 'Kololo',
-  createdAt: '2024-05-01T09:00:00.000Z',
-  updatedAt: '2025-01-02T08:30:00.000Z',
 };
 
 function formatWhen(value) {
@@ -157,7 +155,6 @@ export default function CustomerProfileExportAdmin({ user, onBack }) {
                 <li>Primary phone number and every additional number</li>
                 <li>Birthday month and day, when SpaGym has them. The year is null.</li>
                 <li>Branch</li>
-                <li>Created and last-updated timestamps, when they were stored</li>
               </ul>
               <p className="mt-4 text-sm leading-6 text-slate-500">Profiles have no inactive flag. A customer stays in this export until the profile is deleted, including someone without a current membership. A deleted profile is gone and cannot be exported.</p>
             </div>
