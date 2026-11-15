@@ -319,6 +319,23 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    match /adminMcp/{documentId} {
+      // The top-admin Grok connection key is written by the Admin SDK.
+      allow read, write: if false;
+    }
+
+    match /adminMcpClients/{clientId} {
+      allow read, write: if false;
+    }
+
+    match /adminMcpCodes/{codeId} {
+      allow read, write: if false;
+    }
+
+    match /adminMcpTokens/{tokenId} {
+      allow read, write: if false;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

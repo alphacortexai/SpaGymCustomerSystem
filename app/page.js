@@ -57,6 +57,7 @@ const SpaSysApiAnalytics = dynamic(() => import('@/components/SpaSysApiAnalytics
 const GuestFlowVisits = dynamic(() => import('@/components/GuestFlowVisits'), { loading: LazySectionFallback });
 const GuestFlowDeviceAccess = dynamic(() => import('@/components/GuestFlowDeviceAccess'), { loading: LazySectionFallback });
 const CustomerProfileExportAdmin = dynamic(() => import('@/components/CustomerProfileExportAdmin'), { loading: LazySectionFallback });
+const AdminMcpConnect = dynamic(() => import('@/components/AdminMcpConnect'), { loading: LazySectionFallback });
 
 const NavCard = ({ onClick, icon, title, titleLines, description, badge, isImage, fullBg, centerBadge, accent = 'blue', eyebrow }) => {
   const accentStyles = {
@@ -752,7 +753,7 @@ export default function Home() {
     return () => clearInterval(interval);
   }, [isPageVisible]);
 
-  const adminSubsectionTabs = ['upload', 'unrecognized', 'history', 'users', 'birthday-callers', 'branches', 'duplicates', 'timeline', 'caller-analytics', 'new-clients-analytics', 'check-in-analytics', 'guestflow-devices', 'feedback-attention', 'ai-settings', 'spa-sys-api', 'spa-sys-analytics', 'customer-profile-export', 'invoice-list'];
+  const adminSubsectionTabs = ['upload', 'unrecognized', 'history', 'users', 'birthday-callers', 'branches', 'duplicates', 'timeline', 'caller-analytics', 'new-clients-analytics', 'check-in-analytics', 'guestflow-devices', 'feedback-attention', 'ai-settings', 'spa-sys-api', 'spa-sys-analytics', 'customer-profile-export', 'grok-mcp', 'invoice-list'];
 
   const openAdminTool = (tab) => {
     setReturnToAdmin(true);
@@ -1243,6 +1244,9 @@ export default function Home() {
                       <NavCard onClick={() => openAdminTool('customer-profile-export')} icon={<QuickActionIcon name="export" />} title="Customer export" description="JSON profiles for a one-time migration." accent="blue" eyebrow="Top admin only" />
                     )}
                     {isRootAdmin && (
+                      <NavCard onClick={() => openAdminTool('grok-mcp')} icon={<QuickActionIcon name="admin" />} title="Grok MCP" description="Let Grok read feedback, birthdays, check-ins, and clients." accent="violet" eyebrow="Top admin only" />
+                    )}
+                    {isRootAdmin && (
                       <NavCard onClick={handleExportAllClients} icon={<QuickActionIcon name="export" />} title="Export Clients" description="Download a name, phone, birthday, and branch spreadsheet." accent="blue" eyebrow="Root admin only" badge={globalClients.length ? globalClients.length : undefined} />
                     )}
                   </div>
@@ -1651,6 +1655,10 @@ export default function Home() {
 
           {activeTab === 'customer-profile-export' && isRootAdmin && (
             <CustomerProfileExportAdmin user={user} onBack={goBackFromSection} />
+          )}
+
+          {activeTab === 'grok-mcp' && isRootAdmin && (
+            <AdminMcpConnect user={user} onBack={goBackFromSection} />
           )}
 
           {activeTab === 'duplicates' && (
