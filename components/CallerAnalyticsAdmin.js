@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { getAllReports } from '@/lib/reports';
+import { reportCallerContributions } from '@/lib/reportCollaboration';
 
 const toDateKey = (value) => {
   const date = value instanceof Date ? value : new Date(value);
@@ -31,12 +32,6 @@ const rowHasFeedback = (row = {}) => Boolean(
 const rowHasWhatsapp = (row = {}) => Boolean(
   rowHasContent(row) && /whatsapp|message|messaged|msg/i.test(String(row.contactMethod || '')),
 );
-
-const normalizeReportRows = (report) => ({
-  birthday: (report.birthdayClients || []).filter(rowHasContent),
-  feedback: (report.previousDayVisits || []).filter(rowHasContent),
-  whatsapp: (report.whatsappMessages || []).filter(rowHasContent),
-});
 
 function MetricCard({ label, value, detail, accent }) {
   return <div className={`rounded-2xl border p-5 ${accent}`}><p className="text-[10px] font-black uppercase tracking-[0.18em] opacity-70">{label}</p><p className="mt-3 text-3xl font-black tracking-tight">{value.toLocaleString()}</p><p className="mt-1 text-xs font-semibold opacity-70">{detail}</p></div>;
@@ -83,17 +78,19 @@ export default function CallerAnalyticsAdmin({ profile, onBack }) {
     const selectedReports = reports.filter((report) => report.reportDateKey >= bounds.start && report.reportDateKey <= bounds.end);
     const callerMap = new Map();
     selectedReports.forEach((report) => {
-      const callerId = report.callerId || report.ownerId || report.callerName || report.ownerName || 'unassigned';
-      const callerName = report.callerName || report.ownerName || 'Unassigned caller';
-      const existing = callerMap.get(callerId) || { id: callerId, name: callerName, reports: 0, birthday: 0, feedback: 0, whatsapp: 0, contacted: 0, dates: new Set() };
-      const rows = normalizeReportRows(report);
-      existing.reports += 1;
-      existing.birthday += rows.birthday.length;
-      existing.feedback += rows.feedback.filter(rowHasFeedback).length || rows.feedback.length;
-      existing.whatsapp += rows.whatsapp.length || rows.feedback.filter(rowHasWhatsapp).length;
-      existing.contacted += rows.birthday.length + rows.feedback.length + rows.whatsapp.length;
-      existing.dates.add(report.reportDateKey);
-      callerMap.set(callerId, existing);
+      reportCallerContributions(report).forEach((contribution) => {
+        const existing = callerMap.get(contribution.id) || { id: contribution.id, name: contribution.name, reports: 0, birthday: 0, feedback: 0, whatsapp: 0, contacted: 0, dates: new Set() };
+        const birthday = contribution.birthdayRows.filter(rowHasContent);
+        const feedback = contribution.feedbackRows.filter(rowHasContent);
+        const whatsapp = contribution.whatsappRows.filter(rowHasContent);
+        existing.reports += 1;
+        existing.birthday += birthday.length;
+        existing.feedback += feedback.filter(rowHasFeedback).length || feedback.length;
+        existing.whatsapp += whatsapp.length || feedback.filter(rowHasWhatsapp).length;
+        existing.contacted += birthday.length + feedback.length + whatsapp.length;
+        existing.dates.add(report.reportDateKey);
+        callerMap.set(contribution.id, existing);
+      });
     });
     const callers = [...callerMap.values()].map((caller) => ({ ...caller, dates: caller.dates.size })).sort((a, b) => b.contacted - a.contacted || a.name.localeCompare(b.name));
     return {

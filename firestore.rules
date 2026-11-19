@@ -174,10 +174,92 @@ service cloud.firestore {
       allow delete: if can('branches', 'delete');
     }
 
+    function isCollaboratedReportCreate() {
+      return request.resource.data.get('reportType', '') == 'collaborated-report';
+    }
+
+    function validCollaboratedCreate() {
+      return !isCollaboratedReportCreate() || (
+        request.resource.data.collaboration is map
+        && request.resource.data.collaboration.birthday is map
+        && request.resource.data.collaboration.feedback is map
+        && request.resource.data.collaboration.birthday.callerId is string
+        && request.resource.data.collaboration.feedback.callerId is string
+        && request.resource.data.collaboration.birthday.callerName is string
+        && request.resource.data.collaboration.feedback.callerName is string
+        && request.resource.data.collaboration.birthday.callerId.size() > 0
+        && request.resource.data.collaboration.feedback.callerId.size() > 0
+        && request.resource.data.collaboration.birthday.callerId != request.resource.data.collaboration.feedback.callerId
+        && (
+          (
+            request.resource.data.collaboration.birthday.userId == request.auth.uid
+            && request.resource.data.collaboration.feedback.userId == ''
+          ) || (
+            request.resource.data.collaboration.feedback.userId == request.auth.uid
+            && request.resource.data.collaboration.birthday.userId == ''
+          )
+        )
+      );
+    }
+
+    function collaboratedCoreUnchanged() {
+      return resource.data.get('reportType', '') == 'collaborated-report'
+        && request.resource.data.get('reportType', '') == 'collaborated-report'
+        && request.resource.data.ownerId == resource.data.ownerId
+        && request.resource.data.reportDateKey == resource.data.reportDateKey
+        && request.resource.data.branch == resource.data.branch
+        && request.resource.data.callerId == resource.data.callerId
+        && request.resource.data.callerName == resource.data.callerName
+        && request.resource.data.includeUncalledBirthdays == resource.data.includeUncalledBirthdays
+        && request.resource.data.whatsappMessages == resource.data.whatsappMessages
+        && request.resource.data.followUps == resource.data.followUps;
+    }
+
+    function birthdaySectionWrite() {
+      return collaboratedCoreUnchanged()
+        && request.resource.data.collaboration.birthday.callerId == resource.data.collaboration.birthday.callerId
+        && request.resource.data.collaboration.birthday.callerName == resource.data.collaboration.birthday.callerName
+        && request.resource.data.collaboration.birthday.userId == request.auth.uid
+        && (
+          resource.data.collaboration.birthday.userId == request.auth.uid
+          || (
+            resource.data.collaboration.birthday.userId == ''
+            && resource.data.collaboration.feedback.userId != request.auth.uid
+          )
+        )
+        && request.resource.data.collaboration.feedback == resource.data.collaboration.feedback
+        && request.resource.data.previousDayVisits == resource.data.previousDayVisits;
+    }
+
+    function feedbackSectionWrite() {
+      return collaboratedCoreUnchanged()
+        && request.resource.data.collaboration.feedback.callerId == resource.data.collaboration.feedback.callerId
+        && request.resource.data.collaboration.feedback.callerName == resource.data.collaboration.feedback.callerName
+        && request.resource.data.collaboration.feedback.userId == request.auth.uid
+        && (
+          resource.data.collaboration.feedback.userId == request.auth.uid
+          || (
+            resource.data.collaboration.feedback.userId == ''
+            && resource.data.collaboration.birthday.userId != request.auth.uid
+          )
+        )
+        && request.resource.data.collaboration.birthday == resource.data.collaboration.birthday
+        && request.resource.data.birthdayClients == resource.data.birthdayClients;
+    }
+
     match /reports/{reportId} {
       allow read: if approved();
-      allow create: if approved() && request.resource.data.ownerId == request.auth.uid;
-      allow update: if approved() && (resource.data.ownerId == request.auth.uid || isAdmin());
+      allow create: if approved() && request.resource.data.ownerId == request.auth.uid && validCollaboratedCreate();
+      allow update: if approved() && (
+        isAdmin() ||
+        (
+          resource.data.ownerId == request.auth.uid
+          && resource.data.get('reportType', '') != 'collaborated-report'
+          && request.resource.data.get('reportType', '') != 'collaborated-report'
+        ) ||
+        birthdaySectionWrite() ||
+        feedbackSectionWrite()
+      );
       allow delete: if isAdmin() || (approved() && resource.data.ownerId == request.auth.uid);
     }
 
